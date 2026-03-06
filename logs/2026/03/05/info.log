@@ -1,0 +1,578 @@
+2026-03-05 15:00:39.264 | INFO     | server:lifespan:89 - ⏰️ OA system开始启动
+2026-03-05 15:00:39.264 | INFO     | utils.common_util:worship:22 - 
+////////////////////////////////////////////////////////////////////
+//                          _ooOoo_                               //
+//                         o8888888o                              //
+//                         88" . "88                              //
+//                         (| ^_^ |)                              //
+//                         O\  =  /O                              //
+//                      ____/`---'\____                           //
+//                    .'  \\|     |//  `.                         //
+//                   /  \\|||  :  |||//  \                        //
+//                  /  _||||| -:- |||||-  \                       //
+//                  |   | \\\  -  /// |   |                       //
+//                  | \_|  ''\---/''  |   |                       //
+//                  \  .-\__  `-`  ___/-. /                       //
+//                ___`. .'  /--.--\  `. . ___                     //
+//              ."" '<  `.___\_<|>_/___.'  >'"".                  //
+//            | | :  `- \`.;`\ _ /`;.`/ - ` : | |                 //
+//            \  \ `-.   \_ __\ /__ _/   .-` /  /                 //
+//      ========`-.____`-.___\_____/___.-`____.-'========         //
+//                           `=---='                              //
+//      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^        //
+//             佛祖保佑       永不宕机      永无BUG                  //
+////////////////////////////////////////////////////////////////////
+    
+2026-03-05 15:00:39.264 | INFO     | config.get_db:init_create_table:25 - 🔎 初始化数据库连接...
+2026-03-05 15:00:39.268 | INFO     | sqlalchemy.log:log:210 - SELECT DATABASE()
+2026-03-05 15:00:39.269 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 15:00:39.270 | INFO     | sqlalchemy.log:log:210 - SELECT @@sql_mode
+2026-03-05 15:00:39.270 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 15:00:39.271 | INFO     | sqlalchemy.log:log:210 - SELECT @@lower_case_table_names
+2026-03-05 15:00:39.271 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 15:00:39.272 | INFO     | sqlalchemy.log:log:210 - BEGIN (implicit)
+2026-03-05 15:00:39.273 | INFO     | sqlalchemy.log:log:210 - DESCRIBE `oa-system`.`sys_config`
+2026-03-05 15:00:39.273 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 15:00:39.277 | INFO     | sqlalchemy.log:log:210 - DESCRIBE `oa-system`.`sys_dict_type`
+2026-03-05 15:00:39.277 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 15:00:39.278 | INFO     | sqlalchemy.log:log:210 - DESCRIBE `oa-system`.`sys_dict_data`
+2026-03-05 15:00:39.279 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 15:00:39.280 | INFO     | sqlalchemy.log:log:210 - DESCRIBE `oa-system`.`sys_job`
+2026-03-05 15:00:39.280 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 15:00:39.282 | INFO     | sqlalchemy.log:log:210 - DESCRIBE `oa-system`.`sys_job_log`
+2026-03-05 15:00:39.282 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 15:00:39.284 | INFO     | sqlalchemy.log:log:210 - DESCRIBE `oa-system`.`sys_logininfor`
+2026-03-05 15:00:39.284 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 15:00:39.286 | INFO     | sqlalchemy.log:log:210 - DESCRIBE `oa-system`.`sys_oper_log`
+2026-03-05 15:00:39.286 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 15:00:39.287 | INFO     | sqlalchemy.log:log:210 - DESCRIBE `oa-system`.`sys_dept`
+2026-03-05 15:00:39.287 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 15:00:39.290 | INFO     | sqlalchemy.log:log:210 - DESCRIBE `oa-system`.`sys_user`
+2026-03-05 15:00:39.290 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 15:00:39.291 | INFO     | sqlalchemy.log:log:210 - DESCRIBE `oa-system`.`sys_user_role`
+2026-03-05 15:00:39.291 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 15:00:39.292 | INFO     | sqlalchemy.log:log:210 - DESCRIBE `oa-system`.`sys_user_post`
+2026-03-05 15:00:39.293 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 15:00:39.294 | INFO     | sqlalchemy.log:log:210 - DESCRIBE `oa-system`.`sys_menu`
+2026-03-05 15:00:39.294 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 15:00:39.295 | INFO     | sqlalchemy.log:log:210 - DESCRIBE `oa-system`.`sys_post`
+2026-03-05 15:00:39.295 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 15:00:39.297 | INFO     | sqlalchemy.log:log:210 - DESCRIBE `oa-system`.`sys_role`
+2026-03-05 15:00:39.297 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 15:00:39.298 | INFO     | sqlalchemy.log:log:210 - DESCRIBE `oa-system`.`sys_role_dept`
+2026-03-05 15:00:39.298 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 15:00:39.299 | INFO     | sqlalchemy.log:log:210 - DESCRIBE `oa-system`.`sys_role_menu`
+2026-03-05 15:00:39.299 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 15:00:39.300 | INFO     | sqlalchemy.log:log:210 - DESCRIBE `oa-system`.`sys_notice`
+2026-03-05 15:00:39.301 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 15:00:39.302 | INFO     | sqlalchemy.log:log:210 - DESCRIBE `oa-system`.`ai_chat_config`
+2026-03-05 15:00:39.302 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 15:00:39.303 | INFO     | sqlalchemy.log:log:210 - DESCRIBE `oa-system`.`ai_models`
+2026-03-05 15:00:39.304 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 15:00:39.305 | INFO     | sqlalchemy.log:log:210 - DESCRIBE `oa-system`.`gen_table`
+2026-03-05 15:00:39.305 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 15:00:39.307 | INFO     | sqlalchemy.log:log:210 - DESCRIBE `oa-system`.`gen_table_column`
+2026-03-05 15:00:39.307 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 15:00:39.309 | INFO     | sqlalchemy.log:log:210 - COMMIT
+2026-03-05 15:00:39.310 | INFO     | config.get_db:init_create_table:28 - ✅️ 数据库连接成功
+2026-03-05 15:00:39.310 | INFO     | config.get_redis:check_redis_connection:57 - 🔎 开始连接redis...
+2026-03-05 15:00:39.311 | INFO     | config.get_redis:check_redis_connection:63 - ✅️ redis连接成功
+2026-03-05 15:00:39.312 | INFO     | sqlalchemy.log:log:210 - BEGIN (implicit)
+2026-03-05 15:00:39.324 | INFO     | sqlalchemy.log:log:210 - SELECT sys_dict_type.dict_id, sys_dict_type.dict_name, sys_dict_type.dict_type, sys_dict_type.status, sys_dict_type.create_by, sys_dict_type.create_time, sys_dict_type.update_by, sys_dict_type.update_time, sys_dict_type.remark 
+FROM sys_dict_type
+2026-03-05 15:00:39.325 | INFO     | sqlalchemy.log:log:210 - [generated in 0.00042s] ()
+2026-03-05 15:00:39.328 | INFO     | sqlalchemy.log:log:210 - SELECT DISTINCT sys_dict_data.dict_code, sys_dict_data.dict_sort, sys_dict_data.dict_label, sys_dict_data.dict_value, sys_dict_data.dict_type, sys_dict_data.css_class, sys_dict_data.list_class, sys_dict_data.is_default, sys_dict_data.status, sys_dict_data.create_by, sys_dict_data.create_time, sys_dict_data.update_by, sys_dict_data.update_time, sys_dict_data.remark 
+FROM sys_dict_type LEFT OUTER JOIN sys_dict_data ON sys_dict_type.dict_type = sys_dict_data.dict_type AND sys_dict_data.status = %s 
+WHERE sys_dict_type.dict_type = %s AND sys_dict_type.status = %s ORDER BY sys_dict_data.dict_sort
+2026-03-05 15:00:39.328 | INFO     | sqlalchemy.log:log:210 - [generated in 0.00037s] ('0', 'sys_user_sex', '0')
+2026-03-05 15:00:39.331 | INFO     | sqlalchemy.log:log:210 - SELECT DISTINCT sys_dict_data.dict_code, sys_dict_data.dict_sort, sys_dict_data.dict_label, sys_dict_data.dict_value, sys_dict_data.dict_type, sys_dict_data.css_class, sys_dict_data.list_class, sys_dict_data.is_default, sys_dict_data.status, sys_dict_data.create_by, sys_dict_data.create_time, sys_dict_data.update_by, sys_dict_data.update_time, sys_dict_data.remark 
+FROM sys_dict_type LEFT OUTER JOIN sys_dict_data ON sys_dict_type.dict_type = sys_dict_data.dict_type AND sys_dict_data.status = %s 
+WHERE sys_dict_type.dict_type = %s AND sys_dict_type.status = %s ORDER BY sys_dict_data.dict_sort
+2026-03-05 15:00:39.331 | INFO     | sqlalchemy.log:log:210 - [cached since 0.003348s ago] ('0', 'sys_show_hide', '0')
+2026-03-05 15:00:39.333 | INFO     | sqlalchemy.log:log:210 - SELECT DISTINCT sys_dict_data.dict_code, sys_dict_data.dict_sort, sys_dict_data.dict_label, sys_dict_data.dict_value, sys_dict_data.dict_type, sys_dict_data.css_class, sys_dict_data.list_class, sys_dict_data.is_default, sys_dict_data.status, sys_dict_data.create_by, sys_dict_data.create_time, sys_dict_data.update_by, sys_dict_data.update_time, sys_dict_data.remark 
+FROM sys_dict_type LEFT OUTER JOIN sys_dict_data ON sys_dict_type.dict_type = sys_dict_data.dict_type AND sys_dict_data.status = %s 
+WHERE sys_dict_type.dict_type = %s AND sys_dict_type.status = %s ORDER BY sys_dict_data.dict_sort
+2026-03-05 15:00:39.334 | INFO     | sqlalchemy.log:log:210 - [cached since 0.005852s ago] ('0', 'sys_normal_disable', '0')
+2026-03-05 15:00:39.336 | INFO     | sqlalchemy.log:log:210 - SELECT DISTINCT sys_dict_data.dict_code, sys_dict_data.dict_sort, sys_dict_data.dict_label, sys_dict_data.dict_value, sys_dict_data.dict_type, sys_dict_data.css_class, sys_dict_data.list_class, sys_dict_data.is_default, sys_dict_data.status, sys_dict_data.create_by, sys_dict_data.create_time, sys_dict_data.update_by, sys_dict_data.update_time, sys_dict_data.remark 
+FROM sys_dict_type LEFT OUTER JOIN sys_dict_data ON sys_dict_type.dict_type = sys_dict_data.dict_type AND sys_dict_data.status = %s 
+WHERE sys_dict_type.dict_type = %s AND sys_dict_type.status = %s ORDER BY sys_dict_data.dict_sort
+2026-03-05 15:00:39.336 | INFO     | sqlalchemy.log:log:210 - [cached since 0.008289s ago] ('0', 'sys_job_status', '0')
+2026-03-05 15:00:39.338 | INFO     | sqlalchemy.log:log:210 - SELECT DISTINCT sys_dict_data.dict_code, sys_dict_data.dict_sort, sys_dict_data.dict_label, sys_dict_data.dict_value, sys_dict_data.dict_type, sys_dict_data.css_class, sys_dict_data.list_class, sys_dict_data.is_default, sys_dict_data.status, sys_dict_data.create_by, sys_dict_data.create_time, sys_dict_data.update_by, sys_dict_data.update_time, sys_dict_data.remark 
+FROM sys_dict_type LEFT OUTER JOIN sys_dict_data ON sys_dict_type.dict_type = sys_dict_data.dict_type AND sys_dict_data.status = %s 
+WHERE sys_dict_type.dict_type = %s AND sys_dict_type.status = %s ORDER BY sys_dict_data.dict_sort
+2026-03-05 15:00:39.338 | INFO     | sqlalchemy.log:log:210 - [cached since 0.0106s ago] ('0', 'sys_job_group', '0')
+2026-03-05 15:00:39.340 | INFO     | sqlalchemy.log:log:210 - SELECT DISTINCT sys_dict_data.dict_code, sys_dict_data.dict_sort, sys_dict_data.dict_label, sys_dict_data.dict_value, sys_dict_data.dict_type, sys_dict_data.css_class, sys_dict_data.list_class, sys_dict_data.is_default, sys_dict_data.status, sys_dict_data.create_by, sys_dict_data.create_time, sys_dict_data.update_by, sys_dict_data.update_time, sys_dict_data.remark 
+FROM sys_dict_type LEFT OUTER JOIN sys_dict_data ON sys_dict_type.dict_type = sys_dict_data.dict_type AND sys_dict_data.status = %s 
+WHERE sys_dict_type.dict_type = %s AND sys_dict_type.status = %s ORDER BY sys_dict_data.dict_sort
+2026-03-05 15:00:39.340 | INFO     | sqlalchemy.log:log:210 - [cached since 0.01263s ago] ('0', 'sys_job_executor', '0')
+2026-03-05 15:00:39.343 | INFO     | sqlalchemy.log:log:210 - SELECT DISTINCT sys_dict_data.dict_code, sys_dict_data.dict_sort, sys_dict_data.dict_label, sys_dict_data.dict_value, sys_dict_data.dict_type, sys_dict_data.css_class, sys_dict_data.list_class, sys_dict_data.is_default, sys_dict_data.status, sys_dict_data.create_by, sys_dict_data.create_time, sys_dict_data.update_by, sys_dict_data.update_time, sys_dict_data.remark 
+FROM sys_dict_type LEFT OUTER JOIN sys_dict_data ON sys_dict_type.dict_type = sys_dict_data.dict_type AND sys_dict_data.status = %s 
+WHERE sys_dict_type.dict_type = %s AND sys_dict_type.status = %s ORDER BY sys_dict_data.dict_sort
+2026-03-05 15:00:39.343 | INFO     | sqlalchemy.log:log:210 - [cached since 0.01505s ago] ('0', 'sys_yes_no', '0')
+2026-03-05 15:00:39.345 | INFO     | sqlalchemy.log:log:210 - SELECT DISTINCT sys_dict_data.dict_code, sys_dict_data.dict_sort, sys_dict_data.dict_label, sys_dict_data.dict_value, sys_dict_data.dict_type, sys_dict_data.css_class, sys_dict_data.list_class, sys_dict_data.is_default, sys_dict_data.status, sys_dict_data.create_by, sys_dict_data.create_time, sys_dict_data.update_by, sys_dict_data.update_time, sys_dict_data.remark 
+FROM sys_dict_type LEFT OUTER JOIN sys_dict_data ON sys_dict_type.dict_type = sys_dict_data.dict_type AND sys_dict_data.status = %s 
+WHERE sys_dict_type.dict_type = %s AND sys_dict_type.status = %s ORDER BY sys_dict_data.dict_sort
+2026-03-05 15:00:39.345 | INFO     | sqlalchemy.log:log:210 - [cached since 0.01745s ago] ('0', 'sys_notice_type', '0')
+2026-03-05 15:00:39.348 | INFO     | sqlalchemy.log:log:210 - SELECT DISTINCT sys_dict_data.dict_code, sys_dict_data.dict_sort, sys_dict_data.dict_label, sys_dict_data.dict_value, sys_dict_data.dict_type, sys_dict_data.css_class, sys_dict_data.list_class, sys_dict_data.is_default, sys_dict_data.status, sys_dict_data.create_by, sys_dict_data.create_time, sys_dict_data.update_by, sys_dict_data.update_time, sys_dict_data.remark 
+FROM sys_dict_type LEFT OUTER JOIN sys_dict_data ON sys_dict_type.dict_type = sys_dict_data.dict_type AND sys_dict_data.status = %s 
+WHERE sys_dict_type.dict_type = %s AND sys_dict_type.status = %s ORDER BY sys_dict_data.dict_sort
+2026-03-05 15:00:39.348 | INFO     | sqlalchemy.log:log:210 - [cached since 0.01993s ago] ('0', 'sys_notice_status', '0')
+2026-03-05 15:00:39.350 | INFO     | sqlalchemy.log:log:210 - SELECT DISTINCT sys_dict_data.dict_code, sys_dict_data.dict_sort, sys_dict_data.dict_label, sys_dict_data.dict_value, sys_dict_data.dict_type, sys_dict_data.css_class, sys_dict_data.list_class, sys_dict_data.is_default, sys_dict_data.status, sys_dict_data.create_by, sys_dict_data.create_time, sys_dict_data.update_by, sys_dict_data.update_time, sys_dict_data.remark 
+FROM sys_dict_type LEFT OUTER JOIN sys_dict_data ON sys_dict_type.dict_type = sys_dict_data.dict_type AND sys_dict_data.status = %s 
+WHERE sys_dict_type.dict_type = %s AND sys_dict_type.status = %s ORDER BY sys_dict_data.dict_sort
+2026-03-05 15:00:39.350 | INFO     | sqlalchemy.log:log:210 - [cached since 0.02224s ago] ('0', 'sys_oper_type', '0')
+2026-03-05 15:00:39.352 | INFO     | sqlalchemy.log:log:210 - SELECT DISTINCT sys_dict_data.dict_code, sys_dict_data.dict_sort, sys_dict_data.dict_label, sys_dict_data.dict_value, sys_dict_data.dict_type, sys_dict_data.css_class, sys_dict_data.list_class, sys_dict_data.is_default, sys_dict_data.status, sys_dict_data.create_by, sys_dict_data.create_time, sys_dict_data.update_by, sys_dict_data.update_time, sys_dict_data.remark 
+FROM sys_dict_type LEFT OUTER JOIN sys_dict_data ON sys_dict_type.dict_type = sys_dict_data.dict_type AND sys_dict_data.status = %s 
+WHERE sys_dict_type.dict_type = %s AND sys_dict_type.status = %s ORDER BY sys_dict_data.dict_sort
+2026-03-05 15:00:39.352 | INFO     | sqlalchemy.log:log:210 - [cached since 0.02472s ago] ('0', 'sys_common_status', '0')
+2026-03-05 15:00:39.354 | INFO     | sqlalchemy.log:log:210 - SELECT DISTINCT sys_dict_data.dict_code, sys_dict_data.dict_sort, sys_dict_data.dict_label, sys_dict_data.dict_value, sys_dict_data.dict_type, sys_dict_data.css_class, sys_dict_data.list_class, sys_dict_data.is_default, sys_dict_data.status, sys_dict_data.create_by, sys_dict_data.create_time, sys_dict_data.update_by, sys_dict_data.update_time, sys_dict_data.remark 
+FROM sys_dict_type LEFT OUTER JOIN sys_dict_data ON sys_dict_type.dict_type = sys_dict_data.dict_type AND sys_dict_data.status = %s 
+WHERE sys_dict_type.dict_type = %s AND sys_dict_type.status = %s ORDER BY sys_dict_data.dict_sort
+2026-03-05 15:00:39.355 | INFO     | sqlalchemy.log:log:210 - [cached since 0.02688s ago] ('0', 'ai_provider_type', '0')
+2026-03-05 15:00:39.357 | INFO     | sqlalchemy.log:log:210 - ROLLBACK
+2026-03-05 15:00:39.359 | INFO     | sqlalchemy.log:log:210 - BEGIN (implicit)
+2026-03-05 15:00:39.360 | INFO     | sqlalchemy.log:log:210 - SELECT DISTINCT sys_config.config_id, sys_config.config_name, sys_config.config_key, sys_config.config_value, sys_config.config_type, sys_config.create_by, sys_config.create_time, sys_config.update_by, sys_config.update_time, sys_config.remark 
+FROM sys_config 
+WHERE true = 1 ORDER BY sys_config.config_id
+2026-03-05 15:00:39.360 | INFO     | sqlalchemy.log:log:210 - [generated in 0.00043s] ()
+2026-03-05 15:00:39.364 | INFO     | sqlalchemy.log:log:210 - ROLLBACK
+2026-03-05 15:00:39.364 | INFO     | config.get_scheduler:init_system_scheduler:210 - 🔎 Worker 24260-cb9846 尝试获取 Application 锁...
+2026-03-05 15:00:39.365 | INFO     | config.get_scheduler:_start_scheduler_as_leader:235 - 🎯 Worker 24260-cb9846 持有 Application 锁，开始启动定时任务...
+2026-03-05 15:00:39.464 | INFO     | apscheduler.schedulers.base:start:214 - Scheduler started
+2026-03-05 15:00:39.503 | INFO     | config.get_scheduler:_start_scheduler_as_leader:261 - ✅️ 系统初始定时任务加载成功
+2026-03-05 15:00:40.015 | INFO     | server:lifespan:101 - 🚀 OA system启动成功
+2026-03-05 15:00:40.056 | INFO     | server:lifespan:113 - 💻 应用地址:
+🏠 Local:    http://127.0.0.1:9099
+📡 Network:  http://192.168.10.226:9099
+📡 Network:  http://192.168.114.1:9099
+📡 Network:  http://192.168.19.1:9099
+2026-03-05 15:00:40.056 | INFO     | server:lifespan:120 - 📄 Swagger文档:
+🏠 Local:    http://127.0.0.1:9099/docs
+📡 Network:  http://192.168.10.226:9099/docs
+📡 Network:  http://192.168.114.1:9099/docs
+📡 Network:  http://192.168.19.1:9099/docs
+2026-03-05 15:00:40.056 | INFO     | server:lifespan:127 - 📚 ReDoc文档:
+🏠 Local:    http://127.0.0.1:9099/redoc
+📡 Network:  http://192.168.10.226:9099/redoc
+📡 Network:  http://192.168.114.1:9099/redoc
+📡 Network:  http://192.168.19.1:9099/redoc
+2026-03-05 15:03:30.350 | INFO     | config.get_redis:close_redis_pool:85 - ✅️ 关闭redis连接成功
+2026-03-05 15:03:30.356 | INFO     | config.get_scheduler:close_system_scheduler:768 - ✅️ 关闭定时任务成功
+2026-03-05 15:03:30.359 | INFO     | apscheduler.schedulers.base:shutdown:245 - Scheduler has been shut down
+2026-03-05 15:03:30.361 | INFO     | config.get_scheduler:close_system_scheduler:774 - 🔓 Worker 24260-cb9846 释放 Application 锁
+2026-03-05 15:03:39.604 | INFO     | server:lifespan:89 - ⏰️ OA system开始启动
+2026-03-05 15:03:39.605 | INFO     | utils.common_util:worship:22 - 纵联宸捷OA系统已启动
+2026-03-05 15:03:39.605 | INFO     | config.get_db:init_create_table:25 - 🔎 初始化数据库连接...
+2026-03-05 15:03:39.618 | INFO     | sqlalchemy.log:log:210 - SELECT DATABASE()
+2026-03-05 15:03:39.618 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 15:03:39.620 | INFO     | sqlalchemy.log:log:210 - SELECT @@sql_mode
+2026-03-05 15:03:39.620 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 15:03:39.621 | INFO     | sqlalchemy.log:log:210 - SELECT @@lower_case_table_names
+2026-03-05 15:03:39.621 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 15:03:39.623 | INFO     | sqlalchemy.log:log:210 - BEGIN (implicit)
+2026-03-05 15:03:39.623 | INFO     | sqlalchemy.log:log:210 - DESCRIBE `oa-system`.`sys_config`
+2026-03-05 15:03:39.623 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 15:03:39.625 | INFO     | sqlalchemy.log:log:210 - DESCRIBE `oa-system`.`sys_dict_type`
+2026-03-05 15:03:39.625 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 15:03:39.627 | INFO     | sqlalchemy.log:log:210 - DESCRIBE `oa-system`.`sys_dict_data`
+2026-03-05 15:03:39.627 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 15:03:39.628 | INFO     | sqlalchemy.log:log:210 - DESCRIBE `oa-system`.`sys_job`
+2026-03-05 15:03:39.628 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 15:03:39.629 | INFO     | sqlalchemy.log:log:210 - DESCRIBE `oa-system`.`sys_job_log`
+2026-03-05 15:03:39.629 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 15:03:39.630 | INFO     | sqlalchemy.log:log:210 - DESCRIBE `oa-system`.`sys_logininfor`
+2026-03-05 15:03:39.631 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 15:03:39.632 | INFO     | sqlalchemy.log:log:210 - DESCRIBE `oa-system`.`sys_oper_log`
+2026-03-05 15:03:39.632 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 15:03:39.633 | INFO     | sqlalchemy.log:log:210 - DESCRIBE `oa-system`.`sys_dept`
+2026-03-05 15:03:39.634 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 15:03:39.635 | INFO     | sqlalchemy.log:log:210 - DESCRIBE `oa-system`.`sys_user`
+2026-03-05 15:03:39.635 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 15:03:39.636 | INFO     | sqlalchemy.log:log:210 - DESCRIBE `oa-system`.`sys_user_role`
+2026-03-05 15:03:39.636 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 15:03:39.637 | INFO     | sqlalchemy.log:log:210 - DESCRIBE `oa-system`.`sys_user_post`
+2026-03-05 15:03:39.638 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 15:03:39.638 | INFO     | sqlalchemy.log:log:210 - DESCRIBE `oa-system`.`sys_menu`
+2026-03-05 15:03:39.639 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 15:03:39.640 | INFO     | sqlalchemy.log:log:210 - DESCRIBE `oa-system`.`sys_post`
+2026-03-05 15:03:39.640 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 15:03:39.641 | INFO     | sqlalchemy.log:log:210 - DESCRIBE `oa-system`.`sys_role`
+2026-03-05 15:03:39.641 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 15:03:39.642 | INFO     | sqlalchemy.log:log:210 - DESCRIBE `oa-system`.`sys_role_dept`
+2026-03-05 15:03:39.643 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 15:03:39.643 | INFO     | sqlalchemy.log:log:210 - DESCRIBE `oa-system`.`sys_role_menu`
+2026-03-05 15:03:39.644 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 15:03:39.645 | INFO     | sqlalchemy.log:log:210 - DESCRIBE `oa-system`.`sys_notice`
+2026-03-05 15:03:39.645 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 15:03:39.646 | INFO     | sqlalchemy.log:log:210 - DESCRIBE `oa-system`.`ai_chat_config`
+2026-03-05 15:03:39.646 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 15:03:39.647 | INFO     | sqlalchemy.log:log:210 - DESCRIBE `oa-system`.`ai_models`
+2026-03-05 15:03:39.647 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 15:03:39.648 | INFO     | sqlalchemy.log:log:210 - DESCRIBE `oa-system`.`gen_table`
+2026-03-05 15:03:39.649 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 15:03:39.650 | INFO     | sqlalchemy.log:log:210 - DESCRIBE `oa-system`.`gen_table_column`
+2026-03-05 15:03:39.650 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 15:03:39.652 | INFO     | sqlalchemy.log:log:210 - COMMIT
+2026-03-05 15:03:39.652 | INFO     | config.get_db:init_create_table:28 - ✅️ 数据库连接成功
+2026-03-05 15:03:39.653 | INFO     | config.get_redis:check_redis_connection:57 - 🔎 开始连接redis...
+2026-03-05 15:03:39.653 | INFO     | config.get_redis:check_redis_connection:63 - ✅️ redis连接成功
+2026-03-05 15:03:39.654 | INFO     | sqlalchemy.log:log:210 - BEGIN (implicit)
+2026-03-05 15:03:39.667 | INFO     | sqlalchemy.log:log:210 - SELECT sys_dict_type.dict_id, sys_dict_type.dict_name, sys_dict_type.dict_type, sys_dict_type.status, sys_dict_type.create_by, sys_dict_type.create_time, sys_dict_type.update_by, sys_dict_type.update_time, sys_dict_type.remark 
+FROM sys_dict_type
+2026-03-05 15:03:39.667 | INFO     | sqlalchemy.log:log:210 - [generated in 0.00064s] ()
+2026-03-05 15:03:39.670 | INFO     | sqlalchemy.log:log:210 - SELECT DISTINCT sys_dict_data.dict_code, sys_dict_data.dict_sort, sys_dict_data.dict_label, sys_dict_data.dict_value, sys_dict_data.dict_type, sys_dict_data.css_class, sys_dict_data.list_class, sys_dict_data.is_default, sys_dict_data.status, sys_dict_data.create_by, sys_dict_data.create_time, sys_dict_data.update_by, sys_dict_data.update_time, sys_dict_data.remark 
+FROM sys_dict_type LEFT OUTER JOIN sys_dict_data ON sys_dict_type.dict_type = sys_dict_data.dict_type AND sys_dict_data.status = %s 
+WHERE sys_dict_type.dict_type = %s AND sys_dict_type.status = %s ORDER BY sys_dict_data.dict_sort
+2026-03-05 15:03:39.671 | INFO     | sqlalchemy.log:log:210 - [generated in 0.00062s] ('0', 'sys_user_sex', '0')
+2026-03-05 15:03:39.673 | INFO     | sqlalchemy.log:log:210 - SELECT DISTINCT sys_dict_data.dict_code, sys_dict_data.dict_sort, sys_dict_data.dict_label, sys_dict_data.dict_value, sys_dict_data.dict_type, sys_dict_data.css_class, sys_dict_data.list_class, sys_dict_data.is_default, sys_dict_data.status, sys_dict_data.create_by, sys_dict_data.create_time, sys_dict_data.update_by, sys_dict_data.update_time, sys_dict_data.remark 
+FROM sys_dict_type LEFT OUTER JOIN sys_dict_data ON sys_dict_type.dict_type = sys_dict_data.dict_type AND sys_dict_data.status = %s 
+WHERE sys_dict_type.dict_type = %s AND sys_dict_type.status = %s ORDER BY sys_dict_data.dict_sort
+2026-03-05 15:03:39.674 | INFO     | sqlalchemy.log:log:210 - [cached since 0.003385s ago] ('0', 'sys_show_hide', '0')
+2026-03-05 15:03:39.675 | INFO     | sqlalchemy.log:log:210 - SELECT DISTINCT sys_dict_data.dict_code, sys_dict_data.dict_sort, sys_dict_data.dict_label, sys_dict_data.dict_value, sys_dict_data.dict_type, sys_dict_data.css_class, sys_dict_data.list_class, sys_dict_data.is_default, sys_dict_data.status, sys_dict_data.create_by, sys_dict_data.create_time, sys_dict_data.update_by, sys_dict_data.update_time, sys_dict_data.remark 
+FROM sys_dict_type LEFT OUTER JOIN sys_dict_data ON sys_dict_type.dict_type = sys_dict_data.dict_type AND sys_dict_data.status = %s 
+WHERE sys_dict_type.dict_type = %s AND sys_dict_type.status = %s ORDER BY sys_dict_data.dict_sort
+2026-03-05 15:03:39.676 | INFO     | sqlalchemy.log:log:210 - [cached since 0.005696s ago] ('0', 'sys_normal_disable', '0')
+2026-03-05 15:03:39.678 | INFO     | sqlalchemy.log:log:210 - SELECT DISTINCT sys_dict_data.dict_code, sys_dict_data.dict_sort, sys_dict_data.dict_label, sys_dict_data.dict_value, sys_dict_data.dict_type, sys_dict_data.css_class, sys_dict_data.list_class, sys_dict_data.is_default, sys_dict_data.status, sys_dict_data.create_by, sys_dict_data.create_time, sys_dict_data.update_by, sys_dict_data.update_time, sys_dict_data.remark 
+FROM sys_dict_type LEFT OUTER JOIN sys_dict_data ON sys_dict_type.dict_type = sys_dict_data.dict_type AND sys_dict_data.status = %s 
+WHERE sys_dict_type.dict_type = %s AND sys_dict_type.status = %s ORDER BY sys_dict_data.dict_sort
+2026-03-05 15:03:39.678 | INFO     | sqlalchemy.log:log:210 - [cached since 0.007693s ago] ('0', 'sys_job_status', '0')
+2026-03-05 15:03:39.679 | INFO     | sqlalchemy.log:log:210 - SELECT DISTINCT sys_dict_data.dict_code, sys_dict_data.dict_sort, sys_dict_data.dict_label, sys_dict_data.dict_value, sys_dict_data.dict_type, sys_dict_data.css_class, sys_dict_data.list_class, sys_dict_data.is_default, sys_dict_data.status, sys_dict_data.create_by, sys_dict_data.create_time, sys_dict_data.update_by, sys_dict_data.update_time, sys_dict_data.remark 
+FROM sys_dict_type LEFT OUTER JOIN sys_dict_data ON sys_dict_type.dict_type = sys_dict_data.dict_type AND sys_dict_data.status = %s 
+WHERE sys_dict_type.dict_type = %s AND sys_dict_type.status = %s ORDER BY sys_dict_data.dict_sort
+2026-03-05 15:03:39.680 | INFO     | sqlalchemy.log:log:210 - [cached since 0.009514s ago] ('0', 'sys_job_group', '0')
+2026-03-05 15:03:39.682 | INFO     | sqlalchemy.log:log:210 - SELECT DISTINCT sys_dict_data.dict_code, sys_dict_data.dict_sort, sys_dict_data.dict_label, sys_dict_data.dict_value, sys_dict_data.dict_type, sys_dict_data.css_class, sys_dict_data.list_class, sys_dict_data.is_default, sys_dict_data.status, sys_dict_data.create_by, sys_dict_data.create_time, sys_dict_data.update_by, sys_dict_data.update_time, sys_dict_data.remark 
+FROM sys_dict_type LEFT OUTER JOIN sys_dict_data ON sys_dict_type.dict_type = sys_dict_data.dict_type AND sys_dict_data.status = %s 
+WHERE sys_dict_type.dict_type = %s AND sys_dict_type.status = %s ORDER BY sys_dict_data.dict_sort
+2026-03-05 15:03:39.682 | INFO     | sqlalchemy.log:log:210 - [cached since 0.01165s ago] ('0', 'sys_job_executor', '0')
+2026-03-05 15:03:39.684 | INFO     | sqlalchemy.log:log:210 - SELECT DISTINCT sys_dict_data.dict_code, sys_dict_data.dict_sort, sys_dict_data.dict_label, sys_dict_data.dict_value, sys_dict_data.dict_type, sys_dict_data.css_class, sys_dict_data.list_class, sys_dict_data.is_default, sys_dict_data.status, sys_dict_data.create_by, sys_dict_data.create_time, sys_dict_data.update_by, sys_dict_data.update_time, sys_dict_data.remark 
+FROM sys_dict_type LEFT OUTER JOIN sys_dict_data ON sys_dict_type.dict_type = sys_dict_data.dict_type AND sys_dict_data.status = %s 
+WHERE sys_dict_type.dict_type = %s AND sys_dict_type.status = %s ORDER BY sys_dict_data.dict_sort
+2026-03-05 15:03:39.684 | INFO     | sqlalchemy.log:log:210 - [cached since 0.01369s ago] ('0', 'sys_yes_no', '0')
+2026-03-05 15:03:39.686 | INFO     | sqlalchemy.log:log:210 - SELECT DISTINCT sys_dict_data.dict_code, sys_dict_data.dict_sort, sys_dict_data.dict_label, sys_dict_data.dict_value, sys_dict_data.dict_type, sys_dict_data.css_class, sys_dict_data.list_class, sys_dict_data.is_default, sys_dict_data.status, sys_dict_data.create_by, sys_dict_data.create_time, sys_dict_data.update_by, sys_dict_data.update_time, sys_dict_data.remark 
+FROM sys_dict_type LEFT OUTER JOIN sys_dict_data ON sys_dict_type.dict_type = sys_dict_data.dict_type AND sys_dict_data.status = %s 
+WHERE sys_dict_type.dict_type = %s AND sys_dict_type.status = %s ORDER BY sys_dict_data.dict_sort
+2026-03-05 15:03:39.686 | INFO     | sqlalchemy.log:log:210 - [cached since 0.01567s ago] ('0', 'sys_notice_type', '0')
+2026-03-05 15:03:39.688 | INFO     | sqlalchemy.log:log:210 - SELECT DISTINCT sys_dict_data.dict_code, sys_dict_data.dict_sort, sys_dict_data.dict_label, sys_dict_data.dict_value, sys_dict_data.dict_type, sys_dict_data.css_class, sys_dict_data.list_class, sys_dict_data.is_default, sys_dict_data.status, sys_dict_data.create_by, sys_dict_data.create_time, sys_dict_data.update_by, sys_dict_data.update_time, sys_dict_data.remark 
+FROM sys_dict_type LEFT OUTER JOIN sys_dict_data ON sys_dict_type.dict_type = sys_dict_data.dict_type AND sys_dict_data.status = %s 
+WHERE sys_dict_type.dict_type = %s AND sys_dict_type.status = %s ORDER BY sys_dict_data.dict_sort
+2026-03-05 15:03:39.688 | INFO     | sqlalchemy.log:log:210 - [cached since 0.01763s ago] ('0', 'sys_notice_status', '0')
+2026-03-05 15:03:39.690 | INFO     | sqlalchemy.log:log:210 - SELECT DISTINCT sys_dict_data.dict_code, sys_dict_data.dict_sort, sys_dict_data.dict_label, sys_dict_data.dict_value, sys_dict_data.dict_type, sys_dict_data.css_class, sys_dict_data.list_class, sys_dict_data.is_default, sys_dict_data.status, sys_dict_data.create_by, sys_dict_data.create_time, sys_dict_data.update_by, sys_dict_data.update_time, sys_dict_data.remark 
+FROM sys_dict_type LEFT OUTER JOIN sys_dict_data ON sys_dict_type.dict_type = sys_dict_data.dict_type AND sys_dict_data.status = %s 
+WHERE sys_dict_type.dict_type = %s AND sys_dict_type.status = %s ORDER BY sys_dict_data.dict_sort
+2026-03-05 15:03:39.690 | INFO     | sqlalchemy.log:log:210 - [cached since 0.01966s ago] ('0', 'sys_oper_type', '0')
+2026-03-05 15:03:39.692 | INFO     | sqlalchemy.log:log:210 - SELECT DISTINCT sys_dict_data.dict_code, sys_dict_data.dict_sort, sys_dict_data.dict_label, sys_dict_data.dict_value, sys_dict_data.dict_type, sys_dict_data.css_class, sys_dict_data.list_class, sys_dict_data.is_default, sys_dict_data.status, sys_dict_data.create_by, sys_dict_data.create_time, sys_dict_data.update_by, sys_dict_data.update_time, sys_dict_data.remark 
+FROM sys_dict_type LEFT OUTER JOIN sys_dict_data ON sys_dict_type.dict_type = sys_dict_data.dict_type AND sys_dict_data.status = %s 
+WHERE sys_dict_type.dict_type = %s AND sys_dict_type.status = %s ORDER BY sys_dict_data.dict_sort
+2026-03-05 15:03:39.693 | INFO     | sqlalchemy.log:log:210 - [cached since 0.02205s ago] ('0', 'sys_common_status', '0')
+2026-03-05 15:03:39.694 | INFO     | sqlalchemy.log:log:210 - SELECT DISTINCT sys_dict_data.dict_code, sys_dict_data.dict_sort, sys_dict_data.dict_label, sys_dict_data.dict_value, sys_dict_data.dict_type, sys_dict_data.css_class, sys_dict_data.list_class, sys_dict_data.is_default, sys_dict_data.status, sys_dict_data.create_by, sys_dict_data.create_time, sys_dict_data.update_by, sys_dict_data.update_time, sys_dict_data.remark 
+FROM sys_dict_type LEFT OUTER JOIN sys_dict_data ON sys_dict_type.dict_type = sys_dict_data.dict_type AND sys_dict_data.status = %s 
+WHERE sys_dict_type.dict_type = %s AND sys_dict_type.status = %s ORDER BY sys_dict_data.dict_sort
+2026-03-05 15:03:39.694 | INFO     | sqlalchemy.log:log:210 - [cached since 0.02398s ago] ('0', 'ai_provider_type', '0')
+2026-03-05 15:03:39.697 | INFO     | sqlalchemy.log:log:210 - ROLLBACK
+2026-03-05 15:03:39.699 | INFO     | sqlalchemy.log:log:210 - BEGIN (implicit)
+2026-03-05 15:03:39.700 | INFO     | sqlalchemy.log:log:210 - SELECT DISTINCT sys_config.config_id, sys_config.config_name, sys_config.config_key, sys_config.config_value, sys_config.config_type, sys_config.create_by, sys_config.create_time, sys_config.update_by, sys_config.update_time, sys_config.remark 
+FROM sys_config 
+WHERE true = 1 ORDER BY sys_config.config_id
+2026-03-05 15:03:39.700 | INFO     | sqlalchemy.log:log:210 - [generated in 0.00050s] ()
+2026-03-05 15:03:39.703 | INFO     | sqlalchemy.log:log:210 - ROLLBACK
+2026-03-05 15:03:39.703 | INFO     | config.get_scheduler:init_system_scheduler:210 - 🔎 Worker 12832-a06a10 尝试获取 Application 锁...
+2026-03-05 15:03:39.704 | INFO     | config.get_scheduler:_start_scheduler_as_leader:235 - 🎯 Worker 12832-a06a10 持有 Application 锁，开始启动定时任务...
+2026-03-05 15:03:39.751 | INFO     | apscheduler.schedulers.base:start:214 - Scheduler started
+2026-03-05 15:03:39.764 | INFO     | config.get_scheduler:_start_scheduler_as_leader:261 - ✅️ 系统初始定时任务加载成功
+2026-03-05 15:03:40.272 | INFO     | server:lifespan:101 - 🚀 OA system启动成功
+2026-03-05 15:03:40.308 | INFO     | server:lifespan:113 - 💻 应用地址:
+🏠 Local:    http://127.0.0.1:9099
+📡 Network:  http://192.168.10.226:9099
+📡 Network:  http://192.168.114.1:9099
+📡 Network:  http://192.168.19.1:9099
+2026-03-05 15:03:40.308 | INFO     | server:lifespan:120 - 📄 Swagger文档:
+🏠 Local:    http://127.0.0.1:9099/docs
+📡 Network:  http://192.168.10.226:9099/docs
+📡 Network:  http://192.168.114.1:9099/docs
+📡 Network:  http://192.168.19.1:9099/docs
+2026-03-05 15:03:40.309 | INFO     | server:lifespan:127 - 📚 ReDoc文档:
+🏠 Local:    http://127.0.0.1:9099/redoc
+📡 Network:  http://192.168.10.226:9099/redoc
+📡 Network:  http://192.168.114.1:9099/redoc
+📡 Network:  http://192.168.19.1:9099/redoc
+2026-03-05 15:15:57.237 | INFO     | config.get_redis:close_redis_pool:85 - ✅️ 关闭redis连接成功
+2026-03-05 15:15:57.246 | INFO     | config.get_scheduler:close_system_scheduler:768 - ✅️ 关闭定时任务成功
+2026-03-05 15:15:57.249 | INFO     | apscheduler.schedulers.base:shutdown:245 - Scheduler has been shut down
+2026-03-05 15:15:57.251 | INFO     | config.get_scheduler:close_system_scheduler:774 - 🔓 Worker 12832-a06a10 释放 Application 锁
+2026-03-05 16:29:42.807 | INFO     | server:lifespan:89 - ⏰️ OA system开始启动
+2026-03-05 16:29:42.807 | INFO     | utils.common_util:worship:22 - 纵联宸捷OA系统已启动
+2026-03-05 16:29:42.807 | INFO     | config.get_db:init_create_table:25 - 🔎 初始化数据库连接...
+2026-03-05 16:29:42.874 | INFO     | sqlalchemy.log:log:210 - SELECT DATABASE()
+2026-03-05 16:29:42.875 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 16:29:42.880 | INFO     | sqlalchemy.log:log:210 - SELECT @@sql_mode
+2026-03-05 16:29:42.880 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 16:29:42.882 | INFO     | sqlalchemy.log:log:210 - SELECT @@lower_case_table_names
+2026-03-05 16:29:42.882 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 16:29:42.885 | INFO     | sqlalchemy.log:log:210 - BEGIN (implicit)
+2026-03-05 16:29:42.886 | INFO     | sqlalchemy.log:log:210 - DESCRIBE `oa-system`.`sys_config`
+2026-03-05 16:29:42.886 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 16:29:42.923 | INFO     | sqlalchemy.log:log:210 - DESCRIBE `oa-system`.`sys_dict_type`
+2026-03-05 16:29:42.923 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 16:29:42.926 | INFO     | sqlalchemy.log:log:210 - DESCRIBE `oa-system`.`sys_dict_data`
+2026-03-05 16:29:42.926 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 16:29:42.929 | INFO     | sqlalchemy.log:log:210 - DESCRIBE `oa-system`.`sys_job`
+2026-03-05 16:29:42.930 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 16:29:42.934 | INFO     | sqlalchemy.log:log:210 - DESCRIBE `oa-system`.`sys_job_log`
+2026-03-05 16:29:42.935 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 16:29:42.938 | INFO     | sqlalchemy.log:log:210 - DESCRIBE `oa-system`.`sys_logininfor`
+2026-03-05 16:29:42.938 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 16:29:42.940 | INFO     | sqlalchemy.log:log:210 - DESCRIBE `oa-system`.`sys_oper_log`
+2026-03-05 16:29:42.941 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 16:29:42.944 | INFO     | sqlalchemy.log:log:210 - DESCRIBE `oa-system`.`sys_dept`
+2026-03-05 16:29:42.944 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 16:29:42.946 | INFO     | sqlalchemy.log:log:210 - DESCRIBE `oa-system`.`sys_user`
+2026-03-05 16:29:42.963 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 16:29:42.966 | INFO     | sqlalchemy.log:log:210 - DESCRIBE `oa-system`.`sys_user_role`
+2026-03-05 16:29:42.967 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 16:29:42.969 | INFO     | sqlalchemy.log:log:210 - DESCRIBE `oa-system`.`sys_user_post`
+2026-03-05 16:29:42.969 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 16:29:42.972 | INFO     | sqlalchemy.log:log:210 - DESCRIBE `oa-system`.`sys_menu`
+2026-03-05 16:29:42.972 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 16:29:42.975 | INFO     | sqlalchemy.log:log:210 - DESCRIBE `oa-system`.`sys_post`
+2026-03-05 16:29:42.976 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 16:29:42.978 | INFO     | sqlalchemy.log:log:210 - DESCRIBE `oa-system`.`sys_role`
+2026-03-05 16:29:42.979 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 16:29:42.982 | INFO     | sqlalchemy.log:log:210 - DESCRIBE `oa-system`.`sys_role_dept`
+2026-03-05 16:29:42.983 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 16:29:42.985 | INFO     | sqlalchemy.log:log:210 - DESCRIBE `oa-system`.`sys_role_menu`
+2026-03-05 16:29:42.986 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 16:29:42.989 | INFO     | sqlalchemy.log:log:210 - DESCRIBE `oa-system`.`sys_notice`
+2026-03-05 16:29:42.989 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 16:29:42.993 | INFO     | sqlalchemy.log:log:210 - DESCRIBE `oa-system`.`ai_chat_config`
+2026-03-05 16:29:42.993 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 16:29:42.996 | INFO     | sqlalchemy.log:log:210 - DESCRIBE `oa-system`.`ai_models`
+2026-03-05 16:29:42.997 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 16:29:43.000 | INFO     | sqlalchemy.log:log:210 - DESCRIBE `oa-system`.`gen_table`
+2026-03-05 16:29:43.001 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 16:29:43.004 | INFO     | sqlalchemy.log:log:210 - DESCRIBE `oa-system`.`gen_table_column`
+2026-03-05 16:29:43.005 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 16:29:43.009 | INFO     | sqlalchemy.log:log:210 - COMMIT
+2026-03-05 16:29:43.011 | INFO     | config.get_db:init_create_table:28 - ✅️ 数据库连接成功
+2026-03-05 16:29:43.011 | INFO     | config.get_redis:check_redis_connection:57 - 🔎 开始连接redis...
+2026-03-05 16:29:43.012 | INFO     | config.get_redis:check_redis_connection:63 - ✅️ redis连接成功
+2026-03-05 16:29:43.014 | INFO     | sqlalchemy.log:log:210 - BEGIN (implicit)
+2026-03-05 16:29:43.037 | INFO     | sqlalchemy.log:log:210 - SELECT sys_dict_type.dict_id, sys_dict_type.dict_name, sys_dict_type.dict_type, sys_dict_type.status, sys_dict_type.create_by, sys_dict_type.create_time, sys_dict_type.update_by, sys_dict_type.update_time, sys_dict_type.remark 
+FROM sys_dict_type
+2026-03-05 16:29:43.038 | INFO     | sqlalchemy.log:log:210 - [generated in 0.00101s] ()
+2026-03-05 16:29:43.051 | INFO     | sqlalchemy.log:log:210 - SELECT DISTINCT sys_dict_data.dict_code, sys_dict_data.dict_sort, sys_dict_data.dict_label, sys_dict_data.dict_value, sys_dict_data.dict_type, sys_dict_data.css_class, sys_dict_data.list_class, sys_dict_data.is_default, sys_dict_data.status, sys_dict_data.create_by, sys_dict_data.create_time, sys_dict_data.update_by, sys_dict_data.update_time, sys_dict_data.remark 
+FROM sys_dict_type LEFT OUTER JOIN sys_dict_data ON sys_dict_type.dict_type = sys_dict_data.dict_type AND sys_dict_data.status = %s 
+WHERE sys_dict_type.dict_type = %s AND sys_dict_type.status = %s ORDER BY sys_dict_data.dict_sort
+2026-03-05 16:29:43.051 | INFO     | sqlalchemy.log:log:210 - [generated in 0.00063s] ('0', 'sys_user_sex', '0')
+2026-03-05 16:29:43.056 | INFO     | sqlalchemy.log:log:210 - SELECT DISTINCT sys_dict_data.dict_code, sys_dict_data.dict_sort, sys_dict_data.dict_label, sys_dict_data.dict_value, sys_dict_data.dict_type, sys_dict_data.css_class, sys_dict_data.list_class, sys_dict_data.is_default, sys_dict_data.status, sys_dict_data.create_by, sys_dict_data.create_time, sys_dict_data.update_by, sys_dict_data.update_time, sys_dict_data.remark 
+FROM sys_dict_type LEFT OUTER JOIN sys_dict_data ON sys_dict_type.dict_type = sys_dict_data.dict_type AND sys_dict_data.status = %s 
+WHERE sys_dict_type.dict_type = %s AND sys_dict_type.status = %s ORDER BY sys_dict_data.dict_sort
+2026-03-05 16:29:43.056 | INFO     | sqlalchemy.log:log:210 - [cached since 0.005461s ago] ('0', 'sys_show_hide', '0')
+2026-03-05 16:29:43.059 | INFO     | sqlalchemy.log:log:210 - SELECT DISTINCT sys_dict_data.dict_code, sys_dict_data.dict_sort, sys_dict_data.dict_label, sys_dict_data.dict_value, sys_dict_data.dict_type, sys_dict_data.css_class, sys_dict_data.list_class, sys_dict_data.is_default, sys_dict_data.status, sys_dict_data.create_by, sys_dict_data.create_time, sys_dict_data.update_by, sys_dict_data.update_time, sys_dict_data.remark 
+FROM sys_dict_type LEFT OUTER JOIN sys_dict_data ON sys_dict_type.dict_type = sys_dict_data.dict_type AND sys_dict_data.status = %s 
+WHERE sys_dict_type.dict_type = %s AND sys_dict_type.status = %s ORDER BY sys_dict_data.dict_sort
+2026-03-05 16:29:43.059 | INFO     | sqlalchemy.log:log:210 - [cached since 0.008624s ago] ('0', 'sys_normal_disable', '0')
+2026-03-05 16:29:43.062 | INFO     | sqlalchemy.log:log:210 - SELECT DISTINCT sys_dict_data.dict_code, sys_dict_data.dict_sort, sys_dict_data.dict_label, sys_dict_data.dict_value, sys_dict_data.dict_type, sys_dict_data.css_class, sys_dict_data.list_class, sys_dict_data.is_default, sys_dict_data.status, sys_dict_data.create_by, sys_dict_data.create_time, sys_dict_data.update_by, sys_dict_data.update_time, sys_dict_data.remark 
+FROM sys_dict_type LEFT OUTER JOIN sys_dict_data ON sys_dict_type.dict_type = sys_dict_data.dict_type AND sys_dict_data.status = %s 
+WHERE sys_dict_type.dict_type = %s AND sys_dict_type.status = %s ORDER BY sys_dict_data.dict_sort
+2026-03-05 16:29:43.062 | INFO     | sqlalchemy.log:log:210 - [cached since 0.01183s ago] ('0', 'sys_job_status', '0')
+2026-03-05 16:29:43.065 | INFO     | sqlalchemy.log:log:210 - SELECT DISTINCT sys_dict_data.dict_code, sys_dict_data.dict_sort, sys_dict_data.dict_label, sys_dict_data.dict_value, sys_dict_data.dict_type, sys_dict_data.css_class, sys_dict_data.list_class, sys_dict_data.is_default, sys_dict_data.status, sys_dict_data.create_by, sys_dict_data.create_time, sys_dict_data.update_by, sys_dict_data.update_time, sys_dict_data.remark 
+FROM sys_dict_type LEFT OUTER JOIN sys_dict_data ON sys_dict_type.dict_type = sys_dict_data.dict_type AND sys_dict_data.status = %s 
+WHERE sys_dict_type.dict_type = %s AND sys_dict_type.status = %s ORDER BY sys_dict_data.dict_sort
+2026-03-05 16:29:43.065 | INFO     | sqlalchemy.log:log:210 - [cached since 0.01465s ago] ('0', 'sys_job_group', '0')
+2026-03-05 16:29:43.069 | INFO     | sqlalchemy.log:log:210 - SELECT DISTINCT sys_dict_data.dict_code, sys_dict_data.dict_sort, sys_dict_data.dict_label, sys_dict_data.dict_value, sys_dict_data.dict_type, sys_dict_data.css_class, sys_dict_data.list_class, sys_dict_data.is_default, sys_dict_data.status, sys_dict_data.create_by, sys_dict_data.create_time, sys_dict_data.update_by, sys_dict_data.update_time, sys_dict_data.remark 
+FROM sys_dict_type LEFT OUTER JOIN sys_dict_data ON sys_dict_type.dict_type = sys_dict_data.dict_type AND sys_dict_data.status = %s 
+WHERE sys_dict_type.dict_type = %s AND sys_dict_type.status = %s ORDER BY sys_dict_data.dict_sort
+2026-03-05 16:29:43.069 | INFO     | sqlalchemy.log:log:210 - [cached since 0.0188s ago] ('0', 'sys_job_executor', '0')
+2026-03-05 16:29:43.072 | INFO     | sqlalchemy.log:log:210 - SELECT DISTINCT sys_dict_data.dict_code, sys_dict_data.dict_sort, sys_dict_data.dict_label, sys_dict_data.dict_value, sys_dict_data.dict_type, sys_dict_data.css_class, sys_dict_data.list_class, sys_dict_data.is_default, sys_dict_data.status, sys_dict_data.create_by, sys_dict_data.create_time, sys_dict_data.update_by, sys_dict_data.update_time, sys_dict_data.remark 
+FROM sys_dict_type LEFT OUTER JOIN sys_dict_data ON sys_dict_type.dict_type = sys_dict_data.dict_type AND sys_dict_data.status = %s 
+WHERE sys_dict_type.dict_type = %s AND sys_dict_type.status = %s ORDER BY sys_dict_data.dict_sort
+2026-03-05 16:29:43.072 | INFO     | sqlalchemy.log:log:210 - [cached since 0.02165s ago] ('0', 'sys_yes_no', '0')
+2026-03-05 16:29:43.074 | INFO     | sqlalchemy.log:log:210 - SELECT DISTINCT sys_dict_data.dict_code, sys_dict_data.dict_sort, sys_dict_data.dict_label, sys_dict_data.dict_value, sys_dict_data.dict_type, sys_dict_data.css_class, sys_dict_data.list_class, sys_dict_data.is_default, sys_dict_data.status, sys_dict_data.create_by, sys_dict_data.create_time, sys_dict_data.update_by, sys_dict_data.update_time, sys_dict_data.remark 
+FROM sys_dict_type LEFT OUTER JOIN sys_dict_data ON sys_dict_type.dict_type = sys_dict_data.dict_type AND sys_dict_data.status = %s 
+WHERE sys_dict_type.dict_type = %s AND sys_dict_type.status = %s ORDER BY sys_dict_data.dict_sort
+2026-03-05 16:29:43.075 | INFO     | sqlalchemy.log:log:210 - [cached since 0.02438s ago] ('0', 'sys_notice_type', '0')
+2026-03-05 16:29:43.077 | INFO     | sqlalchemy.log:log:210 - SELECT DISTINCT sys_dict_data.dict_code, sys_dict_data.dict_sort, sys_dict_data.dict_label, sys_dict_data.dict_value, sys_dict_data.dict_type, sys_dict_data.css_class, sys_dict_data.list_class, sys_dict_data.is_default, sys_dict_data.status, sys_dict_data.create_by, sys_dict_data.create_time, sys_dict_data.update_by, sys_dict_data.update_time, sys_dict_data.remark 
+FROM sys_dict_type LEFT OUTER JOIN sys_dict_data ON sys_dict_type.dict_type = sys_dict_data.dict_type AND sys_dict_data.status = %s 
+WHERE sys_dict_type.dict_type = %s AND sys_dict_type.status = %s ORDER BY sys_dict_data.dict_sort
+2026-03-05 16:29:43.078 | INFO     | sqlalchemy.log:log:210 - [cached since 0.02711s ago] ('0', 'sys_notice_status', '0')
+2026-03-05 16:29:43.081 | INFO     | sqlalchemy.log:log:210 - SELECT DISTINCT sys_dict_data.dict_code, sys_dict_data.dict_sort, sys_dict_data.dict_label, sys_dict_data.dict_value, sys_dict_data.dict_type, sys_dict_data.css_class, sys_dict_data.list_class, sys_dict_data.is_default, sys_dict_data.status, sys_dict_data.create_by, sys_dict_data.create_time, sys_dict_data.update_by, sys_dict_data.update_time, sys_dict_data.remark 
+FROM sys_dict_type LEFT OUTER JOIN sys_dict_data ON sys_dict_type.dict_type = sys_dict_data.dict_type AND sys_dict_data.status = %s 
+WHERE sys_dict_type.dict_type = %s AND sys_dict_type.status = %s ORDER BY sys_dict_data.dict_sort
+2026-03-05 16:29:43.081 | INFO     | sqlalchemy.log:log:210 - [cached since 0.03048s ago] ('0', 'sys_oper_type', '0')
+2026-03-05 16:29:43.084 | INFO     | sqlalchemy.log:log:210 - SELECT DISTINCT sys_dict_data.dict_code, sys_dict_data.dict_sort, sys_dict_data.dict_label, sys_dict_data.dict_value, sys_dict_data.dict_type, sys_dict_data.css_class, sys_dict_data.list_class, sys_dict_data.is_default, sys_dict_data.status, sys_dict_data.create_by, sys_dict_data.create_time, sys_dict_data.update_by, sys_dict_data.update_time, sys_dict_data.remark 
+FROM sys_dict_type LEFT OUTER JOIN sys_dict_data ON sys_dict_type.dict_type = sys_dict_data.dict_type AND sys_dict_data.status = %s 
+WHERE sys_dict_type.dict_type = %s AND sys_dict_type.status = %s ORDER BY sys_dict_data.dict_sort
+2026-03-05 16:29:43.085 | INFO     | sqlalchemy.log:log:210 - [cached since 0.03382s ago] ('0', 'sys_common_status', '0')
+2026-03-05 16:29:43.087 | INFO     | sqlalchemy.log:log:210 - SELECT DISTINCT sys_dict_data.dict_code, sys_dict_data.dict_sort, sys_dict_data.dict_label, sys_dict_data.dict_value, sys_dict_data.dict_type, sys_dict_data.css_class, sys_dict_data.list_class, sys_dict_data.is_default, sys_dict_data.status, sys_dict_data.create_by, sys_dict_data.create_time, sys_dict_data.update_by, sys_dict_data.update_time, sys_dict_data.remark 
+FROM sys_dict_type LEFT OUTER JOIN sys_dict_data ON sys_dict_type.dict_type = sys_dict_data.dict_type AND sys_dict_data.status = %s 
+WHERE sys_dict_type.dict_type = %s AND sys_dict_type.status = %s ORDER BY sys_dict_data.dict_sort
+2026-03-05 16:29:43.088 | INFO     | sqlalchemy.log:log:210 - [cached since 0.03741s ago] ('0', 'ai_provider_type', '0')
+2026-03-05 16:29:43.092 | INFO     | sqlalchemy.log:log:210 - ROLLBACK
+2026-03-05 16:29:43.094 | INFO     | sqlalchemy.log:log:210 - BEGIN (implicit)
+2026-03-05 16:29:43.096 | INFO     | sqlalchemy.log:log:210 - SELECT DISTINCT sys_config.config_id, sys_config.config_name, sys_config.config_key, sys_config.config_value, sys_config.config_type, sys_config.create_by, sys_config.create_time, sys_config.update_by, sys_config.update_time, sys_config.remark 
+FROM sys_config 
+WHERE true = 1 ORDER BY sys_config.config_id
+2026-03-05 16:29:43.097 | INFO     | sqlalchemy.log:log:210 - [generated in 0.00076s] ()
+2026-03-05 16:29:43.103 | INFO     | sqlalchemy.log:log:210 - ROLLBACK
+2026-03-05 16:29:43.104 | INFO     | config.get_scheduler:init_system_scheduler:210 - 🔎 Worker 15820-2af797 尝试获取 Application 锁...
+2026-03-05 16:29:43.105 | INFO     | config.get_scheduler:_start_scheduler_as_leader:235 - 🎯 Worker 15820-2af797 持有 Application 锁，开始启动定时任务...
+2026-03-05 16:29:43.143 | INFO     | apscheduler.schedulers.base:start:214 - Scheduler started
+2026-03-05 16:29:43.160 | INFO     | config.get_scheduler:_start_scheduler_as_leader:261 - ✅️ 系统初始定时任务加载成功
+2026-03-05 16:29:43.668 | INFO     | server:lifespan:101 - 🚀 OA system启动成功
+2026-03-05 16:29:43.711 | INFO     | server:lifespan:113 - 💻 应用地址:
+🏠 Local:    http://127.0.0.1:9099
+📡 Network:  http://192.168.10.226:9099
+📡 Network:  http://10.0.6.72:9099
+📡 Network:  http://192.168.114.1:9099
+📡 Network:  http://192.168.19.1:9099
+2026-03-05 16:29:43.712 | INFO     | server:lifespan:120 - 📄 Swagger文档:
+🏠 Local:    http://127.0.0.1:9099/docs
+📡 Network:  http://192.168.10.226:9099/docs
+📡 Network:  http://10.0.6.72:9099/docs
+📡 Network:  http://192.168.114.1:9099/docs
+📡 Network:  http://192.168.19.1:9099/docs
+2026-03-05 16:29:43.712 | INFO     | server:lifespan:127 - 📚 ReDoc文档:
+🏠 Local:    http://127.0.0.1:9099/redoc
+📡 Network:  http://192.168.10.226:9099/redoc
+📡 Network:  http://10.0.6.72:9099/redoc
+📡 Network:  http://192.168.114.1:9099/redoc
+📡 Network:  http://192.168.19.1:9099/redoc
+2026-03-05 16:30:52.187 | INFO     | config.get_redis:close_redis_pool:85 - ✅️ 关闭redis连接成功
+2026-03-05 16:30:52.189 | INFO     | config.get_scheduler:close_system_scheduler:768 - ✅️ 关闭定时任务成功
+2026-03-05 16:30:52.190 | INFO     | apscheduler.schedulers.base:shutdown:245 - Scheduler has been shut down
+2026-03-05 16:30:52.191 | INFO     | config.get_scheduler:close_system_scheduler:774 - 🔓 Worker 15820-2af797 释放 Application 锁
+2026-03-05 16:31:00.010 | INFO     | server:lifespan:89 - ⏰️ OA system开始启动
+2026-03-05 16:31:00.010 | INFO     | utils.common_util:worship:22 - 纵联宸捷OA系统已启动
+2026-03-05 16:31:00.011 | INFO     | config.get_db:init_create_table:25 - 🔎 初始化数据库连接...
+2026-03-05 16:31:00.024 | INFO     | sqlalchemy.log:log:210 - SELECT DATABASE()
+2026-03-05 16:31:00.025 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 16:31:00.027 | INFO     | sqlalchemy.log:log:210 - SELECT @@sql_mode
+2026-03-05 16:31:00.027 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 16:31:00.028 | INFO     | sqlalchemy.log:log:210 - SELECT @@lower_case_table_names
+2026-03-05 16:31:00.028 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 16:31:00.029 | INFO     | sqlalchemy.log:log:210 - BEGIN (implicit)
+2026-03-05 16:31:00.030 | INFO     | sqlalchemy.log:log:210 - DESCRIBE `oa-system`.`sys_config`
+2026-03-05 16:31:00.030 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 16:31:00.035 | INFO     | sqlalchemy.log:log:210 - DESCRIBE `oa-system`.`sys_dict_type`
+2026-03-05 16:31:00.036 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 16:31:00.037 | INFO     | sqlalchemy.log:log:210 - DESCRIBE `oa-system`.`sys_dict_data`
+2026-03-05 16:31:00.038 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 16:31:00.040 | INFO     | sqlalchemy.log:log:210 - DESCRIBE `oa-system`.`sys_job`
+2026-03-05 16:31:00.040 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 16:31:00.042 | INFO     | sqlalchemy.log:log:210 - DESCRIBE `oa-system`.`sys_job_log`
+2026-03-05 16:31:00.043 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 16:31:00.045 | INFO     | sqlalchemy.log:log:210 - DESCRIBE `oa-system`.`sys_logininfor`
+2026-03-05 16:31:00.046 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 16:31:00.048 | INFO     | sqlalchemy.log:log:210 - DESCRIBE `oa-system`.`sys_oper_log`
+2026-03-05 16:31:00.049 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 16:31:00.052 | INFO     | sqlalchemy.log:log:210 - DESCRIBE `oa-system`.`sys_dept`
+2026-03-05 16:31:00.053 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 16:31:00.055 | INFO     | sqlalchemy.log:log:210 - DESCRIBE `oa-system`.`sys_user`
+2026-03-05 16:31:00.055 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 16:31:00.057 | INFO     | sqlalchemy.log:log:210 - DESCRIBE `oa-system`.`sys_user_role`
+2026-03-05 16:31:00.058 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 16:31:00.060 | INFO     | sqlalchemy.log:log:210 - DESCRIBE `oa-system`.`sys_user_post`
+2026-03-05 16:31:00.060 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 16:31:00.062 | INFO     | sqlalchemy.log:log:210 - DESCRIBE `oa-system`.`sys_menu`
+2026-03-05 16:31:00.062 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 16:31:00.064 | INFO     | sqlalchemy.log:log:210 - DESCRIBE `oa-system`.`sys_post`
+2026-03-05 16:31:00.064 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 16:31:00.066 | INFO     | sqlalchemy.log:log:210 - DESCRIBE `oa-system`.`sys_role`
+2026-03-05 16:31:00.066 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 16:31:00.068 | INFO     | sqlalchemy.log:log:210 - DESCRIBE `oa-system`.`sys_role_dept`
+2026-03-05 16:31:00.069 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 16:31:00.070 | INFO     | sqlalchemy.log:log:210 - DESCRIBE `oa-system`.`sys_role_menu`
+2026-03-05 16:31:00.071 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 16:31:00.073 | INFO     | sqlalchemy.log:log:210 - DESCRIBE `oa-system`.`sys_notice`
+2026-03-05 16:31:00.073 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 16:31:00.074 | INFO     | sqlalchemy.log:log:210 - DESCRIBE `oa-system`.`ai_chat_config`
+2026-03-05 16:31:00.075 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 16:31:00.076 | INFO     | sqlalchemy.log:log:210 - DESCRIBE `oa-system`.`ai_models`
+2026-03-05 16:31:00.077 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 16:31:00.079 | INFO     | sqlalchemy.log:log:210 - DESCRIBE `oa-system`.`gen_table`
+2026-03-05 16:31:00.080 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 16:31:00.082 | INFO     | sqlalchemy.log:log:210 - DESCRIBE `oa-system`.`gen_table_column`
+2026-03-05 16:31:00.082 | INFO     | sqlalchemy.log:log:210 - [raw sql] ()
+2026-03-05 16:31:00.085 | INFO     | sqlalchemy.log:log:210 - COMMIT
+2026-03-05 16:31:00.086 | INFO     | config.get_db:init_create_table:28 - ✅️ 数据库连接成功
+2026-03-05 16:31:00.087 | INFO     | config.get_redis:check_redis_connection:57 - 🔎 开始连接redis...
+2026-03-05 16:31:00.088 | INFO     | config.get_redis:check_redis_connection:63 - ✅️ redis连接成功
+2026-03-05 16:31:00.089 | INFO     | sqlalchemy.log:log:210 - BEGIN (implicit)
+2026-03-05 16:31:00.102 | INFO     | sqlalchemy.log:log:210 - SELECT sys_dict_type.dict_id, sys_dict_type.dict_name, sys_dict_type.dict_type, sys_dict_type.status, sys_dict_type.create_by, sys_dict_type.create_time, sys_dict_type.update_by, sys_dict_type.update_time, sys_dict_type.remark 
+FROM sys_dict_type
+2026-03-05 16:31:00.103 | INFO     | sqlalchemy.log:log:210 - [generated in 0.00100s] ()
+2026-03-05 16:31:00.108 | INFO     | sqlalchemy.log:log:210 - SELECT DISTINCT sys_dict_data.dict_code, sys_dict_data.dict_sort, sys_dict_data.dict_label, sys_dict_data.dict_value, sys_dict_data.dict_type, sys_dict_data.css_class, sys_dict_data.list_class, sys_dict_data.is_default, sys_dict_data.status, sys_dict_data.create_by, sys_dict_data.create_time, sys_dict_data.update_by, sys_dict_data.update_time, sys_dict_data.remark 
+FROM sys_dict_type LEFT OUTER JOIN sys_dict_data ON sys_dict_type.dict_type = sys_dict_data.dict_type AND sys_dict_data.status = %s 
+WHERE sys_dict_type.dict_type = %s AND sys_dict_type.status = %s ORDER BY sys_dict_data.dict_sort
+2026-03-05 16:31:00.109 | INFO     | sqlalchemy.log:log:210 - [generated in 0.00099s] ('0', 'sys_user_sex', '0')
+2026-03-05 16:31:00.112 | INFO     | sqlalchemy.log:log:210 - SELECT DISTINCT sys_dict_data.dict_code, sys_dict_data.dict_sort, sys_dict_data.dict_label, sys_dict_data.dict_value, sys_dict_data.dict_type, sys_dict_data.css_class, sys_dict_data.list_class, sys_dict_data.is_default, sys_dict_data.status, sys_dict_data.create_by, sys_dict_data.create_time, sys_dict_data.update_by, sys_dict_data.update_time, sys_dict_data.remark 
+FROM sys_dict_type LEFT OUTER JOIN sys_dict_data ON sys_dict_type.dict_type = sys_dict_data.dict_type AND sys_dict_data.status = %s 
+WHERE sys_dict_type.dict_type = %s AND sys_dict_type.status = %s ORDER BY sys_dict_data.dict_sort
+2026-03-05 16:31:00.113 | INFO     | sqlalchemy.log:log:210 - [cached since 0.005291s ago] ('0', 'sys_show_hide', '0')
+2026-03-05 16:31:00.116 | INFO     | sqlalchemy.log:log:210 - SELECT DISTINCT sys_dict_data.dict_code, sys_dict_data.dict_sort, sys_dict_data.dict_label, sys_dict_data.dict_value, sys_dict_data.dict_type, sys_dict_data.css_class, sys_dict_data.list_class, sys_dict_data.is_default, sys_dict_data.status, sys_dict_data.create_by, sys_dict_data.create_time, sys_dict_data.update_by, sys_dict_data.update_time, sys_dict_data.remark 
+FROM sys_dict_type LEFT OUTER JOIN sys_dict_data ON sys_dict_type.dict_type = sys_dict_data.dict_type AND sys_dict_data.status = %s 
+WHERE sys_dict_type.dict_type = %s AND sys_dict_type.status = %s ORDER BY sys_dict_data.dict_sort
+2026-03-05 16:31:00.117 | INFO     | sqlalchemy.log:log:210 - [cached since 0.009099s ago] ('0', 'sys_normal_disable', '0')
+2026-03-05 16:31:00.119 | INFO     | sqlalchemy.log:log:210 - SELECT DISTINCT sys_dict_data.dict_code, sys_dict_data.dict_sort, sys_dict_data.dict_label, sys_dict_data.dict_value, sys_dict_data.dict_type, sys_dict_data.css_class, sys_dict_data.list_class, sys_dict_data.is_default, sys_dict_data.status, sys_dict_data.create_by, sys_dict_data.create_time, sys_dict_data.update_by, sys_dict_data.update_time, sys_dict_data.remark 
+FROM sys_dict_type LEFT OUTER JOIN sys_dict_data ON sys_dict_type.dict_type = sys_dict_data.dict_type AND sys_dict_data.status = %s 
+WHERE sys_dict_type.dict_type = %s AND sys_dict_type.status = %s ORDER BY sys_dict_data.dict_sort
+2026-03-05 16:31:00.120 | INFO     | sqlalchemy.log:log:210 - [cached since 0.01221s ago] ('0', 'sys_job_status', '0')
+2026-03-05 16:31:00.122 | INFO     | sqlalchemy.log:log:210 - SELECT DISTINCT sys_dict_data.dict_code, sys_dict_data.dict_sort, sys_dict_data.dict_label, sys_dict_data.dict_value, sys_dict_data.dict_type, sys_dict_data.css_class, sys_dict_data.list_class, sys_dict_data.is_default, sys_dict_data.status, sys_dict_data.create_by, sys_dict_data.create_time, sys_dict_data.update_by, sys_dict_data.update_time, sys_dict_data.remark 
+FROM sys_dict_type LEFT OUTER JOIN sys_dict_data ON sys_dict_type.dict_type = sys_dict_data.dict_type AND sys_dict_data.status = %s 
+WHERE sys_dict_type.dict_type = %s AND sys_dict_type.status = %s ORDER BY sys_dict_data.dict_sort
+2026-03-05 16:31:00.123 | INFO     | sqlalchemy.log:log:210 - [cached since 0.01509s ago] ('0', 'sys_job_group', '0')
+2026-03-05 16:31:00.125 | INFO     | sqlalchemy.log:log:210 - SELECT DISTINCT sys_dict_data.dict_code, sys_dict_data.dict_sort, sys_dict_data.dict_label, sys_dict_data.dict_value, sys_dict_data.dict_type, sys_dict_data.css_class, sys_dict_data.list_class, sys_dict_data.is_default, sys_dict_data.status, sys_dict_data.create_by, sys_dict_data.create_time, sys_dict_data.update_by, sys_dict_data.update_time, sys_dict_data.remark 
+FROM sys_dict_type LEFT OUTER JOIN sys_dict_data ON sys_dict_type.dict_type = sys_dict_data.dict_type AND sys_dict_data.status = %s 
+WHERE sys_dict_type.dict_type = %s AND sys_dict_type.status = %s ORDER BY sys_dict_data.dict_sort
+2026-03-05 16:31:00.125 | INFO     | sqlalchemy.log:log:210 - [cached since 0.01799s ago] ('0', 'sys_job_executor', '0')
+2026-03-05 16:31:00.128 | INFO     | sqlalchemy.log:log:210 - SELECT DISTINCT sys_dict_data.dict_code, sys_dict_data.dict_sort, sys_dict_data.dict_label, sys_dict_data.dict_value, sys_dict_data.dict_type, sys_dict_data.css_class, sys_dict_data.list_class, sys_dict_data.is_default, sys_dict_data.status, sys_dict_data.create_by, sys_dict_data.create_time, sys_dict_data.update_by, sys_dict_data.update_time, sys_dict_data.remark 
+FROM sys_dict_type LEFT OUTER JOIN sys_dict_data ON sys_dict_type.dict_type = sys_dict_data.dict_type AND sys_dict_data.status = %s 
+WHERE sys_dict_type.dict_type = %s AND sys_dict_type.status = %s ORDER BY sys_dict_data.dict_sort
+2026-03-05 16:31:00.128 | INFO     | sqlalchemy.log:log:210 - [cached since 0.02133s ago] ('0', 'sys_yes_no', '0')
+2026-03-05 16:31:00.132 | INFO     | sqlalchemy.log:log:210 - SELECT DISTINCT sys_dict_data.dict_code, sys_dict_data.dict_sort, sys_dict_data.dict_label, sys_dict_data.dict_value, sys_dict_data.dict_type, sys_dict_data.css_class, sys_dict_data.list_class, sys_dict_data.is_default, sys_dict_data.status, sys_dict_data.create_by, sys_dict_data.create_time, sys_dict_data.update_by, sys_dict_data.update_time, sys_dict_data.remark 
+FROM sys_dict_type LEFT OUTER JOIN sys_dict_data ON sys_dict_type.dict_type = sys_dict_data.dict_type AND sys_dict_data.status = %s 
+WHERE sys_dict_type.dict_type = %s AND sys_dict_type.status = %s ORDER BY sys_dict_data.dict_sort
+2026-03-05 16:31:00.132 | INFO     | sqlalchemy.log:log:210 - [cached since 0.02439s ago] ('0', 'sys_notice_type', '0')
+2026-03-05 16:31:00.135 | INFO     | sqlalchemy.log:log:210 - SELECT DISTINCT sys_dict_data.dict_code, sys_dict_data.dict_sort, sys_dict_data.dict_label, sys_dict_data.dict_value, sys_dict_data.dict_type, sys_dict_data.css_class, sys_dict_data.list_class, sys_dict_data.is_default, sys_dict_data.status, sys_dict_data.create_by, sys_dict_data.create_time, sys_dict_data.update_by, sys_dict_data.update_time, sys_dict_data.remark 
+FROM sys_dict_type LEFT OUTER JOIN sys_dict_data ON sys_dict_type.dict_type = sys_dict_data.dict_type AND sys_dict_data.status = %s 
+WHERE sys_dict_type.dict_type = %s AND sys_dict_type.status = %s ORDER BY sys_dict_data.dict_sort
+2026-03-05 16:31:00.135 | INFO     | sqlalchemy.log:log:210 - [cached since 0.02745s ago] ('0', 'sys_notice_status', '0')
+2026-03-05 16:31:00.138 | INFO     | sqlalchemy.log:log:210 - SELECT DISTINCT sys_dict_data.dict_code, sys_dict_data.dict_sort, sys_dict_data.dict_label, sys_dict_data.dict_value, sys_dict_data.dict_type, sys_dict_data.css_class, sys_dict_data.list_class, sys_dict_data.is_default, sys_dict_data.status, sys_dict_data.create_by, sys_dict_data.create_time, sys_dict_data.update_by, sys_dict_data.update_time, sys_dict_data.remark 
+FROM sys_dict_type LEFT OUTER JOIN sys_dict_data ON sys_dict_type.dict_type = sys_dict_data.dict_type AND sys_dict_data.status = %s 
+WHERE sys_dict_type.dict_type = %s AND sys_dict_type.status = %s ORDER BY sys_dict_data.dict_sort
+2026-03-05 16:31:00.139 | INFO     | sqlalchemy.log:log:210 - [cached since 0.03093s ago] ('0', 'sys_oper_type', '0')
+2026-03-05 16:31:00.142 | INFO     | sqlalchemy.log:log:210 - SELECT DISTINCT sys_dict_data.dict_code, sys_dict_data.dict_sort, sys_dict_data.dict_label, sys_dict_data.dict_value, sys_dict_data.dict_type, sys_dict_data.css_class, sys_dict_data.list_class, sys_dict_data.is_default, sys_dict_data.status, sys_dict_data.create_by, sys_dict_data.create_time, sys_dict_data.update_by, sys_dict_data.update_time, sys_dict_data.remark 
+FROM sys_dict_type LEFT OUTER JOIN sys_dict_data ON sys_dict_type.dict_type = sys_dict_data.dict_type AND sys_dict_data.status = %s 
+WHERE sys_dict_type.dict_type = %s AND sys_dict_type.status = %s ORDER BY sys_dict_data.dict_sort
+2026-03-05 16:31:00.142 | INFO     | sqlalchemy.log:log:210 - [cached since 0.03404s ago] ('0', 'sys_common_status', '0')
+2026-03-05 16:31:00.144 | INFO     | sqlalchemy.log:log:210 - SELECT DISTINCT sys_dict_data.dict_code, sys_dict_data.dict_sort, sys_dict_data.dict_label, sys_dict_data.dict_value, sys_dict_data.dict_type, sys_dict_data.css_class, sys_dict_data.list_class, sys_dict_data.is_default, sys_dict_data.status, sys_dict_data.create_by, sys_dict_data.create_time, sys_dict_data.update_by, sys_dict_data.update_time, sys_dict_data.remark 
+FROM sys_dict_type LEFT OUTER JOIN sys_dict_data ON sys_dict_type.dict_type = sys_dict_data.dict_type AND sys_dict_data.status = %s 
+WHERE sys_dict_type.dict_type = %s AND sys_dict_type.status = %s ORDER BY sys_dict_data.dict_sort
+2026-03-05 16:31:00.145 | INFO     | sqlalchemy.log:log:210 - [cached since 0.03691s ago] ('0', 'ai_provider_type', '0')
+2026-03-05 16:31:00.148 | INFO     | sqlalchemy.log:log:210 - ROLLBACK
+2026-03-05 16:31:00.150 | INFO     | sqlalchemy.log:log:210 - BEGIN (implicit)
+2026-03-05 16:31:00.152 | INFO     | sqlalchemy.log:log:210 - SELECT DISTINCT sys_config.config_id, sys_config.config_name, sys_config.config_key, sys_config.config_value, sys_config.config_type, sys_config.create_by, sys_config.create_time, sys_config.update_by, sys_config.update_time, sys_config.remark 
+FROM sys_config 
+WHERE true = 1 ORDER BY sys_config.config_id
+2026-03-05 16:31:00.152 | INFO     | sqlalchemy.log:log:210 - [generated in 0.00065s] ()
+2026-03-05 16:31:00.156 | INFO     | sqlalchemy.log:log:210 - ROLLBACK
+2026-03-05 16:31:00.156 | INFO     | config.get_scheduler:init_system_scheduler:210 - 🔎 Worker 21536-5ad8ff 尝试获取 Application 锁...
+2026-03-05 16:31:00.157 | INFO     | config.get_scheduler:_start_scheduler_as_leader:235 - 🎯 Worker 21536-5ad8ff 持有 Application 锁，开始启动定时任务...
+2026-03-05 16:31:00.203 | INFO     | apscheduler.schedulers.base:start:214 - Scheduler started
+2026-03-05 16:31:00.215 | INFO     | config.get_scheduler:_start_scheduler_as_leader:261 - ✅️ 系统初始定时任务加载成功
+2026-03-05 16:31:00.731 | INFO     | server:lifespan:101 - 🚀 OA system启动成功
+2026-03-05 16:31:00.785 | INFO     | server:lifespan:113 - 💻 应用地址:
+🏠 Local:    http://127.0.0.1:9099
+📡 Network:  http://192.168.10.226:9099
+📡 Network:  http://192.168.114.1:9099
+📡 Network:  http://192.168.19.1:9099
+2026-03-05 16:31:00.786 | INFO     | server:lifespan:120 - 📄 Swagger文档:
+🏠 Local:    http://127.0.0.1:9099/docs
+📡 Network:  http://192.168.10.226:9099/docs
+📡 Network:  http://192.168.114.1:9099/docs
+📡 Network:  http://192.168.19.1:9099/docs
+2026-03-05 16:31:00.786 | INFO     | server:lifespan:127 - 📚 ReDoc文档:
+🏠 Local:    http://127.0.0.1:9099/redoc
+📡 Network:  http://192.168.10.226:9099/redoc
+📡 Network:  http://192.168.114.1:9099/redoc
+📡 Network:  http://192.168.19.1:9099/redoc
