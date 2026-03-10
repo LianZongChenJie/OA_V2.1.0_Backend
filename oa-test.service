@@ -1,0 +1,30 @@
+[Unit]
+Description=OA Test Service
+# 指定在网络就绪后再启动此服务
+After=network.target
+# 如果服务在短时间内频繁重启，限制重启间隔
+StartLimitIntervalSec=0
+
+[Service]
+# simple 是最常见的类型，表示 ExecStart 启动的进程就是主进程
+Type=simple
+# 以哪个用户身份运行，出于安全考虑，建议不要用 root，可以是你自己的用户名
+User=root
+# 设置工作目录，脚本中所有相对路径都基于此目录
+WorkingDirectory=/home/oa_system/OA_V2.1.0_Backend
+# 启动命令：指定完整的Python解释器路径和脚本路径
+
+ExecStart=/home/oa_system_venv/venv/bin/python /home/oa_system/OA_V2.1.0_Backend/app.py --env=dev
+# 崩溃后总是重启
+Restart=always
+# 重启前等待的秒数，避免因立即重启消耗过多资源
+RestartSec=10
+# 标准输出和错误重定向到系统日志，方便用 journalctl 查看
+StandardOutput=journal
+StandardError=journal
+# 给服务一个便于识别的syslog标识
+SyslogIdentifier=oa-test-service
+
+[Install]
+# 表示在系统以多用户模式（无图形界面）运行时启动此服务
+WantedBy=multi-user.target
