@@ -7,31 +7,26 @@ from sqlalchemy.dialects.mysql import BIGINT
 from config.database import Base
 import enum
 
-
 # 保留枚举类（供VO层校验用），但DO层不再使用Enum类型
 class IsTenderSubmittedEnum(str, enum.Enum):
     """是否投标枚举"""
     YES = '是'
     NO = '否'
 
-
 class HasTenderInvoiceEnum(str, enum.Enum):
     """标书款发票枚举"""
     YES = '是'
     NO = '否'
-
 
 class IsDepositPaidEnum(str, enum.Enum):
     """是否缴纳保证金枚举"""
     YES = '是'
     NO = '否'
 
-
 class IsDepositRefundedEnum(str, enum.Enum):
     """是否退回保证金枚举"""
     YES = '是'
     NO = '否'
-
 
 class BidResultEnum(str, enum.Enum):
     """中标结果枚举"""
@@ -39,12 +34,8 @@ class BidResultEnum(str, enum.Enum):
     LOSE = '未中标'
     PENDING = '待公布'
 
-
 class OaProjectTender(Base):
-    """
-    项目投标信息表
-    """
-
+    """项目投标信息表"""
     __tablename__ = 'oa_project_tender'
     __table_args__ = {'comment': '项目投标信息表'}
 
@@ -59,7 +50,6 @@ class OaProjectTender(Base):
     shortlisted_countries = Column(String(20), nullable=True, comment='入围家数')
     budget_amount = Column(DECIMAL(precision=18, scale=2), nullable=True, comment='预算金额（元）')
     bid_opening_date = Column(Date, nullable=True, comment='开标日期')
-    # 核心修改：把 Enum 改为 String(2)，限制只能传2个字符（是/否）
     is_tender_submitted = Column(String(2), nullable=True, comment='是否投标')
     non_tender_reason = Column(String(200), nullable=True, comment='未投原因')
     tender_document_fee = Column(DECIMAL(precision=10, scale=2), nullable=True, comment='标书款（元）')
@@ -77,12 +67,8 @@ class OaProjectTender(Base):
     delete_time = Column(BigInteger, nullable=True, default=0, comment='删除时间')
     sort = Column(BigInteger, nullable=True, comment='排序值')
 
-
 class OaProjectTenderAttachment(Base):
-    """
-    项目投标附件表
-    """
-
+    """项目投标附件表"""
     __tablename__ = 'oa_project_tender_attachment'
     __table_args__ = {'comment': '项目投标附件表'}
 
