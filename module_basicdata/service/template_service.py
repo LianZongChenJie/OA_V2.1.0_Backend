@@ -1,11 +1,11 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import ColumnElement
+from sqlalchemy import Integer
 from typing import Any
 from datetime import datetime
 from common.constant import CommonConstant
 from common.vo import CrudResponseModel, PageModel
 from exceptions.exception import ServiceException
-from module_admin.entity.vo.user_vo import UserPageQueryModel
 from module_basicdata.dao.template_dao import OaTemplateDao
 from module_basicdata.entity.vo.template_vo import TemplateRowModel, TemplatePageQueryModel, TemplateBaseModel
 
@@ -56,7 +56,7 @@ class TemplateService:
         :return: 新增用户校验结果
         """
         add_template = TemplateBaseModel(**page_object.model_dump(by_alias=True))
-        add_template.create_time = int(datetime.now().timestamp() * 1000)
+        add_template.update_time = int(datetime.now().timestamp() * 1000)
         if not await cls.check_template_name_unique_services(query_db, page_object):
             raise ServiceException(message=f'新增消息模板{page_object.name}失败，模板名称已存在')
         try:
@@ -81,3 +81,56 @@ class TemplateService:
         if template and template.name == name:
             return CommonConstant.NOT_UNIQUE
         return CommonConstant.UNIQUE
+
+    @classmethod
+    async def update_template_services(cls, query_db: AsyncSession, page_object: TemplateBaseModel) -> CrudResponseModel:
+        """
+        更新用户信息service
+
+        :param query_db: orm对象
+        :param page_object: 更新用户对象
+        :return: 更新用户校验结果
+        """
+        update_template = TemplateBaseModel(**page_object.model_dump(by_alias=True))
+        update_template.update_time=int(datetime.now().timestamp() * 1000)
+        if not await cls.check_template_name_unique_services(query_db, page_object):
+            raise ServiceException(message=f'修改消息模板{page_object.name}失败，模板名称已存在')
+        try:
+            await OaTemplateDao.update_template_dao(query_db, update_template)
+            await query_db.commit()
+            return CrudResponseModel(is_success=True, message='修改成功')
+        except Exception as e:
+            await query_db.rollback()
+            raise e
+
+    @classmethod
+    async def detail_template_services(cls, query_db: AsyncSession, templateId: Integer) -> TemplateBaseModel | None:
+        """
+        获取用户详细信息service
+
+        :param query_db: orm对象
+        :param templateId: 模板id
+        :return: 用户详细信息对象
+        """
+        try:
+            if templateId:
+                template = await OaTemplateDao.get_template_by_Id(query_db, templateId)
+                return template
+        except Exception as e:
+            raise e
+
+    @classmethod
+    async def delete_template_services(cls, query_db: AsyncSession, templateId: Integer) -> TemplateBaseModel | None:
+        """
+        获取用户详细信息service
+
+        :param query_db: orm对象
+        :param templateId: 模板id
+        :return: 用户详细信息对象
+        """
+        try:
+            if templateId:
+                template = await OaTemplateDao.delete_template_dao(query_db, templateId)
+                return template
+        except Exception as e:
+            raise e

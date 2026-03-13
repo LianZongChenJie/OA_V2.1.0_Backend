@@ -1,5 +1,3 @@
-from email.policy import default
-from datetime import datetime
 from pydantic import BaseModel, Field, validator, ConfigDict
 from typing import Optional
 from pydantic.alias_generators import to_camel
@@ -8,7 +6,7 @@ from pydantic.alias_generators import to_camel
 class TemplateBaseModel(BaseModel):
     """基础模板模型"""
     model_config = ConfigDict(alias_generator=to_camel, from_attributes=True)
-
+    id: int | None = Field(default=None, description='主键id')
     title: str | None = Field(default=None, max_length=255, description='消息模板名称')
     name: str | None = Field(default=None, max_length=255, description='权限标识唯一')
     types: int | None = Field(default=None, ge=1, le=2, description='类型:1普通消息,2审批消息')

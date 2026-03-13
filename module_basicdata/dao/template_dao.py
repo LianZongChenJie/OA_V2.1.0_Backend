@@ -1,5 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import ColumnElement, and_, delete, desc, func, or_, select, update
+from sqlalchemy import delete, desc, select, update,Integer
+from sqlalchemy.sql import ColumnElement
 from typing import Any
 
 from common.vo import PageModel
@@ -87,3 +88,56 @@ class OaTemplateDao:
         )
 
         return query_template_info
+
+    @classmethod
+    async def get_template_by_Id(cls, db: AsyncSession, templateId: Integer) -> TemplateBaseModel | None:
+        """
+        根据用户参数获取用户信息
+
+        :param templateId:
+        :param db: orm对象
+        :return: 当前用户参数的用户信息对象
+        """
+        query_template_info = (
+            (
+                await db.execute(
+                    select(OaTemplate)
+                    .where(
+                        OaTemplate.status == '1',
+                        OaTemplate.id == templateId
+                    )
+                    .order_by(desc(OaTemplate.create_time))
+                    .distinct()
+                )
+            )
+            .scalars()
+            .first()
+        )
+
+        return query_template_info
+
+    @classmethod
+    async def update_template_dao(cls, db: AsyncSession, template: TemplateBaseModel) -> None:
+        """
+        更新用户信息数据库操作
+        :param template:
+        :param db: orm对象
+        :return:
+        """
+        await db.execute(
+            update(OaTemplate)
+            .values(**template.model_dump(exclude={"id", "create_time"}, exclude_none=True))
+            .where(OaTemplate.id == template.id)
+        )
+
+    @classmethod
+    async def delete_template_dao(cls, db: AsyncSession, templateId: Integer) -> None:
+        """
+        删除用户角色关联信息数据库操作
+
+        :param db: orm对象
+        :param templateId: 模板id
+        :return:
+        """
+        await db.execute(delete(OaTemplate).where(OaTemplate.id == templateId))
+        await db.commit()

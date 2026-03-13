@@ -1,5 +1,4 @@
 from typing import Annotated
-from datetime import datetime
 
 from fastapi import File, Form, Path, Query, Request, Response, UploadFile
 from fastapi.responses import StreamingResponse
@@ -67,3 +66,57 @@ async def add_basicdata_template(
     logger.info(add_template_result.message)
 
     return ResponseUtil.success(msg=add_template_result.message)
+
+@template_controller.put(
+    '/update',
+    summary='更新消息模板接口',
+    description='更新消息模板接口',
+    response_model=ResponseBaseModel,
+    dependencies=[UserInterfaceAuthDependency('basicdata:template:update')],
+)
+async def update_basicdata_template(
+    request: Request,
+    add_template: TemplateBaseModel,
+    query_db: Annotated[AsyncSession, DBSessionDependency()],
+    current_user: Annotated[CurrentUserModel, CurrentUserDependency()]
+) -> Response:
+    add_template.admin_id = current_user.user.user_name
+    add_template_result = await TemplateService.update_template_services(query_db, add_template)
+    logger.info(add_template_result.message)
+
+    return ResponseUtil.success(msg=add_template_result.message)
+
+@template_controller.get(
+    '/detail/{templateId}',
+    summary='获取消息模板详情接口',
+    description='获取消息模板详情接口',
+    response_model=ResponseBaseModel,
+    dependencies=[UserInterfaceAuthDependency('basicdata:template:detail')],
+)
+async def get_basicdata_template_detail(
+    request: Request,
+    templateId: int,
+    query_db: Annotated[AsyncSession, DBSessionDependency()],
+) -> Response:
+    template_result = await TemplateService.detail_template_services(query_db, templateId)
+    if not template_result:
+        return ResponseUtil.error(msg="数据不存在")
+    logger.info(template_result.to_dict())
+    return ResponseUtil.success(data=template_result.to_dict())
+
+@template_controller.delete(
+    '/delete/{templateId}',
+    summary='删除消息模板接口',
+    description='删除消息模板接口',
+    response_model=ResponseBaseModel,
+    dependencies=[UserInterfaceAuthDependency('basicdata:template:delete')],
+)
+async def del_basicdata_template(
+    request: Request,
+    templateId: int,
+    query_db: Annotated[AsyncSession, DBSessionDependency()],
+) -> Response:
+    template_result = await TemplateService.delete_template_services(query_db, templateId)
+    logger.info(template_result)
+
+    return ResponseUtil.success(msg="删除成功")
