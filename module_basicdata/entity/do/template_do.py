@@ -1,10 +1,8 @@
-from datetime import datetime
+# -*- coding: utf-8 -*-
 
-from sqlalchemy import CHAR, Column, DateTime, Integer, String,SmallInteger, DATETIME, BigInteger
+from sqlalchemy import Column, Integer, String,SmallInteger,BigInteger
 
 from config.database import Base
-from config.env import DataBaseConfig
-from utils.common_util import SqlalchemyUtil
 
 
 class OaTemplate(Base):

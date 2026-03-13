@@ -1,6 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import ColumnElement, and_, delete, desc, func, or_, select, update, String, Integer
-
+from sqlalchemy import delete, desc, select, update,Integer
+from sqlalchemy.sql import ColumnElement
 from typing import Any
 
 from common.vo import PageModel

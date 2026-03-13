@@ -1,5 +1,3 @@
-from email.policy import default
-from datetime import datetime
 from pydantic import BaseModel, Field, validator, ConfigDict
 from typing import Optional
 from pydantic.alias_generators import to_camel
