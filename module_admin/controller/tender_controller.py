@@ -110,7 +110,7 @@ async def get_tender_detail(
         return ResponseUtil.error(msg=f'获取详情失败：{str(e)}')
 
 @tender_controller.post(
-    '',
+    'add',
     summary='新增投标接口',
     description='用于新增投标',
     response_model=ResponseBaseModel,
@@ -137,8 +137,8 @@ async def add_tender(
         logger.error(f'新增投标失败：{str(e)}', exc_info=True)
         return ResponseUtil.error(msg=f'新增失败：{str(e)}')
 
-@tender_controller.put(
-    '',
+@tender_controller.post(
+    'upd',
     summary='编辑投标接口',
     description='用于编辑投标',
     response_model=ResponseBaseModel,
