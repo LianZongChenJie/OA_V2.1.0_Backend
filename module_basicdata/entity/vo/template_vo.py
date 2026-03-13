@@ -29,8 +29,6 @@ class TemplateBaseModel(BaseModel):
     delete_time: int | None = Field(default=None, description='删除时间')
 
 
-
-
 class TemplateCreateModel(TemplateBaseModel):
     """创建模板请求模型"""
     pass
@@ -43,7 +41,7 @@ class TemplateRowModel(TemplateBaseModel):
 
 class TemplateQueryModel(TemplateBaseModel):
     """
-    用户管理不分页查询模型
+    消息模板不分页查询模型
     """
 
     begin_time: str | None = Field(default=None, description='开始时间')
