@@ -1,8 +1,10 @@
 from pydantic import BaseModel, Field, validator, ConfigDict
+from pydantic.alias_generators import to_camel
 
 class FlowModuleModel(BaseModel):
 
     """审批模块VO"""
+    model_config = ConfigDict(alias_generator=to_camel, from_attributes=True)
     id: int | None = Field(default=None, description='主键id')
     title: str | None = Field(default=None, max_length=100, description='审批模块名称')
     icon: str | None = Field(default=None, max_length=255, description='预设字段，图标')

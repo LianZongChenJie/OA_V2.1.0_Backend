@@ -3,7 +3,7 @@ from typing import Annotated
 from fastapi import File, Form, Path, Query, Request, Response, UploadFile
 from fastapi.responses import StreamingResponse
 from pydantic_validation_decorator import ValidateFields
-from sqlalchemy import ColumnElement
+from sqlalchemy.sql import ColumnElement
 from sqlalchemy.ext.asyncio import AsyncSession
 from common.aspect.data_scope import DataScopeDependency
 from common.aspect.db_seesion import DBSessionDependency
@@ -27,8 +27,8 @@ template_controller = APIRouterPro(
 
 @template_controller.get(
     '/list',
-    summary='获取用户分页列表接口',
-    description='用于获取用户分页列表',
+    summary='获取消息模板分页列表接口',
+    description='用于获取消息模板分页列表',
     response_model=PageResponseModel[TemplateRowModel],
     dependencies=[UserInterfaceAuthDependency('basicdata:template:list')],
 )

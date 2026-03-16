@@ -4,19 +4,18 @@ from sqlalchemy.sql import ColumnElement
 from typing import Any
 
 from common.vo import PageModel
-from module_admin.entity.vo.user_vo import UserPageQueryModel
 from module_basicdata.entity.do.template_do import OaTemplate
 
 from datetime import datetime, time
 
-from module_basicdata.entity.vo.template_vo import TemplateBaseModel
+from module_basicdata.entity.vo.template_vo import TemplateBaseModel, TemplatePageQueryModel
 from utils.page_util import PageUtil
 
 
 class OaTemplateDao:
     @classmethod
     async def get_template_list(
-        cls, db: AsyncSession, query_object: UserPageQueryModel, data_scope_sql: ColumnElement, is_page: bool = False
+        cls, db: AsyncSession, query_object: TemplatePageQueryModel, data_scope_sql: ColumnElement, is_page: bool = False
         ) -> PageModel | list[list[dict[str, Any]]]:
         """
         根据查询参数获取用户列表信息

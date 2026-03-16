@@ -40,9 +40,9 @@ class TemplateService:
                 }
             )
         else:
-            user_list_result = []
+            template_list_result = []
             if query_result:
-                user_list_result = [{**row[0]} for row in query_result]
+                template_list_result = [{**row[0]} for row in query_result]
 
         return template_list_result
 

@@ -2,13 +2,13 @@ from config.database import Base
 from sqlalchemy import Column, Integer, String, BigInteger, SmallInteger
 
 
-class FlowModuleDo(Base):
+class FlowModule(Base):
     __tablename__ = "oa_flow_module"
     __table_args__ = {"comment": "审批模块"}
 
-    id = Column(Integer | None, primary_key=True, autoincrement=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     title = Column(String(100), nullable=False, default='', comment='审批模块名称')
-    icon = Column(String(255) | None, nullable=False, default='', comment='预设字段，图标')
+    icon = Column(String(255), nullable=False, default='', comment='预设字段，图标')
     sort = Column(Integer, nullable=False, default=0, comment='排序：越大越靠前')
     department_ids = Column(String(255), nullable=False, default='', comment='应用部门ID（空为全部）1,2,3')
     status = Column(SmallInteger, nullable=False, default=1, comment='状态：-1删除 0禁用 1启用')
