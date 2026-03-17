@@ -6,8 +6,8 @@ from datetime import datetime
 from common.constant import CommonConstant
 from common.vo import CrudResponseModel, PageModel
 from exceptions.exception import ServiceException
-from module_basicdata.dao.template_dao import OaTemplateDao
-from module_basicdata.entity.vo.template_vo import TemplateRowModel, TemplatePageQueryModel, TemplateBaseModel
+from module_basicdata.dao.public.template_dao import OaTemplateDao
+from module_basicdata.entity.vo.public.template_vo import TemplateRowModel, TemplatePageQueryModel, TemplateBaseModel
 
 
 class TemplateService:

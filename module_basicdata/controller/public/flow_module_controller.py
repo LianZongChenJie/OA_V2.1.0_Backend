@@ -1,4 +1,3 @@
-from urllib.request import Request
 from typing import Annotated
 from fastapi import File, Form, Path, Query, Request, Response, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,9 +10,9 @@ from common.aspect.interface_auth import UserInterfaceAuthDependency
 from common.aspect.pre_auth import PreAuthDependency
 from common.router import APIRouterPro
 from common.vo import PageResponseModel
-from module_basicdata.entity.do.flow_module_do import FlowModule
-from module_basicdata.entity.vo.flow_module_vo import FlowModuleModel, FlowModulePageQueryModel
-from module_basicdata.service.flow_module_service import FlowModuleService
+from module_basicdata.entity.do.public.flow_module_do import FlowModule
+from module_basicdata.entity.vo.public.flow_module_vo import FlowModuleModel, FlowModulePageQueryModel
+from module_basicdata.service.public.flow_module_service import FlowModuleService
 from utils.response_util import ResponseUtil
 
 flow_module_controller = APIRouterPro(

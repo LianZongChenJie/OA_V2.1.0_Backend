@@ -10,9 +10,9 @@ from common.aspect.db_seesion import DBSessionDependency
 from common.aspect.interface_auth import UserInterfaceAuthDependency
 from common.aspect.pre_auth import PreAuthDependency
 from common.router import APIRouterPro
-from module_basicdata.entity.do.flow_cate_do import OaFlowCate
-from module_basicdata.entity.vo.flow_cate_vo import FlowCatePageQueryModel, OaFlowCateModel
-from module_basicdata.service.flow_cate_service import FlowCateService
+from module_basicdata.entity.do.public.flow_cate_do import OaFlowCate
+from module_basicdata.entity.vo.public.flow_cate_vo import FlowCatePageQueryModel, OaFlowCateModel
+from module_basicdata.service.public.flow_cate_service import FlowCateService
 from utils.response_util import ResponseUtil
 
 flow_cate_controller = APIRouterPro(

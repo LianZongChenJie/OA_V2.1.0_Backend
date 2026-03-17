@@ -2,8 +2,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import ColumnElement
 
 from common.vo import PageModel
-from module_basicdata.entity.do.flow_do import OaFlow
-from module_basicdata.entity.vo.flow_vo import OaFlowPageQueryModel, OaFlowBaseModel
+from module_basicdata.entity.do.public.flow_do import OaFlow
+from module_basicdata.entity.vo.public.flow_vo import OaFlowPageQueryModel, OaFlowBaseModel
 from typing import Any
 from sqlalchemy import select, update
 

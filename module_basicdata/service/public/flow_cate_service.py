@@ -4,8 +4,8 @@ from typing import Any
 from datetime import datetime
 from common.vo import PageModel, CrudResponseModel
 from exceptions.exception import ServiceException
-from module_basicdata.dao.flow_cate_dao import FlowCateDao
-from module_basicdata.entity.vo.flow_cate_vo import FlowCatePageQueryModel, OaFlowCateModel
+from module_basicdata.dao.public.flow_cate_dao import FlowCateDao
+from module_basicdata.entity.vo.public.flow_cate_vo import FlowCatePageQueryModel, OaFlowCateModel
 
 class FlowCateService:
     @classmethod

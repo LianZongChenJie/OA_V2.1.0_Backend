@@ -4,11 +4,11 @@ from sqlalchemy.sql import ColumnElement
 from typing import Any
 
 from common.vo import PageModel
-from module_basicdata.entity.do.template_do import OaTemplate
+from module_basicdata.entity.do.public.template_do import OaTemplate
 
 from datetime import datetime, time
 
-from module_basicdata.entity.vo.template_vo import TemplateBaseModel, TemplatePageQueryModel
+from module_basicdata.entity.vo.public.template_vo import TemplateBaseModel, TemplatePageQueryModel
 from utils.page_util import PageUtil
 
 

@@ -13,9 +13,9 @@ from common.enums import BusinessType
 from common.router import APIRouterPro
 from common.vo import PageResponseModel, ResponseBaseModel
 from module_admin.entity.vo.user_vo import CurrentUserModel
-from module_basicdata.entity.do.template_do import OaTemplate
-from module_basicdata.entity.vo.template_vo import TemplateRowModel, TemplatePageQueryModel, TemplateBaseModel
-from module_basicdata.service.template_service import TemplateService
+from module_basicdata.entity.do.public.template_do import OaTemplate
+from module_basicdata.entity.vo.public.template_vo import TemplateRowModel, TemplatePageQueryModel, TemplateBaseModel
+from module_basicdata.service.public.template_service import TemplateService
 from utils.log_util import logger
 from utils.response_util import ResponseUtil
 from common.annotation.log_annotation import Log

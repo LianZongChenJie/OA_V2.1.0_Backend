@@ -2,8 +2,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import ColumnElement
 from common.vo import PageModel, CrudResponseModel
 from exceptions.exception import ServiceException
-from module_basicdata.dao.flow_dao import OaFlowDao
-from module_basicdata.entity.vo.flow_vo import OaFlowBaseModel
+from module_basicdata.dao.public.flow_dao import OaFlowDao
+from module_basicdata.entity.vo.public.flow_vo import OaFlowBaseModel
 from datetime import datetime
 
 class FlowService:

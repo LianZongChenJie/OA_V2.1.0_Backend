@@ -7,8 +7,8 @@ from common.aspect.interface_auth import UserInterfaceAuthDependency
 from common.aspect.pre_auth import PreAuthDependency, CurrentUserDependency
 from common.router import APIRouterPro
 from common.vo import PageResponseModel
-from module_basicdata.entity.do.flow_do import OaFlow
-from module_basicdata.entity.vo.flow_vo import OaFlowBaseModel, OaFlowPageQueryModel
+from module_basicdata.entity.do.public.flow_do import OaFlow
+from module_basicdata.entity.vo.public.flow_vo import OaFlowBaseModel, OaFlowPageQueryModel
 from typing import Annotated
 from fastapi import File, Form, Path, Query, Request, Response, UploadFile
 from utils.response_util import ResponseUtil
@@ -16,13 +16,11 @@ from utils.log_util import logger
 from module_admin.entity.vo.user_vo import CurrentUserModel
 
 
-from module_basicdata.service.flow_service import FlowService
+from module_basicdata.service.public.flow_service import FlowService
 
 flow_controller = APIRouterPro(
     prefix='/basicdata/flow', order_num=4, tags=['基础数据-公共模块-审批流程'], dependencies=[PreAuthDependency()]
 )
-
-
 
 
 @flow_controller.get(

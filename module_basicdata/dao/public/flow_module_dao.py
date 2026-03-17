@@ -3,8 +3,8 @@ from sqlalchemy.sql import ColumnElement
 from sqlalchemy import select, update,desc
 from typing import Any
 from common.vo import PageModel
-from module_basicdata.entity.do.flow_module_do import FlowModule
-from module_basicdata.entity.vo.flow_module_vo import FlowModulePageQueryModel, FlowModuleModel
+from module_basicdata.entity.do.public.flow_module_do import FlowModule
+from module_basicdata.entity.vo.public.flow_module_vo import FlowModulePageQueryModel, FlowModuleModel
 from datetime import datetime, time
 
 from utils.page_util import PageUtil

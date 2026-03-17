@@ -6,8 +6,8 @@ from datetime import datetime
 from common.constant import CommonConstant
 from common.vo import PageModel, CrudResponseModel
 from exceptions.exception import ServiceException
-from module_basicdata.dao.flow_module_dao import OAFlowModuleDao
-from module_basicdata.entity.vo.flow_module_vo import FlowModulePageQueryModel, FlowModuleModel
+from module_basicdata.dao.public.flow_module_dao import OAFlowModuleDao
+from module_basicdata.entity.vo.public.flow_module_vo import FlowModulePageQueryModel, FlowModuleModel
 
 
 class FlowModuleService:
