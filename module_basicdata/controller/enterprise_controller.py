@@ -16,11 +16,11 @@ from utils.log_util import logger
 from module_basicdata.service.public.enterprise_service import EnterpriseService
 from utils.response_util import ResponseUtil
 
-flow_cate_controller = APIRouterPro(
-    prefix='/basicdata/public/enterprise', order_num=3, tags=['基础数据-公共模块-审批类型'], dependencies=[PreAuthDependency()]
+enterprise_controller = APIRouterPro(
+    prefix='/basicdata/public/enterprise', order_num=3, tags=['基础数据-公共模块-企业主体'], dependencies=[PreAuthDependency()]
 )
 
-@flow_cate_controller.get(
+@enterprise_controller.get(
     "/list",
     summary='获取审批类型分页列表接口',
     description='用于获取审批类型分页列表',
@@ -36,7 +36,7 @@ async def list_page(
     enterprise_list = await EnterpriseService.get_enterprise_list_service(query_db, flow_cate_page_query, data_scope_sql, True)
     return ResponseUtil.success(model_content=enterprise_list)
 
-@flow_cate_controller.get(
+@enterprise_controller.post(
     "/add",
     summary='新增审批类型接口',
     description='用于新增审批类型',
@@ -46,13 +46,13 @@ async def list_page(
 async def add_enterprise(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
-    enterprise_base_model: Annotated[OaEnterpriseBaseModel, Form()],
+    enterprise_base_model: OaEnterpriseBaseModel,
 ) -> Response:
     enterprise_result = await EnterpriseService.add_enterprise_service(query_db, enterprise_base_model)
     logger.info(enterprise_result.message)
     return ResponseUtil.success(data=enterprise_result.message)
 
-@flow_cate_controller.get(
+@enterprise_controller.delete(
     "/delete/{id}",
     summary='删除审批类型接口',
     description='用于删除审批类型',
@@ -68,7 +68,7 @@ async def delete_enterprise(
     logger.info(enterprise_result.message)
     return ResponseUtil.success(data=enterprise_result.message)
 
-@flow_cate_controller.get(
+@enterprise_controller.put(
     "/update",
     summary='修改审批类型接口',
     description='用于修改审批类型',
@@ -78,14 +78,14 @@ async def delete_enterprise(
 async def update_enterprise(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
-    enterprise_base_model: Annotated[OaEnterpriseBaseModel, Form()],
+    enterprise_base_model: OaEnterpriseBaseModel,
 ) -> Response:
     enterprise_result = await EnterpriseService.update_enterprise_service(query_db, enterprise_base_model)
     logger.info(enterprise_result.message)
     return ResponseUtil.success(data=enterprise_result.message)
 
 
-@flow_cate_controller.get(
+@enterprise_controller.put(
     "/changeStatus",
     summary='启用禁用审批类型接口',
     description='用于启用禁用审批类型',
@@ -95,8 +95,27 @@ async def update_enterprise(
 async def change_status_enterprise(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
-    enterprise_base_model: Annotated[OaEnterpriseBaseModel, Form()],
+    enterprise_base_model: OaEnterpriseBaseModel,
 ) -> Response:
     enterprise_result = await EnterpriseService.change_status_enterprise_service(query_db, enterprise_base_model)
     logger.info(enterprise_result.message)
     return ResponseUtil.success(data=enterprise_result.message)
+
+@enterprise_controller.get(
+    "/detail/{id}",
+    summary='获取审批类型详情接口',
+    description='用于获取审批类型详情',
+    response_model=OaEnterpriseBaseModel,
+    dependencies=[UserInterfaceAuthDependency('basicdata:flowCate:detail')],
+)
+async def get_enterprise_info(
+    request: Request,
+    query_db: Annotated[AsyncSession, DBSessionDependency()],
+    id: Annotated[int, Path()],
+) -> Response:
+    try:
+        enterprise_info = await EnterpriseService.get_enterprise_info_service(query_db, id)
+        return ResponseUtil.success(data=enterprise_info)
+    except Exception as e:
+        logger.error(e)
+        return ResponseUtil.failure("查询失败")

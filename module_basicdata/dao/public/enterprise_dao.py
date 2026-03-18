@@ -9,13 +9,9 @@ from module_basicdata.entity.vo.public.enterprise_vo import OaEnterpriseBaseMode
 from utils.page_util import PageUtil
 
 
-class EnterprisePageQueryModel:
-    pass
-
-
 class EnterpriseDao:
     @classmethod
-    async def get_enterprise_list(cls, db: AsyncSession, query_object: EnterprisePageQueryModel, data_scope_sql: ColumnElement, is_page: bool = False) -> PageModel | list[list[dict[str, Any]]]:
+    async def get_enterprise_list(cls, db: AsyncSession, query_object: OaEnterpriseBaseModel, data_scope_sql: ColumnElement, is_page: bool = False) -> PageModel | list[list[dict[str, Any]]]:
         query = (select(OaEnterprise)
                  .where(
                     OaEnterprise.status != "-1"
@@ -44,6 +40,7 @@ class EnterpriseDao:
             .values(**model.model_dump(exclude={"id", "create_time"}, exclude_none=True))
             .where(OaEnterprise.id == model.id)
         )
+        await db.commit()
         return result.rowcount
 
     @classmethod
@@ -51,6 +48,7 @@ class EnterpriseDao:
         result = await db.execute(
             update(OaEnterprise).values(status="-1").where(OaEnterprise.id == id)
         )
+        await db.commit()
         return result.rowcount
 
     @classmethod
@@ -64,9 +62,8 @@ class EnterpriseDao:
 
     @classmethod
     async def change_status_enterprise(cls, db: AsyncSession, model: OaEnterpriseBaseModel):
-        query = (select(OaEnterprise)
-                .where(
-                    OaEnterprise.id == model.id,
-                    OaEnterprise.status == model.status))
-        enterprise_info = await db.scalar(query)
-        return enterprise_info
+        result = await db.execute(
+            update(OaEnterprise).values(status=model.status).where(OaEnterprise.id == model.id)
+        )
+        await db.commit()
+        return result.rowcount

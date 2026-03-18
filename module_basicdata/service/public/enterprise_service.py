@@ -2,15 +2,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import ColumnElement
 
 from exceptions.exception import ServiceException
-from module_basicdata.dao.public.enterprise_dao import EnterprisePageQueryModel, EnterpriseDao
-from module_basicdata.entity.vo.public.enterprise_vo import OaEnterpriseBaseModel
+from module_basicdata.dao.public.enterprise_dao import EnterpriseDao
+from module_basicdata.entity.vo.public.enterprise_vo import OaEnterpriseBaseModel, OaEnterprisePageModel
 from common.vo import PageModel, CrudResponseModel
 from typing import Any
 from datetime import datetime
 
 class EnterpriseService:
     @classmethod
-    async def get_enterprise_list_service(cls, query_db: AsyncSession, query_object: EnterprisePageQueryModel, data_scope_sql: ColumnElement, is_page: bool = False) -> PageModel[OaEnterpriseBaseModel] | list[dict[str, Any]]:
+    async def get_enterprise_list_service(cls, query_db: AsyncSession, query_object: OaEnterprisePageModel, data_scope_sql: ColumnElement, is_page: bool = False) -> PageModel[OaEnterpriseBaseModel] | list[dict[str, Any]]:
         query_list = await EnterpriseDao.get_enterprise_list(query_db, query_object, data_scope_sql, is_page)
         if is_page:
             flow_cate_list_result = PageModel[OaEnterpriseBaseModel](**{
