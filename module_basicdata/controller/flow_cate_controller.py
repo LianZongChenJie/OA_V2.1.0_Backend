@@ -4,6 +4,7 @@ from fastapi import File, Form, Path, Query, Request, Response, UploadFile
 from typing import Annotated
 
 from common.vo import PageResponseModel
+from utils.camel_converter import ModelConverter
 from utils.log_util import logger
 from common.aspect.data_scope import DataScopeDependency
 from common.aspect.db_seesion import DBSessionDependency
@@ -103,7 +104,7 @@ async def get_flow_cate(
     flow_cate_result = await FlowCateService.get_flow_cate_info_service(query_db, flow_id)
     if flow_cate_result:
         logger.info(flow_cate_result.to_dict())
-        return ResponseUtil.success(data=flow_cate_result.to_dict())
+        return ResponseUtil.success(data=ModelConverter.to_dict(flow_cate_result, by_alias=True))
     else:
         return ResponseUtil.error(msg="未找到该数据")
 

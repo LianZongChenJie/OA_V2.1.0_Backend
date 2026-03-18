@@ -134,3 +134,20 @@ class TemplateService:
                 return template
         except Exception as e:
             raise e
+
+    @classmethod
+    async def change_status_template_services(cls, query_db: AsyncSession, model: TemplateBaseModel) -> CrudResponseModel:
+        """
+        修改状态
+
+        :param query_db: orm对象
+        :param model: 模板实体类
+        :return:
+        """
+        try:
+            await OaTemplateDao.change_status_template_dao(query_db, model)
+            await query_db.commit()
+            return CrudResponseModel(is_success=True, message='修改成功')
+        except Exception as e:
+            await query_db.rollback()
+            raise e

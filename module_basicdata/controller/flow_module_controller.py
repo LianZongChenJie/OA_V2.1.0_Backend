@@ -2,6 +2,8 @@ from typing import Annotated
 from fastapi import File, Form, Path, Query, Request, Response, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import ColumnElement
+
+from utils.camel_converter import ModelConverter
 from utils.log_util import logger
 
 from common.aspect.data_scope import DataScopeDependency
@@ -49,7 +51,7 @@ async def detail_page(
     if not flow_module_result:
         return ResponseUtil.error(msg="数据不存在")
     logger.info(flow_module_result.to_dict())
-    return ResponseUtil.success(data=flow_module_result.to_dict())
+    return ResponseUtil.success(data=ModelConverter.to_dict(flow_module_result, by_alias=True))
 
 @flow_module_controller.post("/add",
                             summary = '添加消息模板接口',

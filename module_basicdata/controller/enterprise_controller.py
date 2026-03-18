@@ -11,6 +11,8 @@ from module_basicdata.entity.do.public.enterprise_do import OaEnterprise
 from module_basicdata.entity.vo.public.enterprise_vo import OaEnterpriseBaseModel, OaEnterprisePageModel
 from fastapi import File, Form, Path, Query, Request, Response, UploadFile
 from typing import Annotated
+
+from utils.camel_converter import ModelConverter
 from utils.log_util import logger
 
 from module_basicdata.service.public.enterprise_service import EnterpriseService
@@ -115,7 +117,7 @@ async def get_enterprise_info(
 ) -> Response:
     try:
         enterprise_info = await EnterpriseService.get_enterprise_info_service(query_db, id)
-        return ResponseUtil.success(data=enterprise_info)
+        return ResponseUtil.success(data=ModelConverter.to_dict(enterprise_info, by_alias=True))
     except Exception as e:
         logger.error(e)
         return ResponseUtil.failure("查询失败")

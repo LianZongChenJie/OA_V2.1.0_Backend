@@ -16,6 +16,7 @@ from module_admin.entity.vo.user_vo import CurrentUserModel
 from module_basicdata.entity.do.public.template_do import OaTemplate
 from module_basicdata.entity.vo.public.template_vo import TemplateRowModel, TemplatePageQueryModel, TemplateBaseModel
 from module_basicdata.service.public.template_service import TemplateService
+from utils.camel_converter import ModelConverter
 from utils.log_util import logger
 from utils.response_util import ResponseUtil
 from common.annotation.log_annotation import Log
@@ -101,8 +102,8 @@ async def get_basicdata_template_detail(
     template_result = await TemplateService.detail_template_services(query_db, templateId)
     if not template_result:
         return ResponseUtil.error(msg="数据不存在")
-    logger.info(template_result.to_dict())
-    return ResponseUtil.success(data=template_result.to_dict())
+    logger.info(template_result)
+    return ResponseUtil.success(data=ModelConverter.to_dict(template_result, by_alias=True))
 
 @template_controller.delete(
     '/delete/{templateId}',
@@ -120,3 +121,21 @@ async def del_basicdata_template(
     logger.info(template_result)
 
     return ResponseUtil.success(msg="删除成功")
+
+
+@template_controller.put(
+    '/changeStatus',
+    summary='改变消息模板状态接口',
+    description='改变消息模板状态接口',
+    response_model=ResponseBaseModel,
+    dependencies=[UserInterfaceAuthDependency('basicdata:template:changeStatus')],
+)
+async def change_status(
+    request: Request,
+    change_status_template: TemplateBaseModel,
+    query_db: Annotated[AsyncSession, DBSessionDependency()],
+) -> Response:
+    change_status_result = await TemplateService.change_status_template_services(query_db, change_status_template)
+    logger.info(change_status_result.message)
+
+    return ResponseUtil.success(msg=change_status_result.message)

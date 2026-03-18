@@ -140,3 +140,17 @@ class OaTemplateDao:
         """
         await db.execute(delete(OaTemplate).where(OaTemplate.id == templateId))
         await db.commit()
+
+    async def change_status_template_dao(cls, db: AsyncSession, model: TemplateBaseModel) -> None:
+        """
+        修改状态
+
+        :param db: orm对象
+        :param model: 模板实体类
+        :return:
+        """
+        await db.execute(
+            update(OaTemplate)
+            .values(status=model.status)
+            .where(OaTemplate.id == model.id)
+        )

@@ -11,6 +11,8 @@ from module_basicdata.entity.do.public.flow_do import OaFlow
 from module_basicdata.entity.vo.public.flow_vo import OaFlowBaseModel, OaFlowPageQueryModel
 from typing import Annotated
 from fastapi import File, Form, Path, Query, Request, Response, UploadFile
+
+from utils.camel_converter import ModelConverter
 from utils.response_util import ResponseUtil
 from utils.log_util import logger
 from module_admin.entity.vo.user_vo import CurrentUserModel
@@ -70,7 +72,7 @@ async def detail(
     ) -> Response:
     flow_detail = await FlowService.get_flow_detail(query_db, id)
     logger.info(flow_detail.to_dict())
-    return ResponseUtil.success(data=flow_detail.to_dict())
+    return ResponseUtil.success(data=ModelConverter.to_dict(flow_detail, by_alias=True))
 
 @flow_controller.put(
     "/update",
