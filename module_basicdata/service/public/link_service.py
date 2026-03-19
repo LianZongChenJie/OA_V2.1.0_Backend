@@ -1,6 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import ColumnElement
 
+from common.constant import CommonConstant
 from exceptions.exception import ServiceException
 from common.vo import PageModel, CrudResponseModel
 from typing import Any
@@ -26,6 +27,8 @@ class LinksService:
 
     @classmethod
     async def add_link_service(cls, query_db: AsyncSession, link_model: OaLinksBaseModel) -> CrudResponseModel:
+        if not await cls.check_name_unique_services(query_db, link_model):
+            raise ServiceException(message=f'新增失败，工具已存在')
         try:
             link_model.create_time = int(datetime.now().timestamp())
             await LinksDao.add_link(query_db, link_model)
@@ -37,6 +40,8 @@ class LinksService:
 
     @classmethod
     async def update_link_service(cls, query_db: AsyncSession, link_model: OaLinksBaseModel):
+        if not await cls.check_name_unique_services(query_db, link_model):
+            raise ServiceException(message=f'更新失败，工具已存在')
         try:
             link_model.update_time = int(datetime.now().timestamp())
             await LinksDao.update_link(query_db, link_model)
@@ -67,3 +72,20 @@ class LinksService:
             await query_db.rollback()
             raise e
         pass
+
+    @classmethod
+    async def check_name_unique_services(cls, query_db: AsyncSession, page_object: OaLinksBaseModel) -> bool:
+        """
+        校验用户名是否唯一service
+
+        :param query_db: orm对象
+        :param page_object: 用户对象
+        :return: 校验结果
+        """
+        title = -1 if page_object.title is None else page_object.title
+        model = await LinksDao.get_info_by_title(query_db, OaLinksBaseModel(title=page_object.title))
+        if model and model.id == page_object.id:
+            return CommonConstant.UNIQUE
+        if model and model.title == title:
+            return CommonConstant.NOT_UNIQUE
+        return CommonConstant.UNIQUE

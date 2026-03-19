@@ -1,5 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update
+from sqlalchemy import select, update, desc
 from sqlalchemy.sql import ColumnElement
 from typing import Any
 from common.vo import PageModel
@@ -27,7 +27,7 @@ class FlowCateDao:
 
     @classmethod
     async def add_flow_cate(cls, db: AsyncSession, model: OaFlowCateModel):
-        db_flow_cate = OaFlowCate(**model.model_dump(exclude={"id"}, exclude_none=True))
+        db_flow_cate = OaFlowCate(**model.model_dump(exclude={"id"}, exclude_none=True), create_time = model.update_time)
         db.add(db_flow_cate)
         await db.commit()
         await db.refresh(db_flow_cate)
@@ -38,7 +38,7 @@ class FlowCateDao:
     async def update_flow_cate(cls, db: AsyncSession, model: OaFlowCateModel):
         result = await db.execute(
             update(OaFlowCate)
-            .values(**model.model_dump(exclude={"id", "create_time"}, exclude_none=True))
+            .values(**model.model_dump(exclude={"id", "update_time"}, exclude_none=True), update_time = model.update_time)
             .where(OaFlowCate.id == model.id)
         )
         await db.commit()
@@ -60,6 +60,34 @@ class FlowCateDao:
         result = await db.execute(update(OaFlowCate).values(status=model.status).where(OaFlowCate.id == model.id))
         await db.commit()
         return result.rowcount
+
+
+    @classmethod
+    async def get_info_by_title(cls, db: AsyncSession, model: OaFlowCateModel) -> OaFlowCate | None:
+        """
+        根据用户参数获取用户信息
+
+        :param model:
+        :param db: orm对象
+        :return: 对象
+        """
+        query_info = (
+            (
+                await db.execute(
+                    select(OaFlowCate)
+                    .where(
+                        OaFlowCate.status == '1',
+                        OaFlowCate.title == model.title if model.title else True
+                    )
+                    .order_by(desc(OaFlowCate.create_time))
+                    .distinct()
+                )
+            )
+            .scalars()
+            .first()
+        )
+
+        return query_info
 
 
 

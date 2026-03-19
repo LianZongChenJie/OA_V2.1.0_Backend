@@ -87,7 +87,7 @@ class CustomerSourceService:
         :param page_object: 用户对象
         :return: 校验结果
         """
-        title = -1 if page_object.title is None else page_object.title
+        title = -1 if page_object.name is None else page_object.title
         model = await CustomerSourceDao.get_info_by_title(query_db, OaCustomerSourceBaseModel(title=page_object.title))
         if model and model.id == page_object.id:
             return CommonConstant.UNIQUE

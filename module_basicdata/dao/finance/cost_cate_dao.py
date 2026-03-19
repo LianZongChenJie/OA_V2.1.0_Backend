@@ -1,6 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import ColumnElement
-from sqlalchemy import select, update
+from sqlalchemy import select, update, desc
 from typing import Any
 from common.vo import PageModel
 from module_basicdata.entity.do.finance.cost_cate_do import OaCostCate
@@ -54,3 +54,30 @@ class CostCateDao:
             OaCostCate.id == id))
         link_info = await db.scalar(query)
         return link_info
+
+    @classmethod
+    async def get_info_by_title(cls, db: AsyncSession, model: OaCostCateBaseModel) -> OaCostCate | None:
+        """
+        根据标题用户信息
+
+        :param model:
+        :param db: orm对象
+        :return: 对象
+        """
+        query_info = (
+            (
+                await db.execute(
+                    select(OaCostCate)
+                    .where(
+                        OaCostCate.status == '1',
+                        OaCostCate.title == model.title if model.title else True
+                    )
+                    .order_by(desc(OaCostCate.create_time))
+                    .distinct()
+                )
+            )
+            .scalars()
+            .first()
+        )
+
+        return query_info

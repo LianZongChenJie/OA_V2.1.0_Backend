@@ -1,6 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import ColumnElement
 
+from common.constant import CommonConstant
 from exceptions.exception import ServiceException
 from common.vo import PageModel, CrudResponseModel
 from typing import Any
@@ -54,7 +55,7 @@ class IndustryService:
     async def change_status_industry_service(cls, query_db: AsyncSession, model: OaIndustryBaseModel):
         try:
             await IndustryDao.change_status_industry(query_db, model)
-            return CrudResponseModel(is_success=True, message='删除成功')
+            return CrudResponseModel(is_success=True, message='操作成功')
         except Exception as e:
             await query_db.rollback()
             raise e
@@ -72,3 +73,20 @@ class IndustryService:
             await query_db.rollback()
             raise e
         pass
+
+    @classmethod
+    async def check_name_unique_services(cls, query_db: AsyncSession, page_object: OaIndustryBaseModel) -> bool:
+        """
+        校验用户名是否唯一service
+
+        :param query_db: orm对象
+        :param page_object: 用户对象
+        :return: 校验结果
+        """
+        title = -1 if page_object.title is None else page_object.title
+        model = await IndustryDao.get_info_by_title(query_db, OaIndustryBaseModel(title=page_object.title))
+        if model and model.id == page_object.id:
+            return CommonConstant.UNIQUE
+        if model and model.title == title:
+            return CommonConstant.NOT_UNIQUE
+        return CommonConstant.UNIQUE

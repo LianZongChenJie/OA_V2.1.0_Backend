@@ -2,6 +2,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import ColumnElement
 from typing import Any
 from datetime import datetime
+
+from common.constant import CommonConstant
 from common.vo import PageModel, CrudResponseModel
 from exceptions.exception import ServiceException
 from module_basicdata.dao.public.flow_cate_dao import FlowCateDao
@@ -23,6 +25,8 @@ class FlowCateService:
 
     @classmethod
     async def add_flow_cate_service(cls, query_db: AsyncSession, flow_cate_model: OaFlowCateModel) -> CrudResponseModel:
+        if not await cls.check_name_unique_services(query_db, flow_cate_model):
+            raise ServiceException(message=f'新增分类{flow_cate_model.title}失败，名称已存在')
         try:
             flow_cate_model.create_time = int(datetime.now().timestamp() * 1000)
             await FlowCateDao.add_flow_cate(query_db, flow_cate_model)
@@ -34,6 +38,8 @@ class FlowCateService:
 
     @classmethod
     async def update_flow_cate_service(cls, query_db: AsyncSession, flow_cate_model: OaFlowCateModel):
+        if not await cls.check_name_unique_services(query_db, flow_cate_model):
+            raise ServiceException(message=f'修改分类{flow_cate_model.title}失败，名称已存在')
         try:
             flow_cate_model.update_time = int(datetime.now().timestamp() * 1000)
             await FlowCateDao.update_flow_cate(query_db,  flow_cate_model)
@@ -70,3 +76,21 @@ class FlowCateService:
         except Exception as e:
             await query_db.rollback()
             raise e
+
+
+    @classmethod
+    async def check_name_unique_services(cls, query_db: AsyncSession, page_object: OaFlowCateModel) -> bool:
+        """
+        校验用户名是否唯一service
+
+        :param query_db: orm对象
+        :param page_object: 用户对象
+        :return: 校验结果
+        """
+        title = -1 if page_object.title is None else page_object.title
+        model = await FlowCateDao.get_info_by_title(query_db, OaFlowCateModel(title=page_object.title))
+        if model and model.id == page_object.id:
+            return CommonConstant.UNIQUE
+        if model and model.title == title:
+            return CommonConstant.NOT_UNIQUE
+        return CommonConstant.UNIQUE

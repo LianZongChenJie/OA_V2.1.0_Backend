@@ -1,6 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import ColumnElement
-from sqlalchemy import select, update
+from sqlalchemy import select, update, desc
 from typing import Any
 from common.vo import PageModel
 from module_basicdata.entity.do.finance.expense_cate import OaExpenseCate
@@ -54,3 +54,30 @@ class ExpenseCateDao:
             OaExpenseCate.id == id))
         expense_info = await db.scalar(query)
         return expense_info
+
+    @classmethod
+    async def get_info_by_title(cls, db: AsyncSession, model: OaExpenseCateBaseModel) -> OaExpenseCate | None:
+        """
+        根据标题用户信息
+
+        :param model:
+        :param db: orm对象
+        :return: 对象
+        """
+        query_info = (
+            (
+                await db.execute(
+                    select(OaExpenseCate)
+                    .where(
+                        OaExpenseCate.status == '1',
+                        OaExpenseCate.title == model.title if model.title else True
+                    )
+                    .order_by(desc(OaExpenseCate.create_time))
+                    .distinct()
+                )
+            )
+            .scalars()
+            .first()
+        )
+
+        return query_info

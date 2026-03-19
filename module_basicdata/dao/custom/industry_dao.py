@@ -1,6 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import ColumnElement
-from sqlalchemy import select, update
+from sqlalchemy import select, update, desc
 from typing import Any
 from common.vo import PageModel
 from module_basicdata.entity.do.custom.industry_do import OaIndustry
@@ -57,3 +57,30 @@ class IndustryDao:
             OaIndustry.id == id))
         link_info = await db.scalar(query)
         return link_info
+
+    @classmethod
+    async def get_info_by_title(cls, db: AsyncSession, model: OaIndustryBaseModel) -> OaIndustry | None:
+        """
+        根据标题用户信息
+
+        :param model:
+        :param db: orm对象
+        :return: 对象
+        """
+        query_info = (
+            (
+                await db.execute(
+                    select(OaIndustry)
+                    .where(
+                        OaIndustry.status == '1',
+                        OaIndustry.title == model.title if model.title else True
+                    )
+                    .order_by(desc(OaIndustry.create_time))
+                    .distinct()
+                )
+            )
+            .scalars()
+            .first()
+        )
+
+        return query_info
