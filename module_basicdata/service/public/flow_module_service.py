@@ -36,6 +36,8 @@ class FlowModuleService:
         """
         title = -1 if page_object.title is None else page_object.title
         flow_module = await OAFlowModuleDao.get_flow_module_by_info(query_db, FlowModuleModel(title=page_object.title))
+        if flow_module and flow_module.id == page_object.id:
+            return CommonConstant.UNIQUE
         if flow_module and flow_module.title == title:
             return CommonConstant.NOT_UNIQUE
         return CommonConstant.UNIQUE

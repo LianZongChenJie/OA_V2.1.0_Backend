@@ -56,7 +56,7 @@ class TemplateService:
         :return: 新增用户校验结果
         """
         add_template = TemplateBaseModel(**page_object.model_dump(by_alias=True))
-        add_template.update_time = int(datetime.now().timestamp() * 1000)
+        add_template.create_time = int(datetime.now().timestamp())
         if not await cls.check_template_name_unique_services(query_db, page_object):
             raise ServiceException(message=f'新增消息模板{page_object.name}失败，模板名称已存在')
         try:
@@ -92,7 +92,7 @@ class TemplateService:
         :return: 更新用户校验结果
         """
         update_template = TemplateBaseModel(**page_object.model_dump(by_alias=True))
-        update_template.update_time=int(datetime.now().timestamp() * 1000)
+        update_template.update_time=int(datetime.now().timestamp())
         if not await cls.check_template_name_unique_services(query_db, page_object):
             raise ServiceException(message=f'修改消息模板{page_object.name}失败，模板名称已存在')
         try:

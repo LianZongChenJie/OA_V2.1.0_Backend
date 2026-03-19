@@ -1,22 +1,14 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.sql import ColumnElement
-
-from common.aspect.data_scope import DataScopeDependency
 from common.aspect.db_seesion import DBSessionDependency
 from common.aspect.interface_auth import UserInterfaceAuthDependency
 from common.aspect.pre_auth import PreAuthDependency
 from common.router import APIRouterPro
-from common.vo import PageResponseModel
-from module_basicdata.entity.do.public.enterprise_do import OaEnterprise
 from module_basicdata.entity.vo.public.area_vo import AreaTreeModel, AreaBaseModel
-from module_basicdata.entity.vo.public.enterprise_vo import OaEnterpriseBaseModel, OaEnterprisePageModel
 from fastapi import File, Form, Path, Query, Request, Response, UploadFile
 from typing import Annotated
 
 from module_basicdata.service.public.area_service import AreaService
 from utils.log_util import logger
-
-from module_basicdata.service.public.enterprise_service import EnterpriseService
 from utils.response_util import ResponseUtil
 
 area_controller = APIRouterPro(

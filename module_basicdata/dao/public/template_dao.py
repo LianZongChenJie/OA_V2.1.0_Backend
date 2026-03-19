@@ -58,7 +58,7 @@ class OaTemplateDao:
         :param db: orm对象
         :return:
         """
-        db_temp_role = OaTemplate(**template.model_dump())
+        db_temp_role = OaTemplate(**template.model_dump(exclude={"id", "create_time"}, exclude_none=True))
         db.add(db_temp_role)
 
     @classmethod
@@ -125,7 +125,7 @@ class OaTemplateDao:
         """
         await db.execute(
             update(OaTemplate)
-            .values(**template.model_dump(exclude={"id", "create_time"}, exclude_none=True))
+            .values(**template.model_dump(exclude={"id", "update_time"}, exclude_none=True))
             .where(OaTemplate.id == template.id)
         )
 
@@ -141,16 +141,16 @@ class OaTemplateDao:
         await db.execute(delete(OaTemplate).where(OaTemplate.id == templateId))
         await db.commit()
 
-    async def change_status_template_dao(cls, db: AsyncSession, model: TemplateBaseModel) -> None:
+    @classmethod
+    async def change_status_template_dao(cls, db: AsyncSession, template: TemplateBaseModel) -> None:
         """
-        修改状态
-
+        更新用户信息数据库操作
+        :param template:
         :param db: orm对象
-        :param model: 模板实体类
         :return:
         """
         await db.execute(
             update(OaTemplate)
-            .values(status=model.status)
-            .where(OaTemplate.id == model.id)
+            .values(status=template.status)
+            .where(OaTemplate.id == template.id)
         )

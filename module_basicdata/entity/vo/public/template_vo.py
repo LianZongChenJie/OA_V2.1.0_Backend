@@ -1,10 +1,7 @@
-from pydantic import BaseModel, Field, validator, ConfigDict
-from typing import Optional
+from pydantic import BaseModel, Field, validator, ConfigDict, field_serializer
 from pydantic.alias_generators import to_camel
-from typing import Any
-from typing import List
+from utils.timeformat import format_timestamp
 from typing import Optional
-from typing import Dict
 
 class TemplateBaseModel(BaseModel):
     """基础模板模型"""
@@ -32,6 +29,20 @@ class TemplateBaseModel(BaseModel):
     update_time: int | None = Field(default=None, description='更新时间')
     delete_time: int | None = Field(default=None, description='删除时间')
 
+    @field_serializer('create_time')
+    def serialize_create_time(self, value: Optional[int]) -> Optional[str]:
+        """序列化创建时间"""
+        return format_timestamp(value)
+
+    @field_serializer('update_time')
+    def serialize_update_time(self, value: Optional[int]) -> Optional[str]:
+        """序列化更新时间"""
+        return format_timestamp(value)
+
+    @field_serializer('delete_time')
+    def serialize_delete_time(self, value: Optional[int]) -> Optional[str]:
+        """序列化删除时间"""
+        return format_timestamp(value) if value else None
 
 class TemplateCreateModel(TemplateBaseModel):
     """创建模板请求模型"""

@@ -1,6 +1,7 @@
-from pydantic import BaseModel, Field, validator, ConfigDict
+from pydantic import BaseModel, Field, validator, ConfigDict, field_serializer
 from pydantic.alias_generators import to_camel
 from typing import Optional
+from utils.timeformat import format_timestamp
 
 class OaFlowBaseModel(BaseModel):
     """审批基础模型"""
@@ -19,6 +20,22 @@ class OaFlowBaseModel(BaseModel):
     create_time: Optional[int] = Field(None, description='创建时间')
     update_time: Optional[int] = Field(None, description='更新时间')
     delete_time: Optional[int] = Field(None, description='删除时间')
+
+
+    @field_serializer('create_time')
+    def serialize_create_time(self, value: Optional[int]) -> Optional[str]:
+        """序列化创建时间"""
+        return format_timestamp(value)
+
+    @field_serializer('update_time')
+    def serialize_update_time(self, value: Optional[int]) -> Optional[str]:
+        """序列化更新时间"""
+        return format_timestamp(value)
+
+    @field_serializer('delete_time')
+    def serialize_delete_time(self, value: Optional[int]) -> Optional[str]:
+        """序列化删除时间"""
+        return format_timestamp(value) if value else None
 
 class OaFlowPageQueryModel(OaFlowBaseModel):
     """审批分页查询模型"""

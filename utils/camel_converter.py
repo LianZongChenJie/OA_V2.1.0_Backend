@@ -1,6 +1,7 @@
 from typing import TypeVar, Type, List, Dict, Any
 from pydantic import BaseModel
 from pydantic.alias_generators import to_camel
+from utils.timeformat import format_timestamp
 
 T = TypeVar('T', bound=BaseModel)
 M = TypeVar('M')  # SQLAlchemy 模型
@@ -56,8 +57,16 @@ class ModelConverter:
             data[key] = value
         
         return data
-    
+
     @staticmethod
     def to_dict_list(model_objs: List, by_alias: bool = True) -> List[Dict]:
         """批量转换为字典"""
         return [ModelConverter.to_dict(obj, by_alias) for obj in model_objs]
+
+    @staticmethod
+    def time_format(item_dict: Dict) -> Dict:
+        """时间格式化"""
+        for key, value in item_dict.items():
+            if key.endswith('Time') and value is not None:
+                item_dict[key] = format_timestamp(value)
+        return item_dict
