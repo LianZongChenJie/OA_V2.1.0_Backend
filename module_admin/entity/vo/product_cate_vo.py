@@ -5,9 +5,9 @@ from pydantic.alias_generators import to_camel
 from pydantic_validation_decorator import NotBlank, Size, Xss
 
 
-class PropertyCateModel(BaseModel):
+class ProductCateModel(BaseModel):
     """
-    资产分类表对应 pydantic 模型
+    产品分类表对应 pydantic 模型
     """
 
     model_config = ConfigDict(alias_generator=to_camel, from_attributes=True)
@@ -38,52 +38,52 @@ class PropertyCateModel(BaseModel):
         self.get_desc()
 
 
-class PropertyCateTreeModel(PropertyCateModel):
+class ProductCateTreeModel(ProductCateModel):
     """
-    资产分类树模型
+    产品分类树模型
     """
 
     label: str | None = Field(default=None, description='分类名称（用于树显示）')
     parentId: int | None = Field(default=None, description='父分类 ID（用于构建树结构）')
-    children: list['PropertyCateTreeModel'] | None = Field(default=[], description='子分类')
+    children: list['ProductCateTreeModel'] | None = Field(default=[], description='子分类')
 
 
-class PropertyCateQueryModel(PropertyCateModel):
+class ProductCateQueryModel(ProductCateModel):
     """
-    资产分类不分页查询模型
+    产品分类不分页查询模型
     """
 
     pass
 
 
-class PropertyCatePageQueryModel(PropertyCateQueryModel):
+class ProductCatePageQueryModel(ProductCateQueryModel):
     """
-    资产分类分页查询模型
+    产品分类分页查询模型
     """
 
     page_num: int = Field(default=1, description='当前页码')
     page_size: int = Field(default=10, description='每页记录数')
 
 
-class AddPropertyCateModel(PropertyCateModel):
+class AddProductCateModel(ProductCateModel):
     """
-    新增资产分类模型
-    """
-
-    pass
-
-
-class EditPropertyCateModel(AddPropertyCateModel):
-    """
-    编辑资产分类模型
+    新增产品分类模型
     """
 
     pass
 
 
-class DeletePropertyCateModel(BaseModel):
+class EditProductCateModel(AddProductCateModel):
     """
-    删除资产分类模型
+    编辑产品分类模型
+    """
+
+    pass
+
+
+class DeleteProductCateModel(BaseModel):
+    """
+    删除产品分类模型
     """
 
     model_config = ConfigDict(alias_generator=to_camel)

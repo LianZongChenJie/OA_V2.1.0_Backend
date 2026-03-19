@@ -82,15 +82,19 @@ class TenderDao:
     async def edit_tender_dao(cls, db: AsyncSession, tender: EditTenderModel) -> OaProjectTender:
         """编辑投标信息"""
         edit_data = tender.model_dump(exclude_unset=True, exclude={'id'}, by_alias=True)
+        
+        # MySQL 不支持 RETURNING 子句，需要先更新再查询
         query = (
             update(OaProjectTender)
             .where(OaProjectTender.id == tender.id, OaProjectTender.delete_time == 0)
             .values(**edit_data)
-            .returning(OaProjectTender)
         )
-        result = await db.execute(query)
+        await db.execute(query)
         await db.flush()
-        return result.scalar()
+        
+        # 重新查询获取更新后的数据
+        updated_tender = await cls.get_tender_detail_by_id(db, tender.id)
+        return updated_tender
 
     @classmethod
     async def delete_tender_dao(cls, db: AsyncSession, tender_ids: list[int], delete_time: int):
