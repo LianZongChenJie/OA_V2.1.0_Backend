@@ -2,7 +2,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import ColumnElement
 
 from module_basicdata.entity.do.public.enterprise_do import OaEnterprise
-from sqlalchemy import select, update
+from sqlalchemy import select, update, desc
 from typing import Any
 from common.vo import PageModel
 from module_basicdata.entity.vo.public.enterprise_vo import OaEnterpriseBaseModel
@@ -26,7 +26,7 @@ class EnterpriseDao:
 
     @classmethod
     async def add_enterprise(cls, db: AsyncSession, model: OaEnterpriseBaseModel):
-        db_enterprise = OaEnterprise(**model.model_dump(exclude={"id"}, exclude_none=True))
+        db_enterprise = OaEnterprise(**model.model_dump(exclude={"id", "create_time"}, exclude_none=True), create_time = model.create_time)
         db.add(db_enterprise)
         await db.commit()
         await db.refresh(db_enterprise)
@@ -37,7 +37,7 @@ class EnterpriseDao:
     async def update_enterprise(cls, db: AsyncSession, model: OaEnterpriseBaseModel):
         result = await db.execute(
             update(OaEnterprise)
-            .values(**model.model_dump(exclude={"id", "create_time"}, exclude_none=True))
+            .values(**model.model_dump(exclude={"id", "update_time"}, exclude_none=True), update_time = model.update_time)
             .where(OaEnterprise.id == model.id)
         )
         await db.commit()
@@ -67,3 +67,30 @@ class EnterpriseDao:
         )
         await db.commit()
         return result.rowcount
+
+    @classmethod
+    async def get_info_by_title(cls, db: AsyncSession, model: OaEnterpriseBaseModel) -> OaEnterprise | None:
+        """
+        根据标题用户信息
+
+        :param model:
+        :param db: orm对象
+        :return: 对象
+        """
+        query_info = (
+            (
+                await db.execute(
+                    select(OaEnterprise)
+                    .where(
+                        OaEnterprise.status == '1',
+                        OaEnterprise.title == model.title if model.title else True
+                    )
+                    .order_by(desc(OaEnterprise.create_time))
+                    .distinct()
+                )
+            )
+            .scalars()
+            .first()
+        )
+
+        return query_info

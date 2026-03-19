@@ -95,7 +95,7 @@ class OAFlowModuleDao:
         """
         result = await db.execute(
             update(FlowModule)
-            .values(**flow_module.model_dump(exclude={"id", "create_time"}, exclude_none=True))
+            .values(**flow_module.model_dump(exclude={"id", "create_time"}, exclude_none=True), update_time = flow_module.update_time)
             .where(FlowModule.id == flow_module.id)
             )
         return result.rowcount

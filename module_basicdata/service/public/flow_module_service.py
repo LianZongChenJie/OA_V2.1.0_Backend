@@ -38,7 +38,7 @@ class FlowModuleService:
         flow_module = await OAFlowModuleDao.get_flow_module_by_info(query_db, FlowModuleModel(title=page_object.title))
         if flow_module and flow_module.id == page_object.id:
             return CommonConstant.UNIQUE
-        if flow_module and flow_module.title == title:
+        if flow_module and flow_module.title == page_object.title:
             return CommonConstant.NOT_UNIQUE
         return CommonConstant.UNIQUE
 
@@ -72,6 +72,7 @@ class FlowModuleService:
         if not await cls.check_flow_module_name_unique_services(query_db, update_flow_module):
             raise ServiceException(message=f'修改审批模块{flow_module_model.title}失败，模块名称已存在')
         try:
+            update_flow_module.update_time = int(datetime.now().timestamp())
             await OAFlowModuleDao.update_flow_module_dao(query_db, update_flow_module)
             await query_db.commit()
             return CrudResponseModel(is_success=True, message='修改成功')

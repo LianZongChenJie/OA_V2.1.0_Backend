@@ -76,7 +76,7 @@ class OaTemplateDao:
                     select(OaTemplate)
                     .where(
                         OaTemplate.status == '1',
-                        OaTemplate.name == template.name if template.name else True
+                        OaTemplate.title == template.title if template.title else True
                     )
                     .order_by(desc(OaTemplate.create_time))
                     .distinct()

@@ -1,5 +1,8 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import ColumnElement
+from sqlalchemy.sql.coercions import cls
+
+from common.constant import CommonConstant
 from common.vo import PageModel, CrudResponseModel
 from exceptions.exception import ServiceException
 from module_basicdata.dao.public.flow_dao import OaFlowDao
@@ -7,8 +10,8 @@ from module_basicdata.entity.vo.public.flow_vo import OaFlowBaseModel
 from datetime import datetime
 
 class FlowService:
-    @staticmethod
-    async def get_flow_detail(query_db: AsyncSession, id: int) -> OaFlowBaseModel:
+    @classmethod
+    async def get_flow_detail(cls, query_db: AsyncSession, id: int) -> OaFlowBaseModel:
         try:
             flow_cate_info = await OaFlowDao.get_flow_detail(query_db, id)
             if not flow_cate_info:
@@ -18,9 +21,12 @@ class FlowService:
             await query_db.rollback()
             raise e
 
-    @staticmethod
-    async def update_flow(query_db: AsyncSession, model: OaFlowBaseModel) -> CrudResponseModel:
+    @classmethod
+    async def update_flow(cls, query_db: AsyncSession, model: OaFlowBaseModel) -> CrudResponseModel:
+        if not await cls.check_name_unique_services(query_db, model):
+            raise ServiceException(message=f'修改失败，流程已存在')
         try:
+            model.update_time = int(datetime.now().timestamp())
             result = await OaFlowDao.update_flow(query_db, model)
             if result:
                 return CrudResponseModel(is_success=True, message='更新成功')
@@ -29,10 +35,12 @@ class FlowService:
             await query_db.rollback()
             raise e
 
-    @staticmethod
-    async def add_flow(query_db: AsyncSession, model: OaFlowBaseModel) -> CrudResponseModel:
+    @classmethod
+    async def add_flow(cls, query_db: AsyncSession, model: OaFlowBaseModel) -> CrudResponseModel:
+        if not await cls.check_name_unique_services(query_db, model):
+            raise ServiceException(message=f'新增失败，工具已存在')
         try:
-            model.create_time = int(datetime.now().timestamp() * 1000)
+            model.create_time = int(datetime.now().timestamp())
             result = await OaFlowDao.add_flow(query_db, model)
             if result:
                 return CrudResponseModel(is_success=True, message='新增成功')
@@ -41,8 +49,8 @@ class FlowService:
             await query_db.rollback()
             raise e
 
-    @staticmethod
-    async def change_status_flow(query_db: AsyncSession, model: OaFlowBaseModel) -> CrudResponseModel:
+    @classmethod
+    async def change_status_flow(cls,query_db: AsyncSession, model: OaFlowBaseModel) -> CrudResponseModel:
         try:
             result = await OaFlowDao.change_status_flow(query_db, model)
             if result:
@@ -52,10 +60,27 @@ class FlowService:
             await query_db.rollback()
             raise e
 
-    @staticmethod
-    async def get_flow_list(query_db: AsyncSession, model: OaFlowBaseModel, data_scope_sql: ColumnElement, is_page: bool) -> PageModel[OaFlowBaseModel]:
+    @classmethod
+    async def get_flow_list(cls,query_db: AsyncSession, model: OaFlowBaseModel, data_scope_sql: ColumnElement, is_page: bool) -> PageModel[OaFlowBaseModel]:
         try:
             return await OaFlowDao.get_flow_list(query_db, model, data_scope_sql, is_page)
         except Exception as e:
             await query_db.rollback()
             raise e
+
+    @classmethod
+    async def check_name_unique_services(cls, query_db: AsyncSession, page_object: OaFlowBaseModel) -> bool:
+        """
+        校验用户名是否唯一service
+
+        :param query_db: orm对象
+        :param page_object: 用户对象
+        :return: 校验结果
+        """
+        title = -1 if page_object.title is None else page_object.title
+        model = await OaFlowDao.get_info_by_title(query_db, OaFlowBaseModel(title=page_object.title))
+        if model and model.id == page_object.id:
+            return CommonConstant.UNIQUE
+        if model and model.title == title:
+            return CommonConstant.NOT_UNIQUE
+        return CommonConstant.UNIQUE

@@ -1,6 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import ColumnElement
 
+from common.constant import CommonConstant
 from exceptions.exception import ServiceException
 from module_basicdata.dao.public.enterprise_dao import EnterpriseDao
 from module_basicdata.entity.vo.public.enterprise_vo import OaEnterpriseBaseModel, OaEnterprisePageModel
@@ -24,6 +25,8 @@ class EnterpriseService:
 
     @classmethod
     async def add_enterprise_service(cls, query_db: AsyncSession, enterprise_model: OaEnterpriseBaseModel) -> CrudResponseModel:
+        if not await cls.check_name_unique_services(query_db, enterprise_model):
+            raise ServiceException(message=f'新增{enterprise_model.title}失败，名称已存在')
         try:
             enterprise_model.create_time = int(datetime.now().timestamp() * 1000)
             await EnterpriseDao.add_enterprise(query_db, enterprise_model)
@@ -35,6 +38,8 @@ class EnterpriseService:
 
     @classmethod
     async def update_enterprise_service(cls, query_db: AsyncSession, enterprise_model: OaEnterpriseBaseModel):
+        if not await cls.check_name_unique_services(query_db, enterprise_model):
+            raise ServiceException(message=f'修改{enterprise_model.title}失败，名称已存在')
         try:
             enterprise_model.update_time = int(datetime.now().timestamp() * 1000)
             await EnterpriseDao.update_enterprise(query_db, enterprise_model)
@@ -75,3 +80,21 @@ class EnterpriseService:
             await query_db.rollback()
             raise e
         pass
+
+
+    @classmethod
+    async def check_name_unique_services(cls, query_db: AsyncSession, page_object: OaEnterpriseBaseModel) -> bool:
+        """
+        校验用户名是否唯一service
+
+        :param query_db: orm对象
+        :param page_object: 用户对象
+        :return: 校验结果
+        """
+        title = -1 if page_object.title is None else page_object.title
+        model = await EnterpriseDao.get_info_by_title(query_db, OaEnterpriseBaseModel(title=page_object.title))
+        if model and model.id == page_object.id:
+            return CommonConstant.UNIQUE
+        if model and model.title == title:
+            return CommonConstant.NOT_UNIQUE
+        return CommonConstant.UNIQUE

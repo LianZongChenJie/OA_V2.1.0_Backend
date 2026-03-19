@@ -1,6 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import ColumnElement
-from sqlalchemy import select, update, delete
+from sqlalchemy import select, update, delete, desc
 from typing import Any
 from common.vo import PageModel
 from module_basicdata.entity.do.public.lnks_do import OaLinks
@@ -22,7 +22,7 @@ class LinksDao:
 
     @classmethod
     async def add_link(cls, db: AsyncSession, model: OaLinksBaseModel):
-        db_link = OaLinks(**model.model_dump(exclude={"id"}, exclude_none=True))
+        db_link = OaLinks(**model.model_dump(exclude={"id", "create_time"}, exclude_none=True), create_time = model.create_time)
         db.add(db_link)
         await db.commit()
         await db.refresh(db_link)
@@ -33,7 +33,7 @@ class LinksDao:
     async def update_link(cls, db: AsyncSession, model: OaLinksBaseModel):
         result = await db.execute(
             update(OaLinks)
-            .values(**model.model_dump(exclude={"id", "create_time"}, exclude_none=True))
+            .values(**model.model_dump(exclude={"id", "update_time"}, exclude_none=True), update_time = model.update_time)
             .where(OaLinks.id == model.id)
         )
         await db.commit()
@@ -54,3 +54,29 @@ class LinksDao:
             OaLinks.id == id))
         link_info = await db.scalar(query)
         return link_info
+
+    @classmethod
+    async def get_info_by_title(cls, db: AsyncSession, model: OaLinksBaseModel) -> OaLinks | None:
+        """
+        根据用户参数获取用户信息
+
+        :param model:
+        :param db: orm对象
+        :return: 对象
+        """
+        query_info = (
+            (
+                await db.execute(
+                    select(OaLinks)
+                    .where(
+                        OaLinks.title == model.title if model.title else True
+                    )
+                    .order_by(desc(OaLinks.create_time))
+                    .distinct()
+                )
+            )
+            .scalars()
+            .first()
+        )
+
+        return query_info

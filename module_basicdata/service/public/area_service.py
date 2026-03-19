@@ -1,5 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from common.constant import CommonConstant
 from common.vo import CrudResponseModel
 from exceptions.exception import ServiceException
 from module_basicdata.dao.public.area_dao import AreaDao
@@ -14,6 +15,8 @@ class AreaService:
 
     @classmethod
     async def save(cls, db: AsyncSession, area: AreaTreeModel) -> CrudResponseModel:
+        if not await cls.check_name_unique_services(db, area):
+            raise ServiceException(message=f'新增{area.name}失败，名称已存在')
         result = await AreaDao.add(db, area)
         if result:
             return CrudResponseModel(is_success=True, message="操作成功")
@@ -51,6 +54,8 @@ class AreaService:
 
     @classmethod
     async def update(cls, db: AsyncSession, model: AreaBaseModel) -> CrudResponseModel:
+        if not await cls.check_name_unique_services(db, model):
+            raise ServiceException(message=f'修改{model.name}失败，名称已存在')
         result = await AreaDao.update(db, model)
         if result:
             return CrudResponseModel(is_success=True, message="操作成功")
@@ -67,3 +72,20 @@ class AreaService:
         except Exception as e:
             await db.rollback()
             raise e
+
+    @classmethod
+    async def check_name_unique_services(cls, query_db: AsyncSession, page_object: AreaBaseModel) -> bool:
+        """
+        校验用户名是否唯一service
+
+        :param query_db: orm对象
+        :param page_object: 用户对象
+        :return: 校验结果
+        """
+        name = -1 if page_object.name is None else page_object.name
+        model = await AreaDao.get_info_by_title(query_db, AreaBaseModel(name=page_object.name))
+        if model and model.id == page_object.id:
+            return CommonConstant.UNIQUE
+        if model and model.name == name:
+            return CommonConstant.NOT_UNIQUE
+        return CommonConstant.UNIQUE

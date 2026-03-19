@@ -1,6 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import ColumnElement
 
+from common.constant import CommonConstant
 from exceptions.exception import ServiceException
 from common.vo import PageModel, CrudResponseModel
 from typing import Any
@@ -29,6 +30,8 @@ class CostCateService:
 
     @classmethod
     async def add_cost_cate_service(cls, query_db: AsyncSession, link_model: OaCostCateBaseModel) -> CrudResponseModel:
+        if not await cls.check_name_unique_services(query_db, link_model):
+            raise ServiceException(message=f'新增{link_model.title}失败，名称已存在')
         try:
             link_model.create_time = int(datetime.now().timestamp())
             await CostCateDao.add_cost_cate(query_db, link_model)
@@ -40,6 +43,8 @@ class CostCateService:
 
     @classmethod
     async def update_cost_cate_service(cls, query_db: AsyncSession, link_model: OaCostCateBaseModel):
+        if not await cls.check_name_unique_services(query_db, link_model):
+            raise ServiceException(message=f'更新{link_model.title}失败，名称已存在')
         try:
             link_model.update_time = int(datetime.now().timestamp())
             await CostCateDao.update_cost_cate(query_db, link_model)
@@ -71,3 +76,21 @@ class CostCateService:
             await query_db.rollback()
             raise e
         pass
+
+
+    @classmethod
+    async def check_name_unique_services(cls, query_db: AsyncSession, page_object: OaCostCateBaseModel) -> bool:
+        """
+        校验用户名是否唯一service
+
+        :param query_db: orm对象
+        :param page_object: 用户对象
+        :return: 校验结果
+        """
+        title = -1 if page_object.title is None else page_object.title
+        model = await CostCateDao.get_info_by_title(query_db, OaCostCateBaseModel(title=page_object.title))
+        if model and model.id == page_object.id:
+            return CommonConstant.UNIQUE
+        if model and model.title == title:
+            return CommonConstant.NOT_UNIQUE
+        return CommonConstant.UNIQUE

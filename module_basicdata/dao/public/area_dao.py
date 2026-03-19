@@ -1,5 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update
+from sqlalchemy import select, update, desc
 
 from module_basicdata.entity.do.public.arae_do import OaArea
 from module_basicdata.entity.vo.public.area_vo import AreaBaseModel, AreaTreeModel
@@ -114,3 +114,31 @@ class AreaDao:
         result = await db.execute(query)
         area = result.scalars().all()
         return area
+
+    @classmethod
+    async def get_info_by_title(cls, db: AsyncSession, model: AreaBaseModel) -> OaArea | None:
+        """
+        根据标题用户信息
+
+        :param model:
+        :param db: orm对象
+        :return: 对象
+        """
+        query_info = (
+            (
+                await db.execute(
+                    select(OaArea)
+                    .where(
+                        OaArea.status == '1',
+                        OaArea.pid == model.pid if model.pid else True,
+                        OaArea.name == model.name if model.name else True
+                    )
+                    .order_by(desc(OaArea.create_time))
+                    .distinct()
+                )
+            )
+            .scalars()
+            .first()
+        )
+
+        return query_info

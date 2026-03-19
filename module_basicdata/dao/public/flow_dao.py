@@ -5,7 +5,7 @@ from common.vo import PageModel
 from module_basicdata.entity.do.public.flow_do import OaFlow
 from module_basicdata.entity.vo.public.flow_vo import OaFlowPageQueryModel, OaFlowBaseModel
 from typing import Any
-from sqlalchemy import select, update
+from sqlalchemy import select, update, desc
 
 from utils.page_util import PageUtil
 
@@ -29,7 +29,7 @@ class OaFlowDao:
 
     @classmethod
     async def add_flow(cls, db: AsyncSession, model: OaFlowBaseModel):
-        db_flow = OaFlow(**model.model_dump(exclude={"id"}, exclude_none=True))
+        db_flow = OaFlow(**model.model_dump(exclude={"id", "create_time"}, exclude_none=True), create_time = model.create_time)
         db.add(db_flow)
         await db.commit()
         await db.refresh(db_flow)
@@ -38,7 +38,7 @@ class OaFlowDao:
     @classmethod
     async def update_flow(cls, db: AsyncSession, model: OaFlowBaseModel):
         result = await db.execute(
-            update(OaFlow).where(model.id == OaFlow.id).values(**model.model_dump(exclude={"id", "create_time"}, exclude_none=True))
+            update(OaFlow).where(model.id == OaFlow.id).values(**model.model_dump(exclude={"id","update_time"}, exclude_none=True), update_time = model.update_time)
         )
         await db.commit()
         return result
@@ -53,3 +53,30 @@ class OaFlowDao:
     async def get_flow_detail(cls, db: AsyncSession, id: int):
         result = await db.execute(select(OaFlow).where(id == OaFlow.id))
         return result.scalars().first()
+
+    @classmethod
+    async def get_info_by_title(cls, db: AsyncSession, model: OaFlowBaseModel) -> OaFlow | None:
+        """
+        根据用户参数获取用户信息
+
+        :param model:
+        :param db: orm对象
+        :return: 对象
+        """
+        query_info = (
+            (
+                await db.execute(
+                    select(OaFlow)
+                    .where(
+                        OaFlow.status == '1',
+                        OaFlow.title == model.title if model.title else True
+                    )
+                    .order_by(desc(OaFlow.create_time))
+                    .distinct()
+                )
+            )
+            .scalars()
+            .first()
+        )
+
+        return query_info
