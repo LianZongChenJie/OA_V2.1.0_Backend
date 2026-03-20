@@ -5,8 +5,9 @@ from sqlalchemy.sql.coercions import cls
 from common.constant import CommonConstant
 from common.vo import PageModel, CrudResponseModel
 from exceptions.exception import ServiceException
+from module_admin.dao.dept_dao import DeptDao
 from module_basicdata.dao.public.flow_dao import OaFlowDao
-from module_basicdata.entity.vo.public.flow_vo import OaFlowBaseModel
+from module_basicdata.entity.vo.public.flow_vo import OaFlowBaseModel, OaFlowVOModel
 from datetime import datetime
 
 class FlowService:
@@ -63,7 +64,28 @@ class FlowService:
     @classmethod
     async def get_flow_list(cls,query_db: AsyncSession, model: OaFlowBaseModel, data_scope_sql: ColumnElement, is_page: bool) -> PageModel[OaFlowBaseModel]:
         try:
-            return await OaFlowDao.get_flow_list(query_db, model, data_scope_sql, is_page)
+            result =  await OaFlowDao.get_flow_list(query_db, model, data_scope_sql, is_page)
+            new_rows = []
+            for flow,flowCate,flowModule,user in result.rows:
+                flowVO = OaFlowVOModel(**flow)
+                flowVO.cate_name = flowCate.get('title')
+                flowVO.module_name = flowModule.get('title')
+                if flowVO.copy_names:
+                    flowVO.copy_names = user.get('nickName')
+                else:
+                    flowVO.copy_names = '无'
+                if flowVO.department_ids is None or flowVO.department_ids == '':
+                    flowVO.department_names = '全公司'
+                else:
+                    dept_names = await DeptDao.get_name_list_ids(query_db, flowVO.department_ids)
+                    if dept_names:
+                        for dept_name in dept_names:
+                            flowVO.department_names = ''.join(dept_name)
+                    else:
+                        flowVO.department_names = '未找到部门'
+                new_rows.append(flowVO)
+            result.rows = new_rows
+            return result
         except Exception as e:
             await query_db.rollback()
             raise e
