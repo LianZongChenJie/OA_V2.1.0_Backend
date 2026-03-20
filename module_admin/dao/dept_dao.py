@@ -313,3 +313,20 @@ class DeptDao:
         ).scalar()
 
         return dept_user_count
+
+    @classmethod
+    async def get_name_list_ids(cls, db: AsyncSession, dept_ids: str) -> list[str]:
+        """
+        根据部门id获取部门名称
+
+        :param db: orm对象
+        :param dept_ids: 部门id，多个用逗号隔开
+        :return: 部门名称，多个用逗号隔开
+        """
+        dept_names = (
+            await db.execute(
+                select(SysDept.dept_name).where(SysDept.dept_id.in_(dept_ids.split(','))).order_by(SysDept.dept_id)
+            )
+        ).scalar()
+
+        return dept_names

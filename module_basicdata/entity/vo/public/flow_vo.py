@@ -42,3 +42,11 @@ class OaFlowPageQueryModel(OaFlowBaseModel):
     page_num: Optional[int] = Field(1, description='当前页码')
     page_size: Optional[int] = Field(10, description='每页数量')
 
+class OaFlowVOModel(OaFlowBaseModel):
+    """审批视图模型"""
+    cate_name: Optional[str] = Field(None, description='审批类型名称')
+    module_name: Optional[str] = Field(None, description='审批模块名称')
+    copy_names: Optional[str] = Field(None, description='抄送人名称')
+    department_names: Optional[str] = Field(None, description='应用部门名称')
+
+

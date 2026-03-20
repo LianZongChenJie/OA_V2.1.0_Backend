@@ -2,10 +2,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import ColumnElement
 
 from common.vo import PageModel
+from module_admin.entity.do.dept_do import SysDept
+from module_admin.entity.do.user_do import SysUser
+from module_basicdata.entity.do.public.flow_cate_do import OaFlowCate
 from module_basicdata.entity.do.public.flow_do import OaFlow
+from module_basicdata.entity.do.public.flow_module_do import FlowModule
 from module_basicdata.entity.vo.public.flow_vo import OaFlowPageQueryModel, OaFlowBaseModel
 from typing import Any
-from sqlalchemy import select, update, desc
+from sqlalchemy import select, update, desc, asc
 
 from utils.page_util import PageUtil
 
@@ -13,15 +17,16 @@ from utils.page_util import PageUtil
 class OaFlowDao:
     @classmethod
     async def get_flow_list(cls, db: AsyncSession, query_object: OaFlowPageQueryModel, data_scope_sql: ColumnElement, is_page: bool = False) -> PageModel | list[list[dict[str, Any]]]:
-        query = (select(OaFlow)
+        query = (select(OaFlow,OaFlowCate, FlowModule,SysUser)
+                 .join(OaFlowCate, OaFlow.cate_id == OaFlowCate.id, isouter=True)
+                 .join(FlowModule, OaFlowCate.module_id == FlowModule.id, isouter=True)
+                 .join(SysUser, OaFlow.copy_uids == SysUser.user_id, isouter=True)
                  .where(
             OaFlow.status != "-1"
             if query_object
             else True,
-            OaFlow.titel.like(f'%{query_object.title}%') if query_object.title
-            else True,
             data_scope_sql,
-        ).order_by(OaFlow.id.asc()))
+        ).order_by(asc(OaFlow.id)))
         flow_cate_list: PageModel | list[list[dict[str, Any]]] = await PageUtil.paginate(
             db, query, query_object.page_num, query_object.page_size, is_page
         )
