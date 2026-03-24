@@ -346,7 +346,12 @@ class CarFeeDao:
         :param fee: 费用记录字典
         :return:
         """
-        db_fee = OaCarFee(**fee)
+        # 排除关联查询字段，只保留数据库表中存在的字段
+        db_fee_data = {
+            k: v for k, v in fee.items() 
+            if k not in ['car_name', 'handled_name', 'types_str']
+        }
+        db_fee = OaCarFee(**db_fee_data)
         db.add(db_fee)
         await db.flush()
 
@@ -361,7 +366,12 @@ class CarFeeDao:
         :param fee: 需要更新的费用记录字典
         :return:
         """
-        await db.execute(update(OaCarFee), [fee])
+        # 排除关联查询字段，只保留数据库表中存在的字段
+        db_fee_data = {
+            k: v for k, v in fee.items() 
+            if k not in ['car_name', 'handled_name', 'types_str']
+        }
+        await db.execute(update(OaCarFee), [db_fee_data])
 
     @classmethod
     async def delete_car_fee_dao(cls, db: AsyncSession, fee_id: int) -> None:

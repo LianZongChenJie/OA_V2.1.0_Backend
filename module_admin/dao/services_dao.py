@@ -42,8 +42,6 @@ class ServicesDao:
         :return: 服务信息对象
         """
         query_conditions = []
-        if services.id is not None:
-            query_conditions.append(OaServices.id == services.id)
         if services.title:
             query_conditions.append(OaServices.title == services.title)
 

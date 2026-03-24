@@ -33,6 +33,32 @@ class NoteCateDao:
         return note_cate_info
 
     @classmethod
+    async def get_note_cate_detail_by_info(cls, db: AsyncSession, note_cate: NoteCateModel) -> SysNoteCate | None:
+        """
+        根据公告分类参数获取公告分类信息
+
+        :param db: orm 对象
+        :param note_cate: 公告分类参数对象
+        :return: 公告分类信息对象
+        """
+        query_conditions = []
+        if note_cate.id is not None:
+            query_conditions.append(SysNoteCate.id == note_cate.id)
+        if note_cate.title:
+            query_conditions.append(SysNoteCate.title == note_cate.title)
+
+        if query_conditions:
+            note_cate_info = (
+                (await db.execute(select(SysNoteCate).where(and_(*query_conditions))))
+                .scalars()
+                .first()
+            )
+        else:
+            note_cate_info = None
+
+        return note_cate_info
+
+    @classmethod
     async def get_note_cate_list(
             cls, db: AsyncSession, query_object: NoteCatePageQueryModel, is_page: bool = False
     ) -> PageModel | list[dict[str, Any]]:

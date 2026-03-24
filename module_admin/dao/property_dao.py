@@ -41,18 +41,8 @@ class PropertyDao:
         :return: 资产信息对象
         """
         query_conditions = []
-        if property.id is not None:
-            query_conditions.append(SysProperty.id == property.id)
         if property.title:
-            query_conditions.append(SysProperty.title.like(f'%{property.title}%'))
-        if property.cate_id is not None:
-            query_conditions.append(SysProperty.cate_id == property.cate_id)
-        if property.brand_id is not None:
-            query_conditions.append(SysProperty.brand_id == property.brand_id)
-        if property.unit_id is not None:
-            query_conditions.append(SysProperty.unit_id == property.unit_id)
-        if property.status is not None:
-            query_conditions.append(SysProperty.status == property.status)
+            query_conditions.append(SysProperty.title == property.title)
 
         if query_conditions:
             property_info = (

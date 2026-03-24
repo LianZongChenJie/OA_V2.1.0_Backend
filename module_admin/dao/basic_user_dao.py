@@ -42,10 +42,6 @@ class BasicUserDao:
         :return: 人事模块常规数据信息对象
         """
         query_conditions = []
-        if basic_user.id is not None:
-            query_conditions.append(SysBasicUser.id == basic_user.id)
-        if basic_user.types:
-            query_conditions.append(SysBasicUser.types == basic_user.types)
         if basic_user.title:
             query_conditions.append(SysBasicUser.title == basic_user.title)
 

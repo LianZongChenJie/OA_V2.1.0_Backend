@@ -42,8 +42,6 @@ class ProductDao:
         :return: 产品信息对象
         """
         query_conditions = []
-        if product.id is not None:
-            query_conditions.append(OaProduct.id == product.id)
         if product.title:
             query_conditions.append(OaProduct.title == product.title)
         if product.code:

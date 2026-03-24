@@ -42,8 +42,6 @@ class RewardsCateDao:
         :return: 奖罚项目信息对象
         """
         query_conditions = []
-        if rewards_cate.id is not None:
-            query_conditions.append(SysRewardsCate.id == rewards_cate.id)
         if rewards_cate.title:
             query_conditions.append(SysRewardsCate.title == rewards_cate.title)
 

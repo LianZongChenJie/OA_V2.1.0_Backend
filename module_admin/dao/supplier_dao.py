@@ -42,8 +42,6 @@ class SupplierDao:
         :return: 供应商信息对象
         """
         query_conditions = []
-        if supplier.id is not None:
-            query_conditions.append(OaSupplier.id == supplier.id)
         if supplier.title:
             query_conditions.append(OaSupplier.title == supplier.title)
 

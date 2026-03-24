@@ -41,6 +41,23 @@ class NoteCateService:
         return note_cate_list_result
 
     @classmethod
+    async def check_note_cate_title_unique_services(
+            cls, query_db: AsyncSession, page_object: NoteCateModel
+    ) -> bool:
+        """
+        校验公告分类名称是否唯一 service
+
+        :param query_db: orm 对象
+        :param page_object: 公告分类对象
+        :return: 校验结果
+        """
+        note_cate_id = -1 if page_object.id is None else page_object.id
+        note_cate = await NoteCateDao.get_note_cate_detail_by_info(query_db, page_object)
+        if note_cate and note_cate.id != note_cate_id:
+            return CommonConstant.NOT_UNIQUE
+        return CommonConstant.UNIQUE
+
+    @classmethod
     async def add_note_cate_services(
             cls, request: Request, query_db: AsyncSession, page_object: AddNoteCateModel
     ) -> CrudResponseModel:
@@ -52,6 +69,9 @@ class NoteCateService:
         :param page_object: 新增公告分类对象
         :return: 新增公告分类校验结果
         """
+        if not await cls.check_note_cate_title_unique_services(query_db, page_object):
+            raise ServiceException(message=f'新增公告分类{page_object.title}失败，公告分类名称已存在')
+
         try:
             current_time = int(datetime.now().timestamp())
             add_note_cate = NoteCateModel(
@@ -85,6 +105,9 @@ class NoteCateService:
         note_cate_info = await cls.note_cate_detail_services(query_db, page_object.id)
 
         if note_cate_info.id:
+            if not await cls.check_note_cate_title_unique_services(query_db, page_object):
+                raise ServiceException(message=f'修改公告分类{page_object.title}失败，公告分类名称已存在')
+
             try:
                 edit_note_cate['update_time'] = int(datetime.now().timestamp())
                 await NoteCateDao.edit_note_cate_dao(query_db, edit_note_cate)

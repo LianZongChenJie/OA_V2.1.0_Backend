@@ -42,12 +42,8 @@ class ProductCateDao:
         :return: 产品信息对象
         """
         query_conditions = []
-        if product_cate.id is not None:
-            query_conditions.append(OaProductCate.id == product_cate.id)
         if product_cate.title:
             query_conditions.append(OaProductCate.title == product_cate.title)
-        if product_cate.pid is not None:
-            query_conditions.append(OaProductCate.pid == product_cate.pid)
 
         if query_conditions:
             product_cate_info = (

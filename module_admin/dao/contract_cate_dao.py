@@ -42,8 +42,6 @@ class ContractCateDao:
         :return: 合同类别信息对象
         """
         query_conditions = []
-        if contract_cate.id is not None:
-            query_conditions.append(OaContractCate.id == contract_cate.id)
         if contract_cate.title:
             query_conditions.append(OaContractCate.title == contract_cate.title)
 

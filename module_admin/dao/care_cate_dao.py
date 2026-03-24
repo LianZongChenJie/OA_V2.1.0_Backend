@@ -42,8 +42,6 @@ class CareCateDao:
         :return: 关怀项目信息对象
         """
         query_conditions = []
-        if care_cate.id is not None:
-            query_conditions.append(SysCareCate.id == care_cate.id)
         if care_cate.title:
             query_conditions.append(SysCareCate.title == care_cate.title)
 

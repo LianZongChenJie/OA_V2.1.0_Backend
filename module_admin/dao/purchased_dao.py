@@ -42,8 +42,6 @@ class PurchasedDao:
         :return: 采购品信息对象
         """
         query_conditions = []
-        if purchased.id is not None:
-            query_conditions.append(OaPurchased.id == purchased.id)
         if purchased.title:
             query_conditions.append(OaPurchased.title == purchased.title)
 

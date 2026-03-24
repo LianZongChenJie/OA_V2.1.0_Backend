@@ -26,11 +26,38 @@ class BasicAdmService:
 
     @classmethod
     async def check_basic_adm_title_unique_services(cls, query_db: AsyncSession, page_object: OaBasicAdmModel) -> bool:
-        basic_adm_id = -1 if page_object.id is None else page_object.id
-        basic_adm = await BasicAdmDao.get_basic_adm_info(query_db, page_object.id) if page_object.id else None
-        if basic_adm and basic_adm.id != basic_adm_id:
-            return False
-        return True
+        """
+        检查常规数据名称是否唯一
+        
+        :param query_db: orm 对象
+        :param page_object: 常规数据对象
+        :return: 是否唯一
+        """
+        from module_admin.entity.do.basic_adm_do import OaBasicAdm
+        from sqlalchemy import select, and_
+        
+        # 构建查询条件：类型相同且名称相同
+        query = select(OaBasicAdm).where(
+            and_(
+                OaBasicAdm.types == page_object.types,
+                OaBasicAdm.title == page_object.title,
+                OaBasicAdm.status != -1  # 排除已删除的数据
+            )
+        )
+        
+        result = await query_db.execute(query)
+        existing_record = result.scalars().first()
+        
+        # 如果没有找到重复记录，返回 True
+        if existing_record is None:
+            return True
+        
+        # 如果是编辑操作（有 id），且找到的记录就是当前记录本身，返回 True
+        if page_object.id is not None and existing_record.id == page_object.id:
+            return True
+            
+        # 其他情况都表示重复，返回 False
+        return False
 
     @classmethod
     async def add_basic_adm_service(cls, request: Request, query_db: AsyncSession, basic_adm_model: OaBasicAdmModel) -> CrudResponseModel:

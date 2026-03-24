@@ -210,9 +210,9 @@ class CarRepairService:
                 repair_data['repair_time'] = current_time
 
             # 处理金额字段
-            if 'cost' in repair_data and repair_data['cost'] is not None:
-                if isinstance(repair_data['cost'], Decimal):
-                    repair_data['cost'] = float(repair_data['cost'])
+            if 'amount' in repair_data and repair_data['amount'] is not None:
+                if isinstance(repair_data['amount'], Decimal):
+                    repair_data['amount'] = float(repair_data['amount'])
 
             await CarRepairDao.add_car_repair_dao(query_db, repair_data)
             await query_db.commit()
@@ -241,9 +241,9 @@ class CarRepairService:
                 repair_data['update_time'] = int(datetime.now().timestamp())
 
                 # 处理金额字段
-                if 'cost' in repair_data and repair_data['cost'] is not None:
-                    if isinstance(repair_data['cost'], Decimal):
-                        repair_data['cost'] = float(repair_data['cost'])
+                if 'amount' in repair_data and repair_data['amount'] is not None:
+                    if isinstance(repair_data['amount'], Decimal):
+                        repair_data['amount'] = float(repair_data['amount'])
 
                 await CarRepairDao.edit_car_repair_dao(query_db, repair_data)
                 await query_db.commit()
