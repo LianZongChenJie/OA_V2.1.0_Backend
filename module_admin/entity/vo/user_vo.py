@@ -70,7 +70,7 @@ class UserModel(BaseModel):
     file_ids: str | None = Field(default=None, description='档案ID')
     user_desc: str | None = Field(default=None, description='员工简介')
     is_hide: int | None = Field(default=None, description='是否隐藏联系方式')
-    entry_date: str | None = Field(default=None, description='入职日期')
+    entry_time: int | None = Field(default=None, description='入职日期')
     delete_time: int | None = Field(default=None, description='删除时间')
     password: str | None = Field(default=None, description='密码')
     status: Literal['0', '1'] | None = Field(default=None, description='帐号状态（0正常 1停用）')
@@ -137,6 +137,7 @@ class UserRowModel(UserModel):
     """
 
     dept: DeptModel | None = Field(default=None, description='部门信息')
+    post: PostModel | None = Field(default=None, description='岗位信息')
 
 
 class UserRoleModel(BaseModel):

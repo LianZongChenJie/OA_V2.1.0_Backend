@@ -63,7 +63,7 @@ class SysUser(Base):
     file_ids = Column(String(500), nullable=True, server_default="''", comment='档案ID')
     user_desc = Column(Text, nullable=True, server_default="''", comment='员工简介')
     is_hide = Column(Integer, nullable=True, comment='是否隐藏联系信息（0显示 1隐藏）')
-    entry_time = Column(String(255), nullable=True, server_default="''", comment='入职日期')
+    entry_time = Column(Integer, nullable=True, server_default="''", comment='入职日期')
     delete_time = Column(BigInteger, nullable=True, comment='删除时间')
     password = Column(String(100), nullable=True, server_default="''", comment='密码')
     status = Column(String(1), nullable=True, server_default='0', comment='帐号状态（0正常 1停用）')

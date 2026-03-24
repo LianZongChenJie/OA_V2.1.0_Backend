@@ -17,6 +17,7 @@ class PostModel(BaseModel):
     post_code: str | None = Field(default=None, description='岗位编码')
     post_name: str | None = Field(default=None, description='岗位名称')
     post_sort: int | None = Field(default=None, description='显示顺序')
+    work_price: int | None = Field(default=None, description='工时单价')
     status: Literal['0', '1'] | None = Field(default=None, description='状态（0正常 1停用）')
     create_by: str | None = Field(default=None, description='创建者')
     create_time: datetime | None = Field(default=None, description='创建时间')

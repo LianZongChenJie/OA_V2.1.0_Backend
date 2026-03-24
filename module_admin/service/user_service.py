@@ -68,7 +68,7 @@ class UserService:
             user_list_result = PageModel[UserRowModel](
                 **{
                     **query_result.model_dump(by_alias=True),
-                    'rows': [{**row[0], 'dept': row[1]} for row in query_result.rows],
+                    'rows': [{**row[0], 'dept': row[1], 'post': row[2]} for row in query_result.rows],
                 }
             )
         else:

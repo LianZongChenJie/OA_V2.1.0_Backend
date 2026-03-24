@@ -165,3 +165,20 @@ async def query_detail_system_dept(
     logger.info(f'获取dept_id为{dept_id}的信息成功')
 
     return ResponseUtil.success(data=detail_dept_result)
+
+@dept_controller.get(
+    '/detail/{dept_id}',
+    summary='获取部门详情接口',
+    description='用于获取指定部门的详情信息',
+    response_model=DataResponseModel[DeptModel],
+    dependencies=[UserInterfaceAuthDependency('system:dept:query')],
+)
+async def query_detail_system_dept_by_id(
+    request: Request,
+    dept_id: Annotated[int, Path(description='部门id')],
+    query_db: Annotated[AsyncSession, DBSessionDependency()]
+) -> Response:
+    detail_dept_result = await DeptService.dept_detail_services(query_db, dept_id)
+    logger.info(f'获取dept_id为{dept_id}的信息成功')
+
+    return ResponseUtil.success(data=detail_dept_result)

@@ -292,14 +292,16 @@ class UserDao:
         :return: 用户列表信息对象
         """
         query = (
-            select(SysUser, SysDept)
+            select(SysUser, SysDept, SysPost)
+            .join(SysUserPost, SysUser.user_id == SysUserPost.user_id, isouter=True)
+            .join(SysPost, SysUserPost.post_id == SysPost.post_id, isouter=True)
             .where(
                 SysUser.del_flag == '0',
                 or_(
                     SysUser.dept_id == query_object.dept_id,
                     SysUser.dept_id.in_(
                         select(SysDept.dept_id).where(func.find_in_set(query_object.dept_id, SysDept.ancestors))
-                    ),
+                    )
                 )
                 if query_object.dept_id
                 else True,
