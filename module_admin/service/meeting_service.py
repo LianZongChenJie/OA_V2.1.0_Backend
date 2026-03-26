@@ -10,6 +10,7 @@ from exceptions.exception import ServiceException
 from module_admin.dao.meeting_dao import MeetingRoomDao, MeetingOrderDao, MeetingRecordsDao
 from module_admin.entity.vo.meeting_vo import (
     MeetingRoomPageQueryModel,
+    MeetingRoomModel,
     AddMeetingRoomModel,
     EditMeetingRoomModel,
     DeleteMeetingRoomModel,
@@ -32,6 +33,23 @@ class MeetingRoomService:
     """
 
     @classmethod
+    async def check_meeting_room_title_unique_services(
+            cls, query_db: AsyncSession, page_object: MeetingRoomModel
+    ) -> bool:
+        """
+        校验会议室名称是否唯一 service
+
+        :param query_db: orm 对象
+        :param page_object: 会议室对象
+        :return: 校验结果
+        """
+        room_id = -1 if page_object.id is None else page_object.id
+        room = await MeetingRoomDao.get_meeting_room_detail_by_info(query_db, page_object.title)
+        if room and room.id != room_id:
+            return CommonConstant.NOT_UNIQUE
+        return CommonConstant.UNIQUE
+
+    @classmethod
     async def get_meeting_room_list_services(
             cls, query_db: AsyncSession, query_object: MeetingRoomPageQueryModel, is_page: bool = False
     ) -> PageModel | list[dict[str, Any]]:
@@ -48,6 +66,11 @@ class MeetingRoomService:
         """
         新增会议室信息 service
         """
+        # 检查会议室名称是否已存在
+        is_unique = await cls.check_meeting_room_title_unique_services(query_db, page_object)
+        if not is_unique:
+            raise ServiceException(message=f'新增会议室失败，会议室名称【{page_object.title}】已存在')
+        
         try:
             current_time = int(datetime.now().timestamp())
             room_data = page_object.model_dump(exclude_unset=True)
@@ -69,6 +92,11 @@ class MeetingRoomService:
         """
         编辑会议室信息 service
         """
+        # 检查会议室名称是否已存在（排除当前会议室）
+        is_unique = await cls.check_meeting_room_title_unique_services(query_db, page_object)
+        if not is_unique:
+            raise ServiceException(message=f'修改会议室失败，会议室名称【{page_object.title}】已存在')
+        
         room_data = page_object.model_dump(exclude_unset=True)
         room_info = await cls.meeting_room_detail_services(query_db, page_object.id)
 
@@ -169,7 +197,19 @@ class MeetingOrderService:
                 if page_object.end_date <= page_object.start_date:
                     raise ServiceException(message='结束时间需要大于开始时间')
 
-            # 检查时间冲突
+            # 检查同一会议室在相同时间段内是否存在相同主题的预定记录（排除待审核和已拒绝的记录）
+            duplicate_check = await MeetingOrderDao.check_duplicate_order(
+                query_db,
+                page_object.room_id,
+                page_object.title,
+                page_object.start_date,
+                page_object.end_date
+            )
+
+            if duplicate_check > 0:
+                raise ServiceException(message='该会议室在此时间段已有相同主题的预定记录，请勿重复提交')
+
+            # 检查时间冲突（同一会议室在同一时间段内的任何预定）
             conflict_count = await MeetingOrderDao.check_time_conflict(
                 query_db,
                 page_object.room_id,
@@ -288,6 +328,16 @@ class MeetingRecordsService:
         新增会议纪要信息 service
         """
         try:
+            # 检查是否存在重复的会议纪要（同一会议室、同一会议时间）
+            duplicate_count = await MeetingRecordsDao.check_duplicate_records(
+                query_db,
+                page_object.room_id,
+                page_object.meeting_date
+            )
+
+            if duplicate_count > 0:
+                raise ServiceException(message='该会议室在此会议时间已有会议纪要记录，请勿重复提交')
+
             current_time = int(datetime.now().timestamp())
             records_data = page_object.model_dump(exclude_unset=True)
             records_data['create_time'] = current_time
@@ -344,6 +394,8 @@ class MeetingRecordsService:
                 raise e
         else:
             raise ServiceException(message='传入会议纪要记录 id 为空')
+
+
 
     @classmethod
     async def meeting_records_detail_services(cls, query_db: AsyncSession, records_id: int) -> MeetingRecordsPageQueryModel:

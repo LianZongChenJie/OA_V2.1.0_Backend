@@ -10,24 +10,29 @@ from common.aspect.pre_auth import PreAuthDependency
 from common.enums import BusinessType
 from common.router import APIRouterPro
 from common.vo import DataResponseModel, PageResponseModel, ResponseBaseModel
-from module_admin.service.meeting_service import MeetingRoomService, MeetingOrderService, MeetingRecordsService
 from module_admin.entity.vo.meeting_vo import (
-    MeetingRoomPageQueryModel,
-    AddMeetingRoomModel,
-    EditMeetingRoomModel,
-    DeleteMeetingRoomModel,
-    MeetingRoomStatusModel,
-    MeetingOrderPageQueryModel,
     AddMeetingOrderModel,
-    EditMeetingOrderModel,
-    DeleteMeetingOrderModel,
-    MeetingRecordsPageQueryModel,
     AddMeetingRecordsModel,
-    EditMeetingRecordsModel,
+    AddMeetingRoomModel,
+    DeleteMeetingOrderModel,
     DeleteMeetingRecordsModel,
+    DeleteMeetingRoomModel,
+    EditMeetingOrderModel,
+    EditMeetingRecordsModel,
+    EditMeetingRoomModel,
+    MeetingOrderPageQueryModel,
+    MeetingRecordsPageQueryModel,
+    MeetingRoomPageQueryModel,
+    MeetingRoomStatusModel,
+)
+from module_admin.service.meeting_service import (
+    MeetingOrderService,
+    MeetingRecordsService,
+    MeetingRoomService,
 )
 from utils.log_util import logger
 from utils.response_util import ResponseUtil
+from exceptions.exception import ServiceException
 
 
 meeting_router = APIRouterPro(
@@ -81,9 +86,12 @@ async def add_meeting_room(
         result = await MeetingRoomService.add_meeting_room_services(request, db, page_object)
         logger.info(result.message)
         return ResponseUtil.success(msg=result.message)
+    except ServiceException as e:
+        logger.error(f'新增会议室失败：{e.message}', exc_info=True)
+        return ResponseUtil.error(msg=e.message or '操作失败')
     except Exception as e:
-        logger.error(f'新增会议室失败：{str(e)}')
-        return ResponseUtil.error(msg=str(e))
+        logger.exception(f'新增会议室失败：{str(e)}')
+        return ResponseUtil.error(msg=str(e) or '系统内部错误，请联系管理员')
 
 
 @meeting_router.put(
@@ -106,9 +114,12 @@ async def edit_meeting_room(
         result = await MeetingRoomService.edit_meeting_room_services(request, db, page_object)
         logger.info(result.message)
         return ResponseUtil.success(msg=result.message)
+    except ServiceException as e:
+        logger.error(f'编辑会议室失败：{e.message}', exc_info=True)
+        return ResponseUtil.error(msg=e.message or '操作失败')
     except Exception as e:
-        logger.error(f'编辑会议室失败：{str(e)}')
-        return ResponseUtil.error(msg=str(e))
+        logger.exception(f'编辑会议室失败：{str(e)}')
+        return ResponseUtil.error(msg=str(e) or '系统内部错误，请联系管理员')
 
 
 @meeting_router.delete(
@@ -132,9 +143,12 @@ async def delete_meeting_room(
         result = await MeetingRoomService.delete_meeting_room_services(request, db, page_object)
         logger.info(result.message)
         return ResponseUtil.success(msg=result.message)
+    except ServiceException as e:
+        logger.error(f'删除会议室失败：{e.message}', exc_info=True)
+        return ResponseUtil.error(msg=e.message or '操作失败')
     except Exception as e:
-        logger.error(f'删除会议室失败：{str(e)}')
-        return ResponseUtil.error(msg=str(e))
+        logger.exception(f'删除会议室失败：{str(e)}')
+        return ResponseUtil.error(msg=str(e) or '系统内部错误，请联系管理员')
 
 
 @meeting_router.put(
@@ -157,9 +171,12 @@ async def update_meeting_room_status(
         result = await MeetingRoomService.update_meeting_room_status_services(request, db, page_object)
         logger.info(result.message)
         return ResponseUtil.success(msg=result.message)
+    except ServiceException as e:
+        logger.error(f'更新会议室状态失败：{e.message}', exc_info=True)
+        return ResponseUtil.error(msg=e.message or '操作失败')
     except Exception as e:
-        logger.error(f'更新会议室状态失败：{str(e)}')
-        return ResponseUtil.error(msg=str(e))
+        logger.exception(f'更新会议室状态失败：{str(e)}')
+        return ResponseUtil.error(msg=str(e) or '系统内部错误，请联系管理员')
 
 
 @meeting_router.get(
@@ -181,9 +198,12 @@ async def get_meeting_room_detail(
         room_detail = await MeetingRoomService.meeting_room_detail_services(db, id)
         logger.info(f'获取 id 为{id}的会议室信息成功')
         return ResponseUtil.success(data=room_detail)
+    except ServiceException as e:
+        logger.error(f'获取会议室详情失败：{e.message}', exc_info=True)
+        return ResponseUtil.error(msg=e.message or '操作失败')
     except Exception as e:
-        logger.error(f'获取会议室详情失败：{str(e)}')
-        return ResponseUtil.error(msg=str(e))
+        logger.exception(f'获取会议室详情失败：{str(e)}')
+        return ResponseUtil.error(msg=str(e) or '系统内部错误，请联系管理员')
 
 
 # ==================== 会议室预定接口 ====================
@@ -207,9 +227,12 @@ async def get_meeting_order_list(
         order_list = await MeetingOrderService.get_meeting_order_list_services(db, page_query, is_page=True)
         logger.info('获取预定列表成功')
         return ResponseUtil.success(model_content=order_list)
+    except ServiceException as e:
+        logger.error(f'获取预定列表失败：{e.message}', exc_info=True)
+        return ResponseUtil.error(msg=e.message or '操作失败')
     except Exception as e:
         logger.error(f'获取预定列表失败：{str(e)}')
-        return ResponseUtil.error(msg=str(e))
+        return ResponseUtil.error(msg=str(e) or '系统内部错误，请联系管理员')
 
 
 @meeting_router.post(
@@ -232,9 +255,12 @@ async def add_meeting_order(
         result = await MeetingOrderService.add_meeting_order_services(request, db, page_object)
         logger.info(result.message)
         return ResponseUtil.success(msg=result.message)
+    except ServiceException as e:
+        logger.error(f'新增预定失败：{e.message}', exc_info=True)
+        return ResponseUtil.error(msg=e.message or '操作失败')
     except Exception as e:
-        logger.error(f'新增预定失败：{str(e)}')
-        return ResponseUtil.error(msg=str(e))
+        logger.exception(f'新增预定失败：{str(e)}')
+        return ResponseUtil.error(msg=str(e) or '系统内部错误，请联系管理员')
 
 
 @meeting_router.put(
@@ -257,9 +283,12 @@ async def edit_meeting_order(
         result = await MeetingOrderService.edit_meeting_order_services(request, db, page_object)
         logger.info(result.message)
         return ResponseUtil.success(msg=result.message)
+    except ServiceException as e:
+        logger.error(f'编辑预定失败：{e.message}', exc_info=True)
+        return ResponseUtil.error(msg=e.message or '操作失败')
     except Exception as e:
-        logger.error(f'编辑预定失败：{str(e)}')
-        return ResponseUtil.error(msg=str(e))
+        logger.exception(f'编辑预定失败：{str(e)}')
+        return ResponseUtil.error(msg=str(e) or '系统内部错误，请联系管理员')
 
 
 @meeting_router.delete(
@@ -284,7 +313,7 @@ async def delete_meeting_order(
         logger.info(result.message)
         return ResponseUtil.success(msg=result.message)
     except Exception as e:
-        logger.error(f'删除预定失败：{str(e)}')
+        logger.exception(f'删除预定失败：{str(e)}')
         return ResponseUtil.error(msg=str(e))
 
 
@@ -308,7 +337,7 @@ async def get_meeting_order_detail(
         logger.info(f'获取 id 为{id}的预定信息成功')
         return ResponseUtil.success(data=order_detail)
     except Exception as e:
-        logger.error(f'获取预定详情失败：{str(e)}')
+        logger.exception(f'获取预定详情失败：{str(e)}')
         return ResponseUtil.error(msg=str(e))
 
 
@@ -358,9 +387,12 @@ async def add_meeting_records(
         result = await MeetingRecordsService.add_meeting_records_services(request, db, page_object)
         logger.info(result.message)
         return ResponseUtil.success(msg=result.message)
+    except ServiceException as e:
+        logger.error(f'新增会议纪要失败：{e.message}', exc_info=True)
+        return ResponseUtil.error(msg=e.message or '操作失败')
     except Exception as e:
-        logger.error(f'新增会议纪要失败：{str(e)}')
-        return ResponseUtil.error(msg=str(e))
+        logger.exception(f'新增会议纪要失败：{str(e)}')
+        return ResponseUtil.error(msg=str(e) or '系统内部错误，请联系管理员')
 
 
 @meeting_router.put(
@@ -383,9 +415,12 @@ async def edit_meeting_records(
         result = await MeetingRecordsService.edit_meeting_records_services(request, db, page_object)
         logger.info(result.message)
         return ResponseUtil.success(msg=result.message)
+    except ServiceException as e:
+        logger.error(f'编辑会议纪要失败：{e.message}', exc_info=True)
+        return ResponseUtil.error(msg=e.message or '操作失败')
     except Exception as e:
-        logger.error(f'编辑会议纪要失败：{str(e)}')
-        return ResponseUtil.error(msg=str(e))
+        logger.exception(f'编辑会议纪要失败：{str(e)}')
+        return ResponseUtil.error(msg=str(e) or '系统内部错误，请联系管理员')
 
 
 @meeting_router.delete(
@@ -409,9 +444,12 @@ async def delete_meeting_records(
         result = await MeetingRecordsService.delete_meeting_records_services(request, db, page_object)
         logger.info(result.message)
         return ResponseUtil.success(msg=result.message)
+    except ServiceException as e:
+        logger.error(f'删除会议纪要失败：{e.message}', exc_info=True)
+        return ResponseUtil.error(msg=e.message or '操作失败')
     except Exception as e:
-        logger.error(f'删除会议纪要失败：{str(e)}')
-        return ResponseUtil.error(msg=str(e))
+        logger.exception(f'删除会议纪要失败：{str(e)}')
+        return ResponseUtil.error(msg=str(e) or '系统内部错误，请联系管理员')
 
 
 @meeting_router.get(
@@ -433,6 +471,9 @@ async def get_meeting_records_detail(
         records_detail = await MeetingRecordsService.meeting_records_detail_services(db, id)
         logger.info(f'获取 id 为{id}的会议纪要信息成功')
         return ResponseUtil.success(data=records_detail)
+    except ServiceException as e:
+        logger.error(f'获取会议纪要详情失败：{e.message}', exc_info=True)
+        return ResponseUtil.error(msg=e.message or '操作失败')
     except Exception as e:
-        logger.error(f'获取会议纪要详情失败：{str(e)}')
-        return ResponseUtil.error(msg=str(e))
+        logger.exception(f'获取会议纪要详情失败：{str(e)}')
+        return ResponseUtil.error(msg=str(e) or '系统内部错误，请联系管理员')

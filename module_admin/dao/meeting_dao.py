@@ -32,35 +32,16 @@ class MeetingRoomDao:
         return room_info
 
     @classmethod
-    async def get_meeting_room_list(
-            cls, db: AsyncSession, query_object: MeetingRoomPageQueryModel, is_page: bool = False
-    ) -> PageModel | list[dict]:
+    async def get_meeting_room_detail_by_info(cls, db: AsyncSession, title: str) -> OaMeetingRoom | None:
         """
-        根据查询参数获取会议室列表信息
+        根据会议室名称获取会议室详细信息
         """
-        from module_admin.entity.do.user_do import SysUser
-
-        query = (
-            select(OaMeetingRoom, SysUser.nick_name.label('keep_name'))
-            .join(SysUser, SysUser.user_id == OaMeetingRoom.keep_uid, isouter=True)
-            .where(OaMeetingRoom.status != -1)
+        room_info = (
+            (await db.execute(select(OaMeetingRoom).where(OaMeetingRoom.title == title, OaMeetingRoom.status != -1)))
+            .scalars()
+            .first()
         )
-
-        if query_object.keywords:
-            query = query.where(
-                or_(
-                    OaMeetingRoom.title.like(f'%{query_object.keywords}%'),
-                    OaMeetingRoom.address.like(f'%{query_object.keywords}%'),
-                )
-            )
-
-        query = query.order_by(OaMeetingRoom.id.desc())
-
-        room_list: PageModel | list[dict] = await PageUtil.paginate(
-            db, query, query_object.page_num, query_object.page_size, is_page
-        )
-
-        return room_list
+        return room_info
 
     @classmethod
     async def add_meeting_room_dao(cls, db: AsyncSession, room: dict) -> OaMeetingRoom:
@@ -186,39 +167,76 @@ class MeetingOrderDao:
         """
         检查时间冲突
         """
-        query = select(OaMeetingOrder).where(
+        # 基础条件
+        base_conditions = [
             OaMeetingOrder.room_id == room_id,
             OaMeetingOrder.delete_time == 0,
             OaMeetingOrder.check_status == 2
+        ]
+        
+        # 三种冲突情况
+        conflict1 = and_(
+            *base_conditions,
+            OaMeetingOrder.start_date >= start_date,
+            OaMeetingOrder.start_date < end_date,
         )
-
-        query1 = query.where(
-            and_(
-                OaMeetingOrder.start_date >= start_date,
-                OaMeetingOrder.start_date < end_date,
-                )
+        
+        conflict2 = and_(
+            *base_conditions,
+            OaMeetingOrder.end_date > start_date,
+            OaMeetingOrder.end_date <= end_date,
         )
-
-        query2 = query.where(
-            and_(
-                OaMeetingOrder.end_date > start_date,
-                OaMeetingOrder.end_date <= end_date,
-                )
+        
+        conflict3 = and_(
+            *base_conditions,
+            OaMeetingOrder.start_date <= start_date,
+            OaMeetingOrder.end_date >= end_date,
         )
-
-        query3 = query.where(
-            and_(
-                OaMeetingOrder.start_date <= start_date,
-                OaMeetingOrder.end_date >= end_date,
-                )
+        
+        # 合并所有冲突条件
+        count_query = select(OaMeetingOrder).where(
+            or_(conflict1, conflict2, conflict3)
         )
-
-        count_query = query1.union(query2).union(query3)
-
+        
         if order_id:
             count_query = count_query.where(OaMeetingOrder.id != order_id)
-
+        
         result = await db.execute(count_query)
+        return len(result.fetchall())
+
+    @classmethod
+    async def check_duplicate_order(
+            cls, db: AsyncSession, room_id: int, title: str, start_date: int, end_date: int
+    ) -> int:
+        """
+        检查是否存在重复的预定记录（同一会议室、同一主题、同一时间段）
+        仅检查待审核和已通过的状态
+        """
+        query = select(OaMeetingOrder).where(
+            OaMeetingOrder.room_id == room_id,
+            OaMeetingOrder.title == title,
+            OaMeetingOrder.delete_time == 0,
+            OaMeetingOrder.check_status.in_([1, 2]),  # 待审核或已通过
+            or_(
+                # 完全重叠
+                and_(
+                    OaMeetingOrder.start_date <= start_date,
+                    OaMeetingOrder.end_date >= end_date,
+                ),
+                # 部分重叠 - 开始时间在范围内
+                and_(
+                    OaMeetingOrder.start_date >= start_date,
+                    OaMeetingOrder.start_date < end_date,
+                ),
+                # 部分重叠 - 结束时间在范围内
+                and_(
+                    OaMeetingOrder.end_date > start_date,
+                    OaMeetingOrder.end_date <= end_date,
+                ),
+            )
+        )
+        
+        result = await db.execute(query)
         return len(result.fetchall())
 
     @classmethod
@@ -276,14 +294,23 @@ class MeetingRecordsDao:
         """
         根据查询参数获取会议纪要列表信息
         """
+        from sqlalchemy.orm import aliased
         from module_admin.entity.do.user_do import SysUser
+        from module_admin.entity.do.dept_do import SysDept
+
+        anchor_user = aliased(SysUser, name='anchor')
+        recorder_user = aliased(SysUser, name='recorder')
 
         query = (
             select(OaMeetingRecords,
-                   OaMeetingOrder.title.label('order_title'),
-                   SysUser.nick_name.label('anchor_name'))
-            .join(OaMeetingOrder, OaMeetingOrder.id == OaMeetingRecords.order_id, isouter=True)
-            .join(SysUser, SysUser.user_id == OaMeetingRecords.anchor_id, isouter=True)
+                   OaMeetingRoom.title.label('room_name'),
+                   anchor_user.nick_name.label('anchor_name'),
+                   recorder_user.nick_name.label('recorder_name'),
+                   SysDept.dept_name.label('dept_name'))
+            .join(OaMeetingRoom, OaMeetingRoom.id == OaMeetingRecords.room_id, isouter=True)
+            .join(anchor_user, anchor_user.user_id == OaMeetingRecords.anchor_id, isouter=True)
+            .join(recorder_user, recorder_user.user_id == OaMeetingRecords.recorder_id, isouter=True)
+            .join(SysDept, SysDept.dept_id == OaMeetingRecords.did, isouter=True)
             .where(OaMeetingRecords.delete_time == 0)
         )
 
@@ -321,7 +348,7 @@ class MeetingRecordsDao:
         """
         新增会议纪要数据库操作
         """
-        db_records_data = {k: v for k, v in records.items() if k not in ['order_title', 'anchor_name', 'recorder_name']}
+        db_records_data = {k: v for k, v in records.items() if k not in ['order_title', 'anchor_name', 'recorder_name', 'room_name', 'dept_name']}
         db_records = OaMeetingRecords(**db_records_data)
         db.add(db_records)
         await db.flush()
@@ -332,7 +359,7 @@ class MeetingRecordsDao:
         """
         编辑会议纪要数据库操作
         """
-        db_records_data = {k: v for k, v in records.items() if k not in ['order_title', 'anchor_name', 'recorder_name']}
+        db_records_data = {k: v for k, v in records.items() if k not in ['order_title', 'anchor_name', 'recorder_name', 'room_name', 'dept_name']}
         await db.execute(update(OaMeetingRecords), [db_records_data])
 
     @classmethod
@@ -345,3 +372,22 @@ class MeetingRecordsDao:
             .where(OaMeetingRecords.id == records_id)
             .values(delete_time=int(datetime.now().timestamp()))
         )
+
+    @classmethod
+    async def check_duplicate_records(
+            cls, db: AsyncSession, room_id: int, meeting_date: int, records_id: int = None
+    ) -> int:
+        """
+        检查是否存在重复的会议纪要（同一会议室、同一会议时间）
+        """
+        query = select(OaMeetingRecords).where(
+            OaMeetingRecords.room_id == room_id,
+            OaMeetingRecords.meeting_date == meeting_date,
+            OaMeetingRecords.delete_time == 0
+        )
+        
+        if records_id:
+            query = query.where(OaMeetingRecords.id != records_id)
+        
+        result = await db.execute(query)
+        return len(result.fetchall())

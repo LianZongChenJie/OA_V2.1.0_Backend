@@ -98,12 +98,24 @@ class MeetingOrderModel(BaseModel):
     title: str | None = Field(default=None, description='预定主题')
     start_date: int | None = Field(default=None, description='开始时间')
     end_date: int | None = Field(default=None, description='结束时间')
-    admin_id: int | None = Field(default=None, description='预定人 ID')
-    did: int | None = Field(default=None, description='部门 ID')
+    admin_id: int | None = Field(default=None, description='发布人 id')
+    did: int | None = Field(default=None, description='主办部门')
     requirements: str | None = Field(default=None, description='会议要求')
-    check_status: int | None = Field(default=None, description='审核状态：1 待审核 2 通过 3 拒绝')
-    create_time: int | None = Field(default=None, description='创建时间')
-    update_time: int | None = Field(default=None, description='更新时间')
+    num: int | None = Field(default=None, description='人数')
+    remark: str | None = Field(default=None, description='备注信息')
+    file_ids: str | None = Field(default=None, description='相关附件')
+    join_uids: str | None = Field(default=None, description='与会人员')
+    anchor_id: int | None = Field(default=None, description='主持人 id')
+    check_status: int | None = Field(default=None, description='审核状态:0 待审核，1 审核中，2 审核通过，3 审核不通过，4 撤销审核')
+    check_flow_id: int | None = Field(default=None, description='审核流程 id')
+    check_step_sort: int | None = Field(default=None, description='当前审批步骤')
+    check_uids: str | None = Field(default=None, description='当前审批人 ID，如:1,2,3')
+    check_last_uid: str | None = Field(default=None, description='上一审批人')
+    check_history_uids: str | None = Field(default=None, description='历史审批人 ID，如:1,2,3')
+    check_copy_uids: str | None = Field(default=None, description='抄送人 ID，如:1,2,3')
+    check_time: int | None = Field(default=None, description='审核通过时间')
+    create_time: int | None = Field(default=None, description='申请时间')
+    update_time: int | None = Field(default=None, description='更新信息时间')
     delete_time: int | None = Field(default=None, description='删除时间')
 
     # 关联查询返回的字段
@@ -191,20 +203,27 @@ class MeetingRecordsModel(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel, from_attributes=True)
 
     id: int | None = Field(default=None, description='ID')
-    order_id: int | None = Field(default=None, description='预定订单 ID')
     title: str | None = Field(default=None, description='会议主题')
-    meeting_date: int | None = Field(default=None, description='会议日期')
-    anchor_id: int | None = Field(default=None, description='主持人 ID')
-    recorder_id: int | None = Field(default=None, description='记录人 ID')
+    meeting_date: int | None = Field(default=None, description='会议时间')
+    room_id: int | None = Field(default=None, description='会议室')
+    did: int | None = Field(default=None, description='主办部门')
     content: str | None = Field(default=None, description='会议内容')
-    file_ids: str | None = Field(default=None, description='附件 ID')
-    admin_id: int | None = Field(default=None, description='创建人 ID')
+    plans: str | None = Field(default=None, description='下一步实施计划')
+    file_ids: str | None = Field(default=None, description='相关附件')
+    join_uids: str | None = Field(default=None, description='与会人员')
+    sign_uids: str | None = Field(default=None, description='签到人员')
+    share_uids: str | None = Field(default=None, description='共享给谁')
+    anchor_id: int | None = Field(default=None, description='主持人 id')
+    recorder_id: int | None = Field(default=None, description='记录人 id')
+    remarks: str | None = Field(default=None, description='备注内容')
+    admin_id: int | None = Field(default=None, description='发布人 id')
     create_time: int | None = Field(default=None, description='创建时间')
     update_time: int | None = Field(default=None, description='更新时间')
     delete_time: int | None = Field(default=None, description='删除时间')
 
     # 关联查询返回的字段
-    order_title: str | None = Field(default=None, description='预定主题')
+    room_name: str | None = Field(default=None, description='会议室名称')
+    dept_name: str | None = Field(default=None, description='部门名称')
     anchor_name: str | None = Field(default=None, description='主持人姓名')
     recorder_name: str | None = Field(default=None, description='记录人姓名')
 
@@ -237,8 +256,20 @@ class MeetingRecordsModel(BaseModel):
     def get_content(self) -> str | None:
         return self.content
 
+    @Xss(field_name='plans', message='实施计划不能包含脚本字符')
+    @Size(field_name='plans', min_length=0, max_length=65535, message='实施计划长度不能超过 65535 个字符')
+    def get_plans(self) -> str | None:
+        return self.plans
+
+    @Xss(field_name='remarks', message='备注内容不能包含脚本字符')
+    @Size(field_name='remarks', min_length=0, max_length=65535, message='备注内容长度不能超过 65535 个字符')
+    def get_remarks(self) -> str | None:
+        return self.remarks
+
     def validate_fields(self) -> None:
         self.get_content()
+        self.get_plans()
+        self.get_remarks()
 
 
 class MeetingRecordsPageQueryModel(MeetingRecordsModel):

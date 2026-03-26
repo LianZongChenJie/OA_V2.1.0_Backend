@@ -89,11 +89,11 @@ class Log:
                 logger.warning(e.message)
                 result = ResponseUtil.failure(data=e.data, msg=e.message)
             except ServiceException as e:
-                logger.error(e.message)
-                result = ResponseUtil.error(data=e.data, msg=e.message)
+                logger.error(f'{e.message}', exc_info=True)
+                result = ResponseUtil.error(data=e.data, msg=e.message or '操作失败')
             except Exception as e:
-                logger.exception(e)
-                result = ResponseUtil.error(msg=str(e))
+                logger.exception(f'未捕获的异常：{str(e)}')
+                result = ResponseUtil.error(msg=str(e) or '系统内部错误，请联系管理员')
             # 获取请求耗时
             cost_time = float(time.perf_counter() - start_time) * 1000
             # 判断请求是否来自api文档
