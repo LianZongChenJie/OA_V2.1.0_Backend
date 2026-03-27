@@ -7,6 +7,8 @@ from common.vo import PageModel, CrudResponseModel
 from exceptions.exception import ServiceException
 from module_admin.dao.dept_dao import DeptDao
 from module_basicdata.dao.public.flow_dao import OaFlowDao
+from module_basicdata.dao.public.flow_step_dao import OaFlowStepDao
+from module_basicdata.entity.do.public.flow_step_do import OaFlowStep
 from module_basicdata.entity.vo.public.flow_vo import OaFlowBaseModel, OaFlowVOModel
 from datetime import datetime
 
@@ -43,6 +45,16 @@ class FlowService:
         try:
             model.create_time = int(datetime.now().timestamp())
             result = await OaFlowDao.add_flow(query_db, model)
+            step = OaFlowStep(
+
+                flow_id = result.id,
+                check_role = model.check_role,
+                check_position_id = model.check_position_id,
+                check_uids = model.check_uids,
+                check_types = model.check_types,
+                create_time = int(datetime.now().timestamp()),
+            )
+            await OaFlowStepDao.add(query_db, step)
             if result:
                 return CrudResponseModel(is_success=True, message='新增成功')
             return CrudResponseModel(is_success=False, message='新增失败')

@@ -89,5 +89,21 @@ class FlowCateDao:
 
         return query_info
 
+    @classmethod
+    async def get_flow_cate_info_by_name(cls, db: AsyncSession, name: str) -> OaFlowCate | None:
+        query_info = (
+            (
+                await db.execute(
+                    select(OaFlowCate)
+                    .where(
+                        OaFlowCate.status == '1',
+                        OaFlowCate.name == name if name else True
+                    )
+                    .order_by(desc(OaFlowCate.create_time)).distinct()
+                )
+            ).scalars().first())
+
+        return query_info
+
 
 

@@ -2,7 +2,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import ColumnElement
 
 from common.vo import PageModel
-from module_admin.entity.do.dept_do import SysDept
 from module_admin.entity.do.user_do import SysUser
 from module_basicdata.entity.do.public.flow_cate_do import OaFlowCate
 from module_basicdata.entity.do.public.flow_do import OaFlow

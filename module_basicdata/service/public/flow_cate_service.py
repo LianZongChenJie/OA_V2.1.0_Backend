@@ -94,3 +94,14 @@ class FlowCateService:
         if model and model.title == title:
             return CommonConstant.NOT_UNIQUE
         return CommonConstant.UNIQUE
+
+    @classmethod
+    async def get_flow_cate_info_by_name_service(cls, query_db: AsyncSession, name: str) -> OaFlowCateModel | None:
+        try:
+            flow_cate_info = await FlowCateDao.get_flow_cate_info_by_name(query_db, name)
+            if not flow_cate_info:
+                raise ServiceException(message="未找到该数据")
+            return flow_cate_info
+        except Exception as e:
+            await query_db.rollback()
+            raise e

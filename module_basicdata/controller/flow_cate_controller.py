@@ -125,3 +125,22 @@ async def change_status(
         return ResponseUtil.success(data=flow_cate_result.message)
     else:
         return ResponseUtil.error(msg="状态变更失败")
+
+@flow_cate_controller.get(
+    "/getByName",
+    summary='根据名称获取审批类型信息接口',
+    description='用于根据名称获取审批类型信息',
+    response_model=OaFlowCateModel,
+    dependencies=[UserInterfaceAuthDependency('basicdata:flowCate:view')],
+)
+async def get_flow_cate_by_name(
+    request: Request,
+    name: str,
+    query_db: Annotated[AsyncSession, DBSessionDependency()]
+)-> Response:
+    flow_cate_result = await FlowCateService.get_flow_cate_info_by_name_service(query_db, name)
+    if flow_cate_result:
+        logger.info(flow_cate_result.to_dict())
+        return ResponseUtil.success(data=ModelConverter.to_dict(flow_cate_result, by_alias=True))
+    else:
+        return ResponseUtil.error(msg="未找到该数据")

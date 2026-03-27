@@ -49,4 +49,10 @@ class OaFlowVOModel(OaFlowBaseModel):
     copy_names: Optional[str] = Field(None, description='抄送人名称')
     department_names: Optional[str] = Field(None, description='应用部门名称')
 
+class OaFlowAndStepModel(OaFlowBaseModel):
+    check_role : int | None = Field(None, description='角色ID')
+    check_position_id : int | None = Field(None, description='岗位ID')
+    check_types : int | None = Field(None, description='审批类型')
+    check_uids : str | None = Field(None, description='审批用户')
+    action_id : int | None = Field(None, description='动作ID')
 
