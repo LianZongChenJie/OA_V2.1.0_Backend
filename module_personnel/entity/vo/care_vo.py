@@ -7,6 +7,7 @@ from typing import Optional,List
 
 class OaCareBaseModel(BaseModel):
     """员工关怀 VO - 用于数据展示"""
+    model_config = ConfigDict(alias_generator=to_camel, from_attributes=True)
     id: int | None= Field(..., description='主键ID')
     uid: int | None= Field(..., description='员工ID')
     care_cate: int | None= Field(..., description='关怀项目')

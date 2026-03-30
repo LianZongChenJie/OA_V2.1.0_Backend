@@ -13,11 +13,11 @@ from module_personnel.entity.do.care_do import OaCare
 from module_personnel.entity.vo.care_vo import OaCareBaseModel, OaCarePageQueryModel
 from module_personnel.service.care_service import CareService
 
-personnel_cate_controller = APIRouterPro(
+care_controller = APIRouterPro(
     prefix='/personnel/care', order_num=3, tags=['人事管理-员工关怀'], dependencies=[PreAuthDependency()]
 )
 
-@personnel_cate_controller.get(
+@care_controller.get(
     "/list",
     summary='获取员工关怀列表',
     description='用于获取员工关怀列表',
@@ -32,7 +32,7 @@ async def get_page_list(
 ) -> Response:
     return await CareService.get_page_list_service(query_db,query_object,data_scope_sql,True)
 
-@personnel_cate_controller.get(
+@care_controller.get(
     "/add",
     summary='新增员工关怀',
     description='用于新增员工关怀',
@@ -46,7 +46,7 @@ async def add_change(
 ) -> Response:
     return await CareService.add_service(query_db, query_object)
 
-@personnel_cate_controller.post(
+@care_controller.post(
     "/update",
     summary='更新员工关怀',
     description='用于更新员工关怀',
@@ -60,7 +60,7 @@ async def update_profile(
 )->Response:
     return await CareService().update_service(query_db, model)
 
-@personnel_cate_controller.get(
+@care_controller.get(
     "/detail/{id}",
     summary='获取员工关怀详情',
     description='用于获取员工关怀详情',
@@ -74,7 +74,7 @@ async def get_detail(
 ) -> Response:
     return await CareService.get_info_service(query_db, id)
 
-@personnel_cate_controller.get(
+@care_controller.get(
     "/delete/{id}",
     summary='删除员工关怀',
     description='用于删除员工关怀',

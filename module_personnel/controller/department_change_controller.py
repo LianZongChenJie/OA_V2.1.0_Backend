@@ -27,7 +27,7 @@ dept_change_controller = APIRouterPro(
 async def get_page_list(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
-    query_object: OaDepartmentChangePageQueryModel,
+    query_object: Annotated[OaDepartmentChangePageQueryModel, Query()],
     data_scope_sql: Annotated[ColumnElement, DataScopeDependency(OaDepartmentChange)],
 ) -> Response:
     return await DepartmentChangeService.get_page_list_service(query_db,query_object,data_scope_sql,True)
@@ -42,7 +42,7 @@ async def get_page_list(
 async def add_change(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
-    query_object: OaDepartmentChangeBassModel,
+    query_object: Annotated[OaDepartmentChangeBassModel, Query()],
 ) -> Response:
     return await DepartmentChangeService.add_service(query_db, query_object)
 
@@ -56,7 +56,7 @@ async def add_change(
 async def update_profile(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
-    model: OaDepartmentChangeBassModel,
+    model: Annotated[OaDepartmentChangeBassModel, Query()],
 )->Response:
     return await DepartmentChangeService().update_service(query_db, model)
 
@@ -98,7 +98,7 @@ async def delete_change(
 async def pass_change(
         request: Request,
         query_db: Annotated[AsyncSession, DBSessionDependency()],
-        data: OaDepartmentChangeBassModel,
+        data: Annotated[OaDepartmentChangeBassModel, Query()],
 ) -> Response:
     return await DepartmentChangeService.pass_change(query_db, data)
 
@@ -112,7 +112,7 @@ async def pass_change(
 async def reject_change(
         request: Request,
         query_db: Annotated[AsyncSession, DBSessionDependency()],
-        data: OaDepartmentChangeBassModel,
+        data: Annotated[OaDepartmentChangeBassModel, Query()],
 ) -> Response:
     return await DepartmentChangeService.reject_change(query_db, data)
 
@@ -126,6 +126,6 @@ async def reject_change(
 async def cancel_change(
         request: Request,
         query_db: Annotated[AsyncSession, DBSessionDependency()],
-        data: OaDepartmentChangeBassModel,
+        data: Annotated[OaDepartmentChangeBassModel, Query()],
 ) -> Response:
     return await DepartmentChangeService.cancel_change(query_db, data)

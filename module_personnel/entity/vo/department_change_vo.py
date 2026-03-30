@@ -34,6 +34,10 @@ class OaDepartmentChangeBassModel(BaseModel):
     update_time: int | None = Field(None, description='更新时间')
     delete_time: int | None = Field(None, description='删除时间')
 
+    @field_serializer('move_time')
+    def serialize_move_time(self, value: Optional[int]) -> Optional[str]:
+        """序列化创建时间"""
+        return format_timestamp(value)
 
     @field_serializer('create_time')
     def serialize_create_time(self, value: Optional[int]) -> Optional[str]:

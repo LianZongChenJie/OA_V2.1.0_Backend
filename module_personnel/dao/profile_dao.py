@@ -14,13 +14,11 @@ class AdminProfileDao:
 
     # 获取员工档案
     @classmethod
-    async def get_profile_list(cls, db: AsyncSession, query_object: UserModel,
-                                  data_scope_sql: ColumnElement, is_page: bool = False) -> PageModel | list[
+    async def get_profile_list(cls, db: AsyncSession, query_object: UserModel) -> PageModel | list[
         list[dict[str, Any]]]:
         query = (select(OaAdminProfiles)
                  .where(
-            OaAdminProfiles.admin_id != query_object.user_id,
-            data_scope_sql,
+            OaAdminProfiles.admin_id == query_object.user_id,
         ).order_by(asc(OaAdminProfiles.types)))
         profile_list = (await  db.execute(query)).scalars().all()
         return profile_list
@@ -30,21 +28,21 @@ class AdminProfileDao:
         query = (delete(OaAdminProfiles).where(
             OaAdminProfiles.admin_id == user_id,
         ))
-        count = (await  db.execute(query)).scalar()
-        return count
+        await  db.execute(query)
 
     # 添加员工档案
     @classmethod
     async def add_profile(cls, db: AsyncSession, profiles : list[OaAdminProfilesBaseModel]) -> dict[str, Any] | None:
+        add_list = []
         for profile in profiles:
-            data = profile.dict(exclude_none=True, exclude={'id'})
+            if profile:
+                data = profile.dict(exclude_none=True, exclude={'id'})
 
-            # 使用字典创建实体
-            entity = OaAdminProfiles(**data)
-            profiles.append(entity)
-
+                # 使用字典创建实体
+                entity = OaAdminProfiles(**data)
+                add_list.append(entity)
         # 批量添加
-        db.add_all(profiles)
+        db.add_all(add_list)
 
         # 提交事务
         result = await db.commit()

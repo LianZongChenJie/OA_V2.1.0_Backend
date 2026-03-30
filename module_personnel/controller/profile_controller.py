@@ -18,7 +18,7 @@ profile_controller = APIRouterPro(
     prefix='/personnel/profile', order_num=3, tags=['人事管理-员工档案'], dependencies=[PreAuthDependency()]
 )
 
-@profile_controller.post(
+@profile_controller.put(
     "/update",
     summary='更新个人信息',
     description='用于更新个人信息',
@@ -30,7 +30,7 @@ async def update_profile(
     query_db: Annotated[AsyncSession, DBSessionDependency()],
     model: OaAdminProfilesUpdateModel,
 )->Response:
-    return await ProfileService().update_profile(query_db, model)
+    return await ProfileService.update_profile(query_db, model)
 
 @profile_controller.get(
     "/detail/{admin_id}",
@@ -42,7 +42,6 @@ async def update_profile(
 async def get_profile(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
-    data_scope_sql: Annotated[ColumnElement, DataScopeDependency(OaAdminProfiles)],
     admin_id: int,
 ) -> Response:
-    return await ProfileService.get_profile(query_db, admin_id, data_scope_sql)
+    return await ProfileService.get_profile(query_db, admin_id)

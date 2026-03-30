@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Any
 
@@ -26,6 +28,7 @@ class ProfileService:
         except Exception as e:
             return ResponseUtil.error(msg="修改失败")
 
+    @classmethod
     async def update_profile(self, db: AsyncSession, model: OaAdminProfilesUpdateModel,) -> dict[str, Any]:
         try:
             user = model.user
@@ -36,21 +39,24 @@ class ProfileService:
                 await AdminProfileDao.delete_profile(db, model.user.user_id)
                 for profile in profiles:
                     profile.admin_id = model.user.user_id
+                    profile.create_time = int(datetime.now().timestamp())
                 await AdminProfileDao.add_profile(db, profiles)
             return ResponseUtil.success(msg="修改成功")
         except Exception as e:
+            print(e)
             return ResponseUtil.error(msg="修改失败")
 
     @staticmethod
-    async def get_profile(db: AsyncSession, admin_id: int, data_scope_sql: ColumnElement) -> dict[str, Any]:
+    async def get_profile(db: AsyncSession, admin_id: int) -> dict[str, Any]:
         try:
             user = await UserDao.get_user_by_id(db, admin_id)
-            profiles = await AdminProfileDao.get_profile_list(db, user['query_user_basic_info'],data_scope_sql)
-
-            files = await FileDAO.get_file_by_ids(user['query_attachment_info']["userId"], db)
+            if not user['user_basic_info']:
+                return ResponseUtil.error(msg="为查询到相关员工")
+            profiles = await AdminProfileDao.get_profile_list(db, user['user_basic_info'])
+            files = await FileDAO.get_file_by_ids(user['user_basic_info'].file_ids, db)
             result = OaAdminProfilesUpdateModel()
             result.files = files
-            result.user = user['query_user_basic_info']
+            result.user = user['user_basic_info']
             result.profiles = profiles
             return ResponseUtil.success(data=result)
         except Exception as e:

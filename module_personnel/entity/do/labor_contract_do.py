@@ -7,6 +7,7 @@ from decimal import Decimal
 class OaLaborContract(Base):
     """员工合同表实体类（SQLAlchemy 2.0 风格）"""
     __tablename__ = 'oa_labor_contract'
+    __table_args__ = {'comment': '员工合同表'}
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment='主键ID')
     renewal_pid: Mapped[int] = mapped_column(Integer, nullable=False, default=0, comment='续签母合同')

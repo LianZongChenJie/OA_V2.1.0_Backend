@@ -6,6 +6,7 @@ from decimal import Decimal
 class OaCare(Base):
     """员工关怀表实体类（SQLAlchemy 2.0 风格）"""
     __tablename__ = 'oa_care'
+    __table_args__ = {'comment': '员工关怀表'}
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment='主键ID')
     uid: Mapped[int] = mapped_column(Integer, nullable=False, default=0, comment='员工ID')

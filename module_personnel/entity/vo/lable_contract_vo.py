@@ -6,7 +6,7 @@ from pydantic import field_serializer
 from typing import Optional, List
 class OaLaborContractBaseModel(BaseModel):
     """员工合同 VO - 用于数据展示"""
-    config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+    model_config = ConfigDict(alias_generator=to_camel, from_attributes=True)
 
     id: int | None= Field(..., description='主键ID')
     renewal_pid: int | None= Field(..., description='续签母合同')
