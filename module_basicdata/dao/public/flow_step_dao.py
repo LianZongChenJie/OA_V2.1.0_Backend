@@ -18,8 +18,7 @@ class OaFlowStepDao:
             (
                 await db.execute(
                     select(OaFlowStep)
-                    .where(OaFlowStep.flow_id == id,
-                           OaFlowStep.status == '1').order_by(desc(OaFlowStep.create_time))
+                    .where(OaFlowStep.flow_id == id).order_by(desc(OaFlowStep.create_time))
                     .distinct()
                 )
             )
