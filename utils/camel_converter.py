@@ -67,6 +67,11 @@ class ModelConverter:
     def time_format(item_dict: Dict) -> Dict:
         """时间格式化"""
         for key, value in item_dict.items():
-            if key.endswith('Time') and value is not None:
+            if key.endswith('Time') and value is not None and isinstance(value, int):
                 item_dict[key] = format_timestamp(value)
         return item_dict
+
+    @staticmethod
+    def list_time_format(list_dict: List[Dict]) -> List[Dict]:
+        """批量时间格式化"""
+        return [ModelConverter.time_format(item) for item in list_dict]

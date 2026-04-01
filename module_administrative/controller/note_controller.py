@@ -33,7 +33,8 @@ async def get_page_list(
     query_object: Annotated[OaNoteQueryPageModel, Query()],
     data_scope_sql: Annotated[ColumnElement, DataScopeDependency(OaNote)],
 ) -> Response:
-    return await NoteService.get_page_list_service(query_db,query_object,data_scope_sql,True)
+    result = await NoteService.get_page_list_service(query_db,query_object,data_scope_sql,True)
+    return ResponseUtil.success(model_content = result.message)
 
 @administrative_note_controller.post(
     "/add",
@@ -49,7 +50,8 @@ async def add_note(
     current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
 ) -> Response:
     query_object.admin_id = current_user.user.user_id
-    return await NoteService.add_service(query_db, query_object)
+    result = await NoteService.add_service(query_db, query_object)
+    return ResponseUtil.success(msg = result.message)
 
 @administrative_note_controller.put(
     "/update",
@@ -63,7 +65,8 @@ async def update_note(
     query_db: Annotated[AsyncSession, DBSessionDependency()],
     model: Annotated[OaNoteBaseModel, Body()],
 )->Response:
-    return await NoteService().update_service(query_db, model)
+    result = await NoteService().update_service(query_db, model)
+    return ResponseUtil.success(msg=result.message)
 
 @administrative_note_controller.get(
     "/detail/{id}",
@@ -77,7 +80,8 @@ async def get_note_by_id(
     query_db: Annotated[AsyncSession, DBSessionDependency()],
     id: int,
 ) -> Response:
-    return await NoteService.get_info_service(query_db, id)
+    result = await NoteService.get_info_service(query_db, id)
+    return ResponseUtil.success(model_content=result.model)
 
 @administrative_note_controller.delete(
     "/delete/{id}",

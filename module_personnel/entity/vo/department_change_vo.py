@@ -67,5 +67,5 @@ class OaDepartmentChangeDetailModel(BaseModel):
     """人事调动申请详情VO"""
     model_config = ConfigDict(alias_generator=to_camel, from_attributes=True)
 
-    info : OaDepartmentChangeBassModel = Field(..., description='人事调动申请详情')
-    records : list[OaFlowRecordBaseModel] = Field(..., description='人事调动申请审批记录')
+    info : OaDepartmentChangeBassModel | None = Field(..., description='人事调动申请详情')
+    records : list[OaFlowRecordBaseModel] | None = Field(..., description='人事调动申请审批记录')

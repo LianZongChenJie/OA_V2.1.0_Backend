@@ -33,7 +33,8 @@ async def get_page_list(
     query_object: Annotated[OaSealPageQueryModel, Query()],
     data_scope_sql: Annotated[ColumnElement, DataScopeDependency(OaSeal)],
 ) -> Response:
-    return await SealService.get_page_list_service(query_db,query_object,data_scope_sql,True)
+    result = await SealService.get_page_list_service(query_db,query_object,data_scope_sql,True)
+    return ResponseUtil.success(model_content=result.message)
 
 @administrative_seal_controller.post(
     "/add",
@@ -47,7 +48,8 @@ async def add_change(
     query_db: Annotated[AsyncSession, DBSessionDependency()],
     query_object: Annotated[OaSealBaseModel, Body()],
 ) -> Response:
-    return await SealService.add_service(query_db, query_object)
+    result = await SealService.add_service(query_db, query_object)
+    return ResponseUtil.success(msg=result.message)
 
 @administrative_seal_controller.put(
     "/update",
@@ -61,7 +63,8 @@ async def update_seal(
     query_db: Annotated[AsyncSession, DBSessionDependency()],
     model: Annotated[OaSealBaseModel, Body()],
 )->Response:
-    return await SealService().update_service(query_db, model)
+    result = await SealService().update_service(query_db, model)
+    return ResponseUtil.success(msg=result.message)
 
 @administrative_seal_controller.get(
     "/detail/{id}",
@@ -75,7 +78,8 @@ async def get_profile(
     query_db: Annotated[AsyncSession, DBSessionDependency()],
     id: int,
 ) -> Response:
-    return await SealService.get_info_service(query_db, id)
+    result = await SealService.get_info_service(query_db, id)
+    return ResponseUtil.success(model_content=result.model)
 
 @administrative_seal_controller.delete(
     "/delete/{id}",

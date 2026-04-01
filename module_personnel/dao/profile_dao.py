@@ -36,7 +36,8 @@ class AdminProfileDao:
         add_list = []
         for profile in profiles:
             if profile:
-                data = profile.dict(exclude_none=True, exclude={'id'})
+                data = profile.dict(exclude_none=True, exclude={'id', 'create_time'})
+                data['create_time'] = profile.create_time
 
                 # 使用字典创建实体
                 entity = OaAdminProfiles(**data)

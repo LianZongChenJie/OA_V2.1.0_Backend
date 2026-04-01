@@ -33,7 +33,8 @@ async def get_page_list(
     query_object: Annotated[OaNewsQueryPageModel, Query()],
     data_scope_sql: Annotated[ColumnElement, DataScopeDependency(OaNews)],
 ) -> Response:
-    return await NewsService.get_page_list_service(query_db,query_object,data_scope_sql,True)
+    result = await NewsService.get_page_list_service(query_db,query_object,data_scope_sql,True)
+    return ResponseUtil.success(model_content=result)
 
 @administrative_news_controller.post(
     "/add",
@@ -49,7 +50,8 @@ async def add_news(
     current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
 ) -> Response:
     query_object.admin_id = current_user.user.user_id
-    return await NewsService.add_service(query_db, query_object)
+    result =  await NewsService.add_service(query_db, query_object)
+    return ResponseUtil.success(msg=result.message)
 
 @administrative_news_controller.put(
     "/update",
@@ -63,7 +65,8 @@ async def update_news(
     query_db: Annotated[AsyncSession, DBSessionDependency()],
     model: Annotated[OaNewsBaseModel, Body()],
 )->Response:
-    return await NewsService().update_service(query_db, model)
+    result = await NewsService().update_service(query_db, model)
+    return ResponseUtil.success(msg=result.message)
 
 @administrative_news_controller.get(
     "/detail/{id}",
@@ -77,7 +80,8 @@ async def get_news_by_id(
     query_db: Annotated[AsyncSession, DBSessionDependency()],
     id: int,
 ) -> Response:
-    return await NewsService.get_info_service(query_db, id)
+    result = await NewsService.get_info_service(query_db, id)
+    return ResponseUtil.success(data=result)
 
 @administrative_news_controller.delete(
     "/delete/{id}",

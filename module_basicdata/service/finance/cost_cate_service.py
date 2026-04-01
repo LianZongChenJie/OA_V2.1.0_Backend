@@ -58,7 +58,7 @@ class CostCateService:
     async def change_status_cost_cate_service(cls, query_db: AsyncSession, model: OaCostCateBaseModel):
         try:
             await CostCateDao.change_status_cost_cate(query_db, model)
-            return CrudResponseModel(is_success=True, message='删除成功')
+            return CrudResponseModel(is_success=True, message='修改成功')
         except Exception as e:
             await query_db.rollback()
             raise e

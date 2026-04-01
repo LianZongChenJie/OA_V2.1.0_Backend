@@ -46,7 +46,7 @@ class DepartmentChangeService:
             model.status = 1
             change = await DepartmentChangeDao.add(query_db, model)
             flow_cate = await FlowCateDao.get_flow_cate_info(query_db, change.check_flow_id)
-            await cls.add_record(query_db, change, model, flow_cate)
+            await cls.add_record(query_db, change, model)
             await query_db.commit()
             return CrudResponseModel(is_success=True, message='新增成功')
         except Exception as e:
@@ -72,11 +72,9 @@ class DepartmentChangeService:
     async def get_info_service(cls, query_db: \
             AsyncSession, id: int) -> OaDepartmentChangeBassModel:
         try:
-            detail = OaDepartmentChangeDetailModel()
-            info = await OaDepartmentChange.get_info_by_id(query_db, id)
-            records = await FlowRecordDao.get_records_by_action_id(query_db, info.action_id)
-            detail.info = info
-            detail.records = records
+            info = await DepartmentChangeDao.get_info_by_id(query_db, id)
+            records = await FlowRecordDao.get_records_by_action_id(query_db, info.id,info.check_flow_id)
+            detail = OaDepartmentChangeDetailModel(info=info, records=records)
             if not detail:
                 raise ServiceException(message="未找到该数据")
             return detail

@@ -31,3 +31,11 @@ def format_date(timestamp: int, format_str: str = "%Y-%m-%d") -> Optional[str]:
 def now_timestamp() -> int:
     """获取当前时间戳"""
     return int(datetime.now().timestamp())
+
+def int_time(str_time: str, format_str: str = "%Y-%m-%d %H:%M:%S") -> int:
+    try:
+        dt = datetime.strptime(str_time, format_str)
+        return int(dt.timestamp())
+    except Exception as e:
+        print(e)
+        return 0

@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import and_, select, update, or_
+from sqlalchemy import and_, select, update, or_, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from common.vo import PageModel
@@ -334,6 +334,12 @@ class MeetingRecordsDao:
                     )
             except ValueError:
                 pass
+
+        if query_object.join_uids:
+            query = query.filter(or_(
+                func.find_in_set(query_object.join_uids, OaMeetingRecords.join_uids) > 0,
+                func.find_in_set(query_object.sign_uids, OaMeetingRecords.sign_uids) > 0
+            ))
 
         query = query.order_by(OaMeetingRecords.id.desc())
 

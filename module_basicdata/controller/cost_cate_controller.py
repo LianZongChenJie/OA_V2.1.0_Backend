@@ -53,14 +53,14 @@ async def add_cost_cate(
     logger.info(cost_cate_result.message)
     return ResponseUtil.success(data=cost_cate_result.message)
 
-@cost_cate_controller.delete(
+@cost_cate_controller.put(
     "/changeStatus",
     summary='修改报销类型状态接口',
     description='用于修改报销类型状态',
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('basicdata:finance:cost_cate:del')],
 )
-async def delete_cost_cate(
+async def change_cost_cate(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
     model: OaCostCateBaseModel,

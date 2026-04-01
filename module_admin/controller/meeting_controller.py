@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from common.annotation.log_annotation import Log
 from common.aspect.db_seesion import DBSessionDependency
 from common.aspect.interface_auth import UserInterfaceAuthDependency
-from common.aspect.pre_auth import PreAuthDependency
+from common.aspect.pre_auth import PreAuthDependency, CurrentUserDependency
 from common.enums import BusinessType
 from common.router import APIRouterPro
 from common.vo import DataResponseModel, PageResponseModel, ResponseBaseModel
@@ -33,6 +33,10 @@ from module_admin.service.meeting_service import (
 from utils.log_util import logger
 from utils.response_util import ResponseUtil
 from exceptions.exception import ServiceException
+
+from module_admin.entity.vo.user_vo import (
+    CurrentUserModel
+)
 
 
 meeting_router = APIRouterPro(
@@ -477,3 +481,30 @@ async def get_meeting_records_detail(
     except Exception as e:
         logger.exception(f'获取会议纪要详情失败：{str(e)}')
         return ResponseUtil.error(msg=str(e) or '系统内部错误，请联系管理员')
+
+# 根据用户查询列表
+@meeting_router.get(
+    '/records/user/list',
+    summary='获取会用户议纪要分页列表接口',
+    description='用于获取用户会议纪要分页列表',
+    response_model=PageResponseModel[MeetingRecordsPageQueryModel],
+    dependencies=[UserInterfaceAuthDependency('system:meeting:records:list')],
+)
+async def get_meeting_user_records_list(
+    request: Request,
+    page_query: Annotated[MeetingRecordsPageQueryModel, Query()],
+    db: Annotated[AsyncSession, DBSessionDependency()],
+    current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
+) -> Response:
+    """
+    获取会议纪要列表接口
+    """
+    try:
+        user_id = current_user.user.user_id
+        page_query.join_uids = user_id
+        records_list = await MeetingRecordsService.get_meeting_records_list_services(db, page_query, is_page=True)
+        logger.info('获取会议纪要列表成功')
+        return ResponseUtil.success(model_content=records_list)
+    except Exception as e:
+        logger.error(f'获取会议纪要列表失败：{str(e)}')
+        return ResponseUtil.error(msg=str(e))
