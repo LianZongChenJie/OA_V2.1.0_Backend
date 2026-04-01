@@ -89,6 +89,28 @@ class PropertyCateDao:
         return property_cate_list
 
     @classmethod
+    async def get_property_cate_children_list(cls, db: AsyncSession, pid: int) -> list[dict[str, Any]]:
+        """
+        根据父分类 ID 获取子分类列表（用于树形结构的子节点查询）
+
+        :param db: orm 对象
+        :param pid: 父分类 ID
+        :return: 子分类列表信息对象
+        """
+        query = (
+            select(SysPropertyCate)
+            .where(
+                SysPropertyCate.status != -1,
+                SysPropertyCate.pid == pid
+            )
+            .order_by(SysPropertyCate.sort.desc(), SysPropertyCate.create_time.asc())
+            .distinct()
+        )
+        result = (await db.execute(query)).scalars().all()
+
+        return [item.__dict__ for item in result if not item._sa_instance_state.deleted]
+
+    @classmethod
     async def get_all_property_cate_list(cls, db: AsyncSession) -> list[dict[str, Any]]:
         """
         获取所有资产分类列表信息（用于生成树形结构）

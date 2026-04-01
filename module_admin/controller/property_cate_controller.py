@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, Optional
 
 from fastapi import Path, Query, Request, Response
 from pydantic_validation_decorator import ValidateFields
@@ -39,9 +39,10 @@ property_cate_controller = APIRouterPro(
 async def get_system_property_cate_tree(
         request: Request,
         query_db: Annotated[AsyncSession, DBSessionDependency()],
+        pid: Annotated[int | None, Query(description='父分类 ID，不传则返回根节点')] = None,
 ) -> Response:
     # 获取树形数据
-    property_cate_tree_result = await PropertyCateService.get_property_cate_tree_services(query_db)
+    property_cate_tree_result = await PropertyCateService.get_property_cate_tree_services(query_db, pid)
     logger.info('获取成功')
 
     return ResponseUtil.success(data=property_cate_tree_result)
