@@ -1,4 +1,4 @@
-from fastapi import File, Form, Path, Query, Request, Response, UploadFile
+from fastapi import File, Form, Path, Query, Request, Response, UploadFile,Body
 from typing import Annotated
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,6 +12,7 @@ from common.router import APIRouterPro
 from module_personnel.entity.do.department_change_do import OaDepartmentChange
 from module_personnel.entity.vo.department_change_vo import OaDepartmentChangePageQueryModel, OaDepartmentChangeBassModel
 from module_personnel.service.department_change_service import DepartmentChangeService
+from utils.response_util import ResponseUtil
 
 dept_change_controller = APIRouterPro(
     prefix='/personnel/deptChange', order_num=3, tags=['人事管理-人事调动'], dependencies=[PreAuthDependency()]
@@ -32,7 +33,7 @@ async def get_page_list(
 ) -> Response:
     return await DepartmentChangeService.get_page_list_service(query_db,query_object,data_scope_sql,True)
 
-@dept_change_controller.get(
+@dept_change_controller.post(
     "/add",
     summary='新增人事调动',
     description='用于新增人事调动',
@@ -42,23 +43,25 @@ async def get_page_list(
 async def add_change(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
-    query_object: Annotated[OaDepartmentChangeBassModel, Query()],
+    query_object: Annotated[OaDepartmentChangeBassModel, Body()],
 ) -> Response:
-    return await DepartmentChangeService.add_service(query_db, query_object)
+    result =  await DepartmentChangeService.add_service(query_db, query_object)
+    return ResponseUtil.success(msg=result.message)
 
-@dept_change_controller.post(
+@dept_change_controller.put(
     "/update",
     summary='更新人事调动',
     description='用于更新人事调动',
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:deptChange:update')],
 )
-async def update_profile(
+async def update_change(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
-    model: Annotated[OaDepartmentChangeBassModel, Query()],
+    model: Annotated[OaDepartmentChangeBassModel, Body()],
 )->Response:
-    return await DepartmentChangeService().update_service(query_db, model)
+    result =  await DepartmentChangeService().update_service(query_db, model)
+    return ResponseUtil.success(msg=result.message)
 
 @dept_change_controller.get(
     "/detail/{id}",
@@ -67,14 +70,15 @@ async def update_profile(
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:deptChange:query')],
 )
-async def get_profile(
+async def get_change(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
     id: int,
 ) -> Response:
-    return await DepartmentChangeService.get_info_service(query_db, id)
+    result =  await DepartmentChangeService.get_info_service(query_db, id)
+    return ResponseUtil.success(data=result)
 
-@dept_change_controller.get(
+@dept_change_controller.delete(
     "/delete/{id}",
     summary='删除人事调动',
     description='用于删除人事调动',
@@ -86,7 +90,8 @@ async def delete_change(
     query_db: Annotated[AsyncSession, DBSessionDependency()],
     id: int,
 ) -> Response:
-    return await DepartmentChangeService.del_by_id(query_db, id)
+    result =  await DepartmentChangeService.del_by_id(query_db, id)
+    return ResponseUtil.success(data=result.message)
 
 @dept_change_controller.put(
     "/pass",
@@ -98,9 +103,10 @@ async def delete_change(
 async def pass_change(
         request: Request,
         query_db: Annotated[AsyncSession, DBSessionDependency()],
-        data: Annotated[OaDepartmentChangeBassModel, Query()],
+        data: Annotated[OaDepartmentChangeBassModel, Body()],
 ) -> Response:
-    return await DepartmentChangeService.pass_change(query_db, data)
+    result =  await DepartmentChangeService.pass_change(query_db, data)
+    return ResponseUtil.success(data=result.message)
 
 @dept_change_controller.put(
     "/reject",
@@ -112,9 +118,10 @@ async def pass_change(
 async def reject_change(
         request: Request,
         query_db: Annotated[AsyncSession, DBSessionDependency()],
-        data: Annotated[OaDepartmentChangeBassModel, Query()],
+        data: Annotated[OaDepartmentChangeBassModel, Body()],
 ) -> Response:
-    return await DepartmentChangeService.reject_change(query_db, data)
+    result =  await DepartmentChangeService.reject_change(query_db, data)
+    return ResponseUtil.success(data=result.message)
 
 @dept_change_controller.put(
     "/cancel",
@@ -126,6 +133,7 @@ async def reject_change(
 async def cancel_change(
         request: Request,
         query_db: Annotated[AsyncSession, DBSessionDependency()],
-        data: Annotated[OaDepartmentChangeBassModel, Query()],
+        data: Annotated[OaDepartmentChangeBassModel, Body()],
 ) -> Response:
-    return await DepartmentChangeService.cancel_change(query_db, data)
+    result =  await DepartmentChangeService.cancel_change(query_db, data)
+    return ResponseUtil.success(data=result.message)

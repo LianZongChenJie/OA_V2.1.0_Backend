@@ -14,6 +14,8 @@ class OaCostCateBaseModel(BaseModel):
     update_time: int | None = Field(None, description='更新时间')
     delete_time: int | None = Field(None, description='删除时间')
 
+
+
 class CostCatePageQueryModel(OaCostCateBaseModel):
 
     page_num: int | None = Field(None, description='页码')

@@ -1,5 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select,desc
 from module_personnel.entity.vo.flow_record_vo import OaFlowRecordBaseModel
 from module_personnel.entity.do.flow_record_do import OaFlowRecord
 
@@ -19,6 +19,6 @@ class FlowRecordDao:
     @classmethod
     async def get_records_by_action_id(cls, db: AsyncSession, action_id: int, flow_id: int) -> OaFlowRecordBaseModel | list[OaFlowRecordBaseModel] | None:
         """获取审批记录"""
-        query = select(OaFlowRecord).filter(OaFlowRecord.action_id == action_id,OaFlowRecord.flow_id == flow_id).order_by(OaFlowRecord.check_time.desc())
+        query = select(OaFlowRecord).filter(OaFlowRecord.action_id == action_id,OaFlowRecord.flow_id == flow_id).order_by(desc(OaFlowRecord.check_time))
         record = (await db.execute(query)).scalars().all()
         return record

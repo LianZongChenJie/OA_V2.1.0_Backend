@@ -1,6 +1,5 @@
 from pydantic import BaseModel, Field, validator, ConfigDict, field_serializer
 from pydantic.alias_generators import to_camel
-from decimal import Decimal
 from utils.timeformat import format_timestamp, int_time
 
 class OaWorkBaseModel(BaseModel):

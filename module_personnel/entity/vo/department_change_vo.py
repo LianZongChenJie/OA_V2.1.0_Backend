@@ -2,7 +2,7 @@ from pydantic import BaseModel, Field, validator, ConfigDict
 from pydantic.alias_generators import to_camel
 
 from module_personnel.entity.vo.flow_record_vo import OaFlowRecordBaseModel
-from utils.timeformat import format_timestamp
+from utils.timeformat import format_timestamp, int_time
 from pydantic import field_serializer
 from typing import Optional
 class OaDepartmentChangeBassModel(BaseModel):
@@ -14,10 +14,10 @@ class OaDepartmentChangeBassModel(BaseModel):
     from_did: int | None = Field(None, description='原部门id')
     to_did: int | None = Field(None, description='调到部门id')
     connect_id: int | None = Field(None, description='资料交接人')
-    connect_time: int | None = Field(None, description='资料交接时间')
+    connect_time: int | str | None = Field(None, description='资料交接时间')
     connect_uids: str | None = Field(None, description='参与交接人,可多个')
     file_ids: str | None = Field(None, description='档案附件')
-    move_time: int | None = Field(None, description='调动时间')
+    move_time: int | str | None = Field(None, description='调动时间')
     status: int | None = Field(None, description='状态:1未调动,2已交接调动')
     remark: str | None = Field(None, description='备注信息')
     admin_id: int | None = Field(None, description='创建人')
@@ -37,6 +37,10 @@ class OaDepartmentChangeBassModel(BaseModel):
     @field_serializer('move_time')
     def serialize_move_time(self, value: Optional[int]) -> Optional[str]:
         """序列化创建时间"""
+        return format_timestamp(value)
+    @field_serializer('connect_time')
+    def serialize_connect_time(self, value: Optional[int]) -> Optional[str]:
+        """序列化审核状态"""
         return format_timestamp(value)
 
     @field_serializer('create_time')
