@@ -103,6 +103,28 @@ class ProductCateDao:
         return [item.__dict__ for item in result if not getattr(item, '_sa_instance_state').deleted]
 
     @classmethod
+    async def get_product_cate_children_list(cls, db: AsyncSession, pid: int) -> list[dict[str, Any]]:
+        """
+        根据父分类 ID 获取子分类列表（用于树形结构的子节点查询）
+
+        :param db: orm 对象
+        :param pid: 父分类 ID
+        :return: 子分类列表信息对象
+        """
+        query = (
+            select(OaProductCate)
+            .where(
+                OaProductCate.status != -1,
+                OaProductCate.pid == pid
+            )
+            .order_by(OaProductCate.sort.desc(), OaProductCate.create_time.asc())
+            .distinct()
+        )
+        result = (await db.execute(query)).scalars().all()
+
+        return [item.__dict__ for item in result if not getattr(item, '_sa_instance_state').deleted]
+
+    @classmethod
     async def add_product_cate_dao(cls, db: AsyncSession, product_cate: ProductCateModel) -> OaProductCate:
         """
         新增产品分类数据库操作

@@ -73,9 +73,8 @@ class NoteCateDao:
         query = (
             select(SysNoteCate)
             .where(
-                SysNoteCate.delete_time == 0,
+                SysNoteCate.status != -1,
                 SysNoteCate.title.like(f'%{query_object.title}%') if query_object.title else True,
-                SysNoteCate.status == query_object.status if query_object.status is not None else True,
                 )
             .order_by(SysNoteCate.sort)
             .distinct()

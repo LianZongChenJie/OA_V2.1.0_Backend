@@ -39,8 +39,9 @@ product_cate_controller = APIRouterPro(
 async def get_system_product_cate_tree(
         request: Request,
         query_db: Annotated[AsyncSession, DBSessionDependency()],
+        pid: Annotated[int | None, Query(description='父分类 ID，不传则返回完整树')] = None,
 ) -> Response:
-    product_cate_tree_result = await ProductCateService.get_product_cate_tree_services(query_db)
+    product_cate_tree_result = await ProductCateService.get_product_cate_tree_services(query_db, pid)
     logger.info('获取成功')
 
     return ResponseUtil.success(data=product_cate_tree_result)

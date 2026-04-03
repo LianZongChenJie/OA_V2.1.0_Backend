@@ -41,17 +41,30 @@ class ProductCateService:
         return product_cate_list_result
 
     @classmethod
-    async def get_product_cate_tree_services(cls, query_db: AsyncSession) -> list[dict[str, Any]]:
+    async def get_product_cate_tree_services(cls, query_db: AsyncSession, pid: int | None = None) -> list[dict[str, Any]]:
         """
         获取产品分类树信息 service
 
         :param query_db: orm 对象
+        :param pid: 父分类 ID，如果为 None 则返回完整树，否则返回指定 pid 下的子分类（扁平列表）
         :return: 产品分类树信息对象
         """
-        product_cate_list_result = await ProductCateDao.get_all_product_cate_list(query_db)
-        product_cate_tree_result = cls.list_to_tree(product_cate_list_result)
-
-        return CamelCaseUtil.transform_result(product_cate_tree_result)
+        if pid is not None:
+            # 如果指定了 pid，只返回该 pid 下的直接子分类（不构成树形结构）
+            product_cate_list_result = await ProductCateDao.get_product_cate_children_list(query_db, pid)
+            # 转换为树模型格式（扁平列表）
+            _product_cate_list = []
+            for item in product_cate_list_result:
+                cate_dict = item.copy()
+                cate_dict['label'] = item.get('title')
+                cate_dict['parentId'] = item.get('pid')
+                _product_cate_list.append(ProductCateTreeModel(**cate_dict))
+            return CamelCaseUtil.transform_result(_product_cate_list)
+        else:
+            # 如果没有指定 pid，返回完整的树形结构
+            product_cate_list_result = await ProductCateDao.get_all_product_cate_list(query_db)
+            product_cate_tree_result = cls.list_to_tree(product_cate_list_result)
+            return CamelCaseUtil.transform_result(product_cate_tree_result)
 
     @classmethod
     def list_to_tree(cls, product_cate_list: list[dict[str, Any]]) -> list[ProductCateTreeModel]:

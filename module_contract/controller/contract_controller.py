@@ -57,6 +57,102 @@ async def get_system_contract_list(
     return ResponseUtil.success(model_content=contract_page_query_result)
 
 
+@contract_controller.get(
+    '/archivelist',
+    summary='获取合同归档分页列表接口',
+    description='用于获取已归档的合同分页列表',
+    response_model=PageResponseModel[ContractModel],
+    dependencies=[UserInterfaceAuthDependency('system:contract:list')],
+)
+async def get_system_contract_archive_list(
+        request: Request,
+        contract_page_query: Annotated[ContractPageQueryModel, Query()],
+        query_db: Annotated[AsyncSession, DBSessionDependency()],
+        current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
+) -> Response:
+    # 设置归档状态为 1（已归档）
+    contract_page_query.archive_status = 1
+    
+    # 获取分页数据
+    contract_page_query_result = await ContractService.get_contract_list_services(
+        query_db,
+        contract_page_query,
+        current_user.user.user_id,
+        current_user.user.auth_dids or '',
+        current_user.user.son_dids or '',
+        current_user.user.admin,
+        False,  # is_contract_admin 需要根据实际权限判断
+        is_page=True
+    )
+    logger.info('获取成功')
+
+    return ResponseUtil.success(model_content=contract_page_query_result)
+
+
+@contract_controller.get(
+    '/stoplist',
+    summary='获取合同中止分页列表接口',
+    description='用于获取已中止的合同分页列表',
+    response_model=PageResponseModel[ContractModel],
+    dependencies=[UserInterfaceAuthDependency('system:contract:list')],
+)
+async def get_system_contract_stop_list(
+        request: Request,
+        contract_page_query: Annotated[ContractPageQueryModel, Query()],
+        query_db: Annotated[AsyncSession, DBSessionDependency()],
+        current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
+) -> Response:
+    # 设置中止状态为 1（已中止）
+    contract_page_query.stop_status = 1
+    
+    # 获取分页数据
+    contract_page_query_result = await ContractService.get_contract_list_services(
+        query_db,
+        contract_page_query,
+        current_user.user.user_id,
+        current_user.user.auth_dids or '',
+        current_user.user.son_dids or '',
+        current_user.user.admin,
+        False,  # is_contract_admin 需要根据实际权限判断
+        is_page=True
+    )
+    logger.info('获取成功')
+
+    return ResponseUtil.success(model_content=contract_page_query_result)
+
+
+@contract_controller.get(
+    '/voidlist',
+    summary='获取合同作废分页列表接口',
+    description='用于获取已作废的合同分页列表',
+    response_model=PageResponseModel[ContractModel],
+    dependencies=[UserInterfaceAuthDependency('system:contract:list')],
+)
+async def get_system_contract_void_list(
+        request: Request,
+        contract_page_query: Annotated[ContractPageQueryModel, Query()],
+        query_db: Annotated[AsyncSession, DBSessionDependency()],
+        current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
+) -> Response:
+    # 设置作废状态为 1（已作废）
+    contract_page_query.void_status = 1
+    
+    # 获取分页数据
+    contract_page_query_result = await ContractService.get_contract_list_services(
+        query_db,
+        contract_page_query,
+        current_user.user.user_id,
+        current_user.user.auth_dids or '',
+        current_user.user.son_dids or '',
+        current_user.user.admin,
+        False,  # is_contract_admin 需要根据实际权限判断
+        is_page=True
+    )
+    logger.info('获取成功')
+
+    return ResponseUtil.success(model_content=contract_page_query_result)
+
+
 @contract_controller.post(
     '',
     summary='新增合同接口',

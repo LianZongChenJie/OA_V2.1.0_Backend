@@ -78,6 +78,7 @@ class PropertyCateDao:
                 SysPropertyCate.status != -1,
                 SysPropertyCate.title.like(f'%{query_object.title}%') if query_object.title else True,
                 SysPropertyCate.status == query_object.status if query_object.status is not None else True,
+                SysPropertyCate.pid == query_object.pid if query_object.pid is not None else True,
                 )
             .order_by(SysPropertyCate.sort.desc(), SysPropertyCate.create_time.asc())
             .distinct()
