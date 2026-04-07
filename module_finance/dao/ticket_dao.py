@@ -191,6 +191,6 @@ class TicketDao:
 
     @classmethod
     async def payment_get_id(cls, db: AsyncSession, id: int):
-        query = select(OaTicket).where(OaTicket.id == id)
+        query = select(OaTicketPayment.ticket_id).where(OaTicketPayment.id == id)
         result = await db.execute(query)
         return result.scalar()

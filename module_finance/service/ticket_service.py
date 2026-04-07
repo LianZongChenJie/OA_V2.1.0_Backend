@@ -164,26 +164,26 @@ class TicketService:
     @classmethod
     async def payment_add(cls, db: AsyncSession, data_list: list[OaTicketPayment], userId: int):
         try:
-            ticket = await TicketDao.get_info_by_id(db, data_list[0].invoice_id)
+            ticket = await TicketDao.get_info_by_id(db, data_list[0].ticket_id)
             ticket : OaTicketBaseModel =  OaTicketBaseModel.model_validate(ticket)
-            old_amount = ticket.amount
-            enter_time = int(datetime.now().timestamp())
+            old_amount = ticket.pay_amount if ticket.pay_amount else 0
+            pay_time = int(datetime.now().timestamp())
             create_time = int(datetime.now().timestamp())
             amount = 0
             for data in data_list:
                 amount += data.amount
-                data.enter_time = enter_time
+                data.pay_time = pay_time
                 data.admin_id =userId
                 data.create_time = create_time
             await TicketDao.payment_add(db, data_list)
-            ticket.enter_amount = amount
-            ticket.enter_time = enter_time
-            if amount > old_amount:
-                return CrudResponseModel(is_success=False, message='回款金额不能大于发票金额')
-            if amount < old_amount:
-                ticket.enter_status = 1
+            ticket.pay_amount = amount
+            ticket.pay_time = pay_time
+            if amount > ticket.amount:
+                return CrudResponseModel(is_success=False, message='付款金额不能大于发票金额')
+            if amount < ticket.amount:
+                ticket.pay_status = 1
             else:
-                ticket.enter_status = 2
+                ticket.pay_status = 2
             ticket.update_time = int(datetime.now().timestamp())
             await TicketDao.update(db, ticket)
             await db.commit()
@@ -196,23 +196,23 @@ class TicketService:
     @classmethod
     async def payment_del(cls, db: AsyncSession, ids: list[int]):
         try:
-            ticket = await TicketDao.payment_get_id(db, ids[0])
+            ticket_id = await TicketDao.payment_get_id(db, ids[0])
             await TicketDao.payment_del(db, ids)
-            incomes = await TicketDao.ticket_get_payments(db,ticket.ticket_id)
+            payments = await TicketDao.ticket_get_payments(db,ticket_id)
             amount = 0
             pay_time = 0
-            for inc in incomes:
+            for inc in payments:
                 amount += inc.amount
                 if inc.pay_time > pay_time:
                     pay_time = inc.pay_time
-            ticket = await TicketDao.get_info_by_id(db, ticket.ticket_id)
+            ticket = await TicketDao.get_info_by_id(db, ticket_id)
             ticket : OaTicketBaseModel =  OaTicketBaseModel.model_validate(ticket)
             ticket.pay_amount = amount
             ticket.pay_time = pay_time
-            if incomes:
+            if payments:
                 ticket.pay_status = 1
             else:
-                ticket.pay_status = 2
+                ticket.pay_status = 0
             ticket.update_time = int(datetime.now().timestamp())
             await TicketDao.update(db, ticket)
             return CrudResponseModel(is_success=True, message='操作成功')

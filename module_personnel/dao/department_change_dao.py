@@ -154,7 +154,7 @@ class DepartmentChangeDao:
 
     @classmethod
     async def add(cls, db: AsyncSession, model: OaDepartmentChangeBassModel):
-        db_model = OaDepartmentChange(**model.model_dump(exclude={"id", "create_time"}, exclude_none=True),
+        db_model = OaDepartmentChange(**model.model_dump(exclude={"id", "create_time",'move_time','connect_time'}, exclude_none=True),
                                  create_time=model.create_time, move_time = model.move_time, connect_time = model.connect_time)
         db.add(db_model)
         await db.commit()

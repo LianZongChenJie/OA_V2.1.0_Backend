@@ -191,6 +191,26 @@ class InvoiceDao:
 
     @classmethod
     async def income_get_id(cls, db: AsyncSession, id: int):
-        query = select(OaInvoice).where(OaInvoice.id == id)
+        """只查询需要的字段"""
+        query = select(
+            OaInvoiceIncome.id,
+            OaInvoiceIncome.invoice_id,
+            OaInvoiceIncome.amount,
+            OaInvoiceIncome.enter_time,
+            OaInvoiceIncome.status
+        ).where(OaInvoiceIncome.id == id)
+
         result = await db.execute(query)
-        return result.scalar()
+        row = result.first()
+
+        if not row:
+            return None
+
+        # 返回一个简单对象或字典
+        return {
+            'id': row.id,
+            'invoice_id': row.invoice_id,
+            'amount': row.amount,
+            'enter_time': row.enter_time,
+            'status': row.status
+        }

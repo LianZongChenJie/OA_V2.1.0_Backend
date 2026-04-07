@@ -196,15 +196,19 @@ class InvoiceService:
     async def income_del(cls, db: AsyncSession, ids: list[int]):
         try:
             income = await InvoiceDao.income_get_id(db, ids[0])
+
+            if not income['id']:
+                return CrudResponseModel(is_success=False, message='未找到该数据')
             await InvoiceDao.income_del(db, ids)
-            incomes = await InvoiceDao.income_get_incomes(db,income.invoice_id)
+            invoice_id = income['invoice_id']
+            incomes = await InvoiceDao.income_get_incomes(db,invoice_id)
             amount = 0
             enter_time = 0
             for inc in incomes:
                 amount += inc.amount
                 if inc.enter_time > enter_time:
                     enter_time = inc.enter_time
-            invoice = await InvoiceDao.get_info_by_id(db, income.invoice_id)
+            invoice = await InvoiceDao.get_info_by_id(db, invoice_id)
             invoice : OaInvoiceBaseModel =  OaInvoiceBaseModel.model_validate(invoice)
             invoice.enter_amount = amount
             invoice.enter_time = enter_time
