@@ -6,7 +6,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from common.vo import PageModel
 from module_admin.entity.do.supplier_do import OaSupplier
+from module_admin.entity.do.supplier_contact_do import OaSupplierContact
 from module_admin.entity.vo.supplier_vo import SupplierModel, SupplierPageQueryModel
+from module_admin.entity.vo.supplier_contact_vo import AddSupplierContactModel
+from utils.log_util import logger
 from utils.page_util import PageUtil
 
 
@@ -161,3 +164,44 @@ class SupplierDao:
             .where(OaSupplier.id == supplier.id)
             .values(status=1, update_time=update_time)
         )
+
+    @classmethod
+    async def add_supplier_contact_dao(cls, db: AsyncSession, contact: AddSupplierContactModel) -> OaSupplierContact:
+        """
+        新增供应商联系人数据库操作
+
+        :param db: orm 对象
+        :param contact: 联系人对象
+        :return:
+        """
+        current_time = int(datetime.now().timestamp())
+        
+        # 构建联系数字典，使用 model_dump 获取所有字段
+        contact_dict = contact.model_dump(by_alias=False)
+        
+        # 确保所有必填字段有正确的默认值
+        db_contact_data = {
+            'sid': contact_dict.get('sid') or 0,
+            'is_default': contact_dict.get('is_default') or 0,
+            'name': contact_dict.get('name') or '',
+            'sex': contact_dict.get('sex') or 0,
+            'mobile': contact_dict.get('mobile') or '',
+            'qq': contact_dict.get('qq') or '',
+            'wechat': contact_dict.get('wechat') or '',
+            'email': contact_dict.get('email') or '',
+            'nickname': contact_dict.get('nickname') or '',
+            'department': contact_dict.get('department') or '',
+            'position': contact_dict.get('position') or '',
+            'admin_id': contact_dict.get('admin_id') or 0,
+            'create_time': contact_dict.get('create_time') or current_time,
+            'update_time': contact_dict.get('update_time') or current_time,
+            'delete_time': contact_dict.get('delete_time') or 0,
+        }
+        
+        logger.info(f'插入联系人数据：{db_contact_data}')
+        
+        db_contact = OaSupplierContact(**db_contact_data)
+        db.add(db_contact)
+        await db.flush()
+
+        return db_contact

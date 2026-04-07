@@ -5,6 +5,8 @@ from pydantic import BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
 from pydantic_validation_decorator import NotBlank, Size, Xss
 
+from module_admin.entity.vo.supplier_contact_vo import AddSupplierContactModel
+
 
 class SupplierModel(BaseModel):
     """
@@ -64,7 +66,7 @@ class AddSupplierModel(SupplierModel):
     新增供应商模型
     """
 
-    pass
+    contact_list: list[AddSupplierContactModel] | None = Field(default=None, description='联系人列表')
 
 
 class EditSupplierModel(AddSupplierModel):

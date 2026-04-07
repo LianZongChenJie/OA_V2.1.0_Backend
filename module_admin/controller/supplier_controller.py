@@ -52,7 +52,7 @@ async def get_system_supplier_list(
 @supplier_controller.post(
     '',
     summary='新增供应商接口',
-    description='用于新增供应商',
+    description='用于新增供应商（可包含联系人列表）',
     response_model=ResponseBaseModel,
     dependencies=[UserInterfaceAuthDependency('system:supplier:add')],
 )
@@ -62,8 +62,23 @@ async def add_system_supplier(
         request: Request,
         add_supplier: AddSupplierModel,
         query_db: Annotated[AsyncSession, DBSessionDependency()],
+        current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
 ) -> Response:
-    add_supplier_result = await SupplierService.add_supplier_services(request, query_db, add_supplier)
+    # 从 current_user 获取用户 ID
+    user_id = current_user.user.user_id if current_user.user and current_user.user.user_id else 0
+    add_supplier.admin_id = user_id
+    
+    # 处理联系人列表
+    contact_list = []
+    if add_supplier.contact_list:
+        for contact in add_supplier.contact_list:
+            # 设置创建人
+            contact.admin_id = user_id
+            contact_list.append(contact)
+    
+    add_supplier_result = await SupplierService.add_supplier_services(
+        request, query_db, add_supplier, contact_list
+    )
     logger.info(add_supplier_result.message)
 
     return ResponseUtil.success(msg=add_supplier_result.message)
@@ -130,21 +145,3 @@ async def set_system_supplier_status(
     logger.info(set_supplier_result.message)
 
     return ResponseUtil.success(msg=set_supplier_result.message)
-
-
-@supplier_controller.get(
-    '/{id}',
-    summary='获取供应商详情接口',
-    description='用于获取指定供应商的详细信息',
-    response_model=DataResponseModel[SupplierModel],
-    dependencies=[UserInterfaceAuthDependency('system:supplier:query')],
-)
-async def query_detail_system_supplier(
-        request: Request,
-        id: Annotated[int, Path(description='供应商 ID')],
-        query_db: Annotated[AsyncSession, DBSessionDependency()],
-) -> Response:
-    detail_supplier_result = await SupplierService.supplier_detail_services(query_db, id)
-    logger.info(f'获取 id 为{id}的信息成功')
-
-    return ResponseUtil.success(data=detail_supplier_result)

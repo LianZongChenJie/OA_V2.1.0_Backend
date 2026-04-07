@@ -24,7 +24,7 @@ from utils.log_util import logger
 from utils.response_util import ResponseUtil
 
 contract_cate_controller = APIRouterPro(
-    prefix='/system/contractCate', order_num=22, tags=['系统管理 - 合同类别管理'], dependencies=[PreAuthDependency()]
+    prefix='/system/contractCate', order_num=22, tags=['1.6-系统管理 - 合同类别管理'], dependencies=[PreAuthDependency()]
 )
 
 

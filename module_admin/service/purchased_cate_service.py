@@ -42,22 +42,62 @@ class PurchasedCateService:
         return purchased_cate_list_result
 
     @classmethod
-    async def get_purchased_cate_tree_services(cls, query_db: AsyncSession) -> list[PurchasedCateTreeModel]:
+    async def get_purchased_cate_tree_services(cls, query_db: AsyncSession, pid: int | None = None) -> list[dict[str, Any]]:
         """
-        获取采购品分类树形结构 service
+        获取采购品分类树信息 service
 
         :param query_db: orm 对象
-        :return: 分类树形结构对象
+        :param pid: 父分类 ID
+                    - None 或 0: 返回完整树（所有根节点及其子树）
+                    - 其他值: 返回指定 id 节点的子树（包含该节点及其所有子孙节点）
+        :return: 采购品分类树信息对象
         """
+        # 获取所有分类数据
         all_categories = await PurchasedCateDao.get_all_purchased_cate_list(query_db)
+        all_categories_dict = [cate.to_dict() for cate in all_categories]
+        
+        # 构建完整的树形结构
+        tree_structure = cls.list_to_tree(all_categories_dict)
+        
+        if pid is not None and pid > 0:
+            # 如果传入了具体的 pid（大于0），返回以该 id 为根的子树
+            def find_node_by_id(nodes, target_id):
+                """递归查找指定 ID 的节点"""
+                for node in nodes:
+                    if node.id == target_id:
+                        return node
+                    if node.children:
+                        result = find_node_by_id(node.children, target_id)
+                        if result:
+                            return result
+                return None
+            
+            result_node = find_node_by_id(tree_structure, pid)
+            if result_node:
+                return CamelCaseUtil.transform_result([result_node])
+            else:
+                # 如果找不到指定的节点，返回空列表
+                return []
+        else:
+            # pid 为 None 或 0，返回完整的树形结构（所有根节点）
+            return CamelCaseUtil.transform_result(tree_structure)
 
-        # 转换为字典列表
+    @classmethod
+    def list_to_tree(cls, purchased_cate_list: list[dict[str, Any]]) -> list[PurchasedCateTreeModel]:
+        """
+        工具方法：根据分类列表信息生成树形嵌套数据
+
+        :param purchased_cate_list: 分类列表信息
+        :return: 分类树形嵌套数据
+        """
+        # 先创建基础模型列表，添加 label 字段用于树显示
         _purchased_cate_list = []
-        for cate in all_categories:
-            cate_dict = cate.to_dict()
-            cate_dict['label'] = cate.title
+        for item in purchased_cate_list:
+            cate_dict = item.copy()
+            # 添加 label 字段（用于树显示）
+            cate_dict['label'] = item.get('title')
             _purchased_cate_list.append(PurchasedCateTreeModel(**cate_dict))
-
+        
         # 转成 id 为 key 的字典
         mapping: dict[int, PurchasedCateTreeModel] = dict(
             zip([i.id for i in _purchased_cate_list], _purchased_cate_list, strict=False)
@@ -67,14 +107,14 @@ class PurchasedCateService:
         container: list[PurchasedCateTreeModel] = []
 
         for d in _purchased_cate_list:
-            # 如果找不到父级项，则是根节点
-            parent = mapping.get(d.pid)
+            # 使用 pid 字段（不是 parentId）
+            parent = mapping.get(d.pid) if d.pid else None
             if parent is None or d.pid == 0:
+                # 根节点
                 container.append(d)
             else:
-                children: list[PurchasedCateTreeModel] = parent.children
-                if not children:
-                    children = []
+                # 子节点，添加到父节点的 children 中
+                children: list[PurchasedCateTreeModel] = parent.children if parent.children else []
                 children.append(d)
                 parent.children = children
 

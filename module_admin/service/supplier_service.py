@@ -15,6 +15,7 @@ from module_admin.entity.vo.supplier_vo import (
     SupplierModel,
     SupplierPageQueryModel,
 )
+from module_admin.entity.vo.supplier_contact_vo import AddSupplierContactModel
 from utils.common_util import CamelCaseUtil
 from utils.log_util import logger
 
@@ -59,14 +60,16 @@ class SupplierService:
 
     @classmethod
     async def add_supplier_services(
-            cls, request: Request, query_db: AsyncSession, page_object: AddSupplierModel
+            cls, request: Request, query_db: AsyncSession, page_object: AddSupplierModel, 
+            contact_list: list[AddSupplierContactModel] | None = None
     ) -> CrudResponseModel:
         """
-        新增供应商信息 service
+        新增供应商信息 service（可同时添加联系人）
 
         :param request: Request 对象
         :param query_db: orm 对象
         :param page_object: 新增供应商对象
+        :param contact_list: 联系人列表
         :return: 新增供应商校验结果
         """
         if not await cls.check_supplier_title_unique_services(query_db, page_object):
@@ -74,6 +77,8 @@ class SupplierService:
 
         try:
             current_time = int(datetime.now().timestamp())
+            
+            # 1. 先插入供应商主表数据
             add_supplier = SupplierModel(
                 title=page_object.title,
                 code=page_object.code if page_object.code is not None else '',
@@ -100,12 +105,51 @@ class SupplierService:
                 update_time=current_time,
                 delete_time=0
             )
-            logger.info(f'Service 层准备插入的数据：title={add_supplier.title}, create_time={add_supplier.create_time}')
-            await SupplierDao.add_supplier_dao(query_db, add_supplier)
+            
+            logger.info(f'Service 层准备插入供应商数据：title={add_supplier.title}')
+            supplier_result = await SupplierDao.add_supplier_dao(query_db, add_supplier)
+            await query_db.flush()  # 刷新以获取生成的 ID
+            
+            # 获取生成的供应商 ID
+            supplier_id = supplier_result.id
+            logger.info(f'新增供应商成功，生成的 ID: {supplier_id}')
+            
+            # 2. 如果有联系人列表，批量插入联系人数据
+            if contact_list and len(contact_list) > 0:
+                logger.info(f'开始插入 {len(contact_list)} 个联系人')
+                
+                for idx, contact in enumerate(contact_list):
+                    # 设置供应商 ID（必须）
+                    contact.sid = supplier_id
+                    
+                    # 设置创建人
+                    if not contact.admin_id:
+                        contact.admin_id = page_object.admin_id or 0
+                    
+                    # 设置时间戳
+                    if not contact.create_time:
+                        contact.create_time = current_time
+                    if not contact.update_time:
+                        contact.update_time = current_time
+                    if not contact.delete_time:
+                        contact.delete_time = 0
+                    
+                    # 第一个联系人设为默认
+                    if idx == 0:
+                        contact.is_default = 1
+                        logger.info(f'设置联系人 {contact.name} 为默认联系人')
+                    
+                    logger.info(f'准备插入联系人 {idx + 1}: name={contact.name}, mobile={contact.mobile}, sid={contact.sid}')
+                    
+                    # 调用 DAO 层插入联系人
+                    contact_result = await SupplierDao.add_supplier_contact_dao(query_db, contact)
+                    logger.info(f'联系人 {idx + 1} 插入成功，ID: {contact_result.id}')
+            
             await query_db.commit()
-            logger.info(f'新增成功，生成的 ID: {add_supplier.id}')
+            logger.info(f'=== 新增供应商及联系人完成 === 供应商 ID: {supplier_id}, 联系人数量：{len(contact_list) if contact_list else 0}')
             return CrudResponseModel(is_success=True, message='新增成功')
         except Exception as e:
+            logger.error(f'=== 新增供应商异常 === 错误信息：{str(e)}', exc_info=True)
             await query_db.rollback()
             raise e
 

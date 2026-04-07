@@ -68,13 +68,25 @@ class ProductCateDao:
         :param is_page: 是否开启分页
         :return: 产品列表信息对象
         """
+        conditions = [
+            OaProductCate.status != -1,
+        ]
+        
+        # 添加 pid 过滤条件
+        if query_object.pid is not None:
+            conditions.append(OaProductCate.pid == query_object.pid)
+        
+        # 添加标题模糊搜索
+        if query_object.title:
+            conditions.append(OaProductCate.title.like(f'%{query_object.title}%'))
+        
+        # 添加状态过滤
+        if query_object.status is not None:
+            conditions.append(OaProductCate.status == query_object.status)
+        
         query = (
             select(OaProductCate)
-            .where(
-                OaProductCate.status != -1,
-                OaProductCate.title.like(f'%{query_object.title}%') if query_object.title else True,
-                OaProductCate.status == query_object.status if query_object.status is not None else True,
-                )
+            .where(*conditions)
             .order_by(OaProductCate.sort.desc(), OaProductCate.create_time.asc())
             .distinct()
         )

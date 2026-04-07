@@ -79,6 +79,13 @@ class ProductModel(BaseModel):
             return Decimal('0.00')
         return Decimal(str(v))
 
+    @field_validator('status', mode='before')
+    @classmethod
+    def validate_status(cls, v):
+        if v is None:
+            return None
+        return int(v)
+
     def validate_fields(self) -> None:
         self.get_title()
         self.get_code()

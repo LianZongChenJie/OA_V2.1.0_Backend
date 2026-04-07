@@ -76,6 +76,7 @@ class PurchasedCateDao:
                 OaPurchasedCate.status != -1,
                 OaPurchasedCate.title.like(f'%{query_object.title}%') if query_object.title else True,
                 OaPurchasedCate.status == query_object.status if query_object.status is not None else True,
+                OaPurchasedCate.pid == query_object.pid if query_object.pid is not None else True,
                 )
             .order_by(OaPurchasedCate.sort.desc(), OaPurchasedCate.create_time.asc())
             .distinct()
@@ -102,6 +103,28 @@ class PurchasedCateDao:
         result = (await db.execute(query)).scalars().all()
 
         return result
+
+    @classmethod
+    async def get_purchased_cate_children_list(cls, db: AsyncSession, pid: int) -> list[dict[str, Any]]:
+        """
+        根据父分类 ID 获取子分类列表（用于树形结构的子节点查询）
+
+        :param db: orm 对象
+        :param pid: 父分类 ID
+        :return: 子分类列表信息对象
+        """
+        query = (
+            select(OaPurchasedCate)
+            .where(
+                OaPurchasedCate.status != -1,
+                OaPurchasedCate.pid == pid
+            )
+            .order_by(OaPurchasedCate.sort.desc(), OaPurchasedCate.create_time.asc())
+            .distinct()
+        )
+        result = (await db.execute(query)).scalars().all()
+
+        return [item.__dict__ for item in result if not getattr(item, '_sa_instance_state').deleted]
 
     @classmethod
     async def add_purchased_cate_dao(cls, db: AsyncSession, cate: PurchasedCateModel) -> OaPurchasedCate:

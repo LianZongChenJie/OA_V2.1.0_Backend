@@ -12,17 +12,20 @@ class OaSupplierContact(Base):
     id = Column(Integer, primary_key=True, autoincrement=True, comment='ID')
 
     # 基本信息
-    name = Column(String(100), nullable=False, default='', comment='联系人姓名')
-    mobile = Column(String(20), nullable=False, default='', comment='联系电话')
-    sex = Column(String(10), nullable=False, default='', comment='性别')
     sid = Column(Integer, nullable=False, default=0, comment='供应商 ID')
-    is_default = Column(SmallInteger, nullable=False, default=0, comment='是否默认联系人：0 否 1 是')
+    is_default = Column(SmallInteger, nullable=False, default=0, comment='是否是第一联系人')
+    name = Column(String(100), nullable=False, default='', comment='姓名')
+    sex = Column(SmallInteger, nullable=False, default=0, comment='用户性别:0 未知，1 男，2 女')
+    mobile = Column(String(20), nullable=False, default='', comment='手机号码')
+    qq = Column(String(20), nullable=False, default='', comment='QQ 号')
+    wechat = Column(String(100), nullable=False, default='', comment='微信号')
+    email = Column(String(100), nullable=False, default='', comment='邮件地址')
+    nickname = Column(String(50), nullable=False, default='', comment='称谓')
+    department = Column(String(50), nullable=False, default='', comment='部门')
+    position = Column(String(50), nullable=False, default='', comment='职务')
 
     # 管理信息
     admin_id = Column(Integer, nullable=False, default=0, comment='创建人')
-
-    # 状态
-    status = Column(SmallInteger, nullable=False, default=1, comment='状态：-1 删除 0 禁用 1 启用')
 
     # 时间戳
     create_time = Column(BigInteger, nullable=False, default=0, comment='创建时间')
@@ -36,13 +39,18 @@ class OaSupplierContact(Base):
         """转换为字典"""
         return {
             'id': self.id,
-            'name': self.name,
-            'mobile': self.mobile,
-            'sex': self.sex,
             'sid': self.sid,
             'is_default': self.is_default,
+            'name': self.name,
+            'sex': self.sex,
+            'mobile': self.mobile,
+            'qq': self.qq,
+            'wechat': self.wechat,
+            'email': self.email,
+            'nickname': self.nickname,
+            'department': self.department,
+            'position': self.position,
             'admin_id': self.admin_id,
-            'status': self.status,
             'create_time': self.create_time,
             'update_time': self.update_time,
             'delete_time': self.delete_time

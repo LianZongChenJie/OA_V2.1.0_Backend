@@ -56,6 +56,16 @@ class PurchasedCatePageQueryModel(PurchasedCateModel):
     page_size: int = Field(default=10, description='每页记录数')
 
 
+class PurchasedCateTreeQueryModel(BaseModel):
+    """
+    采购品分类树查询模型
+    """
+
+    model_config = ConfigDict(alias_generator=to_camel, from_attributes=True)
+
+    pid: int | None = Field(default=None, description='父级分类 ID，用于获取指定父级下的子树')
+
+
 class AddPurchasedCateModel(PurchasedCateModel):
     """
     新增采购品分类模型

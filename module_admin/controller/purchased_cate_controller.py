@@ -39,8 +39,9 @@ purchased_cate_controller = APIRouterPro(
 async def get_system_purchased_cate_tree(
         request: Request,
         query_db: Annotated[AsyncSession, DBSessionDependency()],
+        pid: Annotated[int | None, Query(description='父级分类 ID，用于获取指定父级下的子树')] = None,
 ) -> Response:
-    purchased_cate_tree_result = await PurchasedCateService.get_purchased_cate_tree_services(query_db)
+    purchased_cate_tree_result = await PurchasedCateService.get_purchased_cate_tree_services(query_db, pid)
     logger.info('获取成功')
 
     return ResponseUtil.success(data=purchased_cate_tree_result)
