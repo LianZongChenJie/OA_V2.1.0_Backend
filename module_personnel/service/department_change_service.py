@@ -6,7 +6,6 @@ from exceptions.exception import ServiceException
 from module_basicdata.dao.public.flow_step_dao import OaFlowStepDao
 from module_personnel.dao.department_change_dao import DepartmentChangeDao
 from module_personnel.dao.flow_record_dao import FlowRecordDao
-from module_personnel.entity.do.department_change_do import OaDepartmentChange
 from sqlalchemy.sql import ColumnElement
 from module_personnel.entity.vo.department_change_vo import OaDepartmentChangeBassModel, \
     OaDepartmentChangePageQueryModel, OaDepartmentChangeDetailModel
@@ -114,37 +113,17 @@ class DepartmentChangeService:
 
 
     @classmethod
-    async def pass_change(cls, db: AsyncSession, data: OaDepartmentChangeBassModel):
+    async def review(cls, db: AsyncSession, data: OaDepartmentChangeBassModel):
         try:
             data.check_time = int(datetime.now().timestamp())
-            change = await DepartmentChangeDao.pass_change(db, data)
+            change = await DepartmentChangeDao.review(db, data)
             await cls.add_record(db, change, data)
             await db.commit()
-            return CrudResponseModel(is_success=True, message='审核通过！')
+            return CrudResponseModel(is_success=True, message='操作成功！')
         except Exception as e:
             await db.rollback()
-            return CrudResponseModel(is_success=True, message='审核失败！')
-
-    @classmethod
-    async def reject_change(cls, db: AsyncSession, data: OaDepartmentChangeBassModel):
-        try:
-            data.update_time = int(datetime.now().timestamp())
-            change = await DepartmentChangeDao.reject_change(db, data)
-            await cls.add_record(db, change, data)
-            await db.commit()
-            return CrudResponseModel(is_success=True, message='取消成功！')
-        except Exception as e:
-            await db.rollback()
-            return CrudResponseModel(is_success=True, message='审核失败！')
-
-    @classmethod
-    async def cancel_change(cls, db: AsyncSession, data: OaDepartmentChangeBassModel):
-        try:
-            await DepartmentChangeDao.cancel_change(db, data)
-            return CrudResponseModel(is_success=True, message='取消成功！')
-        except Exception as e:
-            await db.rollback()
-            return CrudResponseModel(is_success=True, message='取消失败！')
+            raise e
+            return CrudResponseModel(is_success=False, message='操作失败！')
 
     @classmethod
     async def add_record(cls, db: AsyncSession, change: OaFlowRecordBaseModel, model: OaDepartmentChangeBassModel):
@@ -154,9 +133,8 @@ class DepartmentChangeService:
             record = OaFlowRecordBaseModel()
             record.action_id = change.uid
             record.check_table = flow_cate.name
-            record.check_flow_id = change.check_flow_id
-            record.check_files = model.file_ids
-            record.check_uid = change.check_uid
+            record.flow_id = change.check_flow_id
+            record.check_uid = model.check_uids
             record.check_status = model.check_status
             record.step_id = step.id if step is not None else 0
             record.content = model.remark

@@ -20,5 +20,5 @@ class FlowRecordDao:
     async def get_records_by_action_id(cls, db: AsyncSession, action_id: int, flow_id: int) -> OaFlowRecordBaseModel | list[OaFlowRecordBaseModel] | None:
         """获取审批记录"""
         query = select(OaFlowRecord).filter(OaFlowRecord.action_id == action_id,OaFlowRecord.flow_id == flow_id).order_by(desc(OaFlowRecord.check_time))
-        record = (await db.execute(query)).scalars().all()
-        return record
+        records = (await db.execute(query)).scalars().all()
+        return records

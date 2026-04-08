@@ -17,7 +17,7 @@ class CareDao:
                             is_page: bool = False) -> PageModel | list[list[dict[str, Any]]]:
         query = (select(OaCare)
                      .where(
-                        and_(
+                            OaCare.delete_time == 0,
                             OaCare.status == query_object.status if query_object.status else True,
                             OaCare.care_cate == query_object.care_cate if query_object.care_cate else True,
                             OaCare.uid == query_object.uid if query_object.uid else True,
@@ -26,7 +26,6 @@ class CareDao:
                                 int(datetime.strptime(query_object.end_time, "%Y-%m-%d %H:%M:%S").timestamp()),
                             ) if query_object.begin_time and query_object.end_time else True,
 
-                        ),
                         data_scope_sql,
             ).order_by(desc(OaCare.create_time)))
         page_list: PageModel | list[list[dict[str, Any]]] = await PageUtil.paginate(
@@ -36,8 +35,8 @@ class CareDao:
 
     @classmethod
     async def add(cls, db: AsyncSession, model: OaCareBaseModel):
-        db_model = OaCare(**model.model_dump(exclude={"id", "create_time"}, exclude_none=True),
-                                 create_time=model.create_time)
+        db_model = OaCare(**model.model_dump(exclude={"id", "create_time","care_time"}, exclude_none=True),
+                                 create_time=model.create_time, care_time = model.care_time)
         db.add(db_model)
         await db.commit()
         await db.refresh(db_model)
@@ -49,7 +48,7 @@ class CareDao:
         result = await db.execute(
             update(OaCare)
             .values(
-                **model.model_dump(exclude={"id", "create_time"}, exclude_none=True, update_time=model.update_time)
+                **model.model_dump(exclude={"id", "update_time", "care_time"}, exclude_none=True, ),update_time=model.update_time,care_time = model.care_time
             )
             .where(OaCare.id == model.id)
         )

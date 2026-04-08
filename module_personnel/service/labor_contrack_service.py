@@ -7,6 +7,7 @@ from sqlalchemy.sql import ColumnElement
 from module_personnel.entity.vo.lable_contract_vo import OaLaborContractPageQueryModel, OaLaborContractBaseModel
 from common.vo import PageModel, CrudResponseModel
 from datetime import datetime
+from utils.timeformat import int_time
 
 
 class LaborContractService:
@@ -31,7 +32,11 @@ class LaborContractService:
         try:
             model.create_time = int(datetime.now().timestamp())
             model.status = 1
-            rewards = await LaborContractDao.add(query_db, model)
+            model.sign_time = int_time(model.sign_time)
+            model.start_time = int_time(model.start_time)
+            model.end_time = int_time(model.end_time)
+            model.trial_end_time = int_time(model.trial_end_time)
+            await LaborContractDao.add(query_db, model)
             await query_db.commit()
             return CrudResponseModel(is_success=True, message='新增成功')
         except Exception as e:
@@ -43,6 +48,10 @@ class LaborContractService:
     async def update_service(cls, query_db: AsyncSession, model: OaLaborContractBaseModel) -> CrudResponseModel:
         try:
             model.update_time = int(datetime.now().timestamp())
+            model.sign_time = int_time(model.sign_time)
+            model.start_time = int_time(model.start_time)
+            model.end_time = int_time(model.end_time)
+            model.trial_end_time = int_time(model.trial_end_time)
             await LaborContractDao.update(query_db, model)
             await query_db.commit()
             return CrudResponseModel(is_success=True, message='修改成功')
@@ -68,6 +77,7 @@ class LaborContractService:
     async def del_by_id(cls, db: AsyncSession, id: int):
         try:
             await LaborContractDao.del_by_id(db, id)
+            return CrudResponseModel(is_success=True, message='删除成功')
         except Exception as e:
             await db.rollback()
             raise e

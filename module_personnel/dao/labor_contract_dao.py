@@ -17,17 +17,16 @@ class LaborContractDao:
                             is_page: bool = False) -> PageModel | list[list[dict[str, Any]]]:
         query = (select(OaLaborContract)
                      .where(
-                        and_(
+                            OaLaborContract.cate == query_object.cate if query_object.cate else True,
+                            OaLaborContract.properties == query_object.properties if query_object.properties else True,
                             OaLaborContract.status == query_object.status if query_object.status else True,
                             OaLaborContract.types == query_object.types if query_object.types else True,
-                            OaLaborContract.rewards_cate == query_object.rewards_cate if query_object.rewards_cate else True,
                             OaLaborContract.uid == query_object.uid if query_object.uid else True,
                             OaLaborContract.check_time.between(
                                 int(datetime.strptime(query_object.begin_time, "%Y-%m-%d %H:%M:%S").timestamp()),
                                 int(datetime.strptime(query_object.end_time, "%Y-%m-%d %H:%M:%S").timestamp()),
                             ) if query_object.begin_time and query_object.end_time else True,
 
-                        ),
                         data_scope_sql,
             ).order_by(desc(OaLaborContract.create_time)))
         page_list: PageModel | list[list[dict[str, Any]]] = await PageUtil.paginate(
@@ -37,8 +36,13 @@ class LaborContractDao:
 
     @classmethod
     async def add(cls, db: AsyncSession, model: OaLaborContractBaseModel):
-        db_model = OaLaborContract(**model.model_dump(exclude={"id", "create_time"}, exclude_none=True),
-                                 create_time=model.create_time)
+        db_model = OaLaborContract(**model.model_dump(exclude={"id", "create_time",'sign_time','start_time', 'end_time', 'trial_end_time'}, exclude_none=True),
+                                 create_time=model.create_time,
+                                 sign_time=model.sign_time,
+                                 start_time=model.start_time,
+                                 end_time=model.end_time,
+                                 trial_end_time = model.trial_end_time
+                                   )
         db.add(db_model)
         await db.commit()
         await db.refresh(db_model)
@@ -50,8 +54,13 @@ class LaborContractDao:
         result = await db.execute(
             update(OaLaborContract)
             .values(
-                **model.model_dump(exclude={"id", "create_time"}, exclude_none=True, update_time=model.update_time)
-            )
+                **model.model_dump(exclude={"id", "update_time",'sign_time','start_time', 'end_time', 'trial_end_time'}, exclude_none=True),
+                        update_time=model.update_time,
+                        sign_time = model.sign_time,
+                        start_time = model.start_time,
+                        end_time = model.end_time,
+                        trial_end_time = model.trial_end_time
+                    )
             .where(OaLaborContract.id == model.id)
         )
         await db.commit()

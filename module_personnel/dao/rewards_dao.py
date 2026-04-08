@@ -17,7 +17,6 @@ class RewardsDao:
                             is_page: bool = False) -> PageModel | list[list[dict[str, Any]]]:
         query = (select(OaRewards)
                      .where(
-                        and_(
                             OaRewards.status == query_object.status if query_object.status else True,
                             OaRewards.types == query_object.types if query_object.types else True,
                             OaRewards.rewards_cate == query_object.rewards_cate if query_object.rewards_cate else True,
@@ -26,8 +25,6 @@ class RewardsDao:
                                 int(datetime.strptime(query_object.begin_time, "%Y-%m-%d %H:%M:%S").timestamp()),
                                 int(datetime.strptime(query_object.end_time, "%Y-%m-%d %H:%M:%S").timestamp()),
                             ) if query_object.begin_time and query_object.end_time else True,
-
-                        ),
                         data_scope_sql,
             ).order_by(desc(OaRewards.create_time)))
         page_list: PageModel | list[list[dict[str, Any]]] = await PageUtil.paginate(
@@ -43,14 +40,13 @@ class RewardsDao:
         await db.commit()
         await db.refresh(db_model)
         return db_model
-        pass
 
     @classmethod
     async def update(cls, db: AsyncSession, model: OaRewardsBaseModel):
         result = await db.execute(
             update(OaRewards)
             .values(
-                **model.model_dump(exclude={"id", "create_time"}, exclude_none=True, update_time=model.update_time)
+                **model.model_dump(exclude={"id", "update_time"}, exclude_none=True,),update_time=model.update_time
             )
             .where(OaRewards.id == model.id)
         )

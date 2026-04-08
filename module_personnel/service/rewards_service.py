@@ -86,6 +86,7 @@ class RewardsService:
     async def del_by_id(cls, db: AsyncSession, id: int):
         try:
             await RewardsDao.del_by_id(db, id)
+            return CrudResponseModel(is_success=True, message='删除成功')
         except Exception as e:
             await db.rollback()
             raise e

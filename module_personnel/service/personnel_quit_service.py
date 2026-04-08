@@ -45,8 +45,8 @@ class PersonnelQuitService:
             model.create_time = int(datetime.now().timestamp())
             model.status = 1
             change = await PersonnelQuitDao.add(query_db, model)
-            flow_cate = await FlowCateDao.get_flow_cate_info(query_db, change.check_flow_id)
-            await cls.add_record(query_db, change, model, flow_cate)
+            model.remark = "提交离职申请"
+            await cls.add_record(query_db, change, model)
             await query_db.commit()
             return CrudResponseModel(is_success=True, message='新增成功')
         except Exception as e:
@@ -58,8 +58,7 @@ class PersonnelQuitService:
     async def update_service(cls, query_db: AsyncSession, model: OaPersonalQuitBaseModel) -> CrudResponseModel:
         try:
             model.update_time = int(datetime.now().timestamp())
-            change = await PersonnelQuitDao.update(query_db, model)
-            await cls.add_record(query_db, change, model)
+            await PersonnelQuitDao.update(query_db, model)
             await query_db.commit()
             return CrudResponseModel(is_success=True, message='修改成功')
         except Exception as e:
@@ -72,9 +71,10 @@ class PersonnelQuitService:
     async def get_info_service(cls, query_db: \
             AsyncSession, id: int) -> OaPersonalQuitBaseModel:
         try:
-            detail = OaPersonnelQuitDetailModel()
+
             info = await PersonnelQuitDao.get_info_by_id(query_db, id)
-            records = await FlowRecordDao.get_records_by_action_id(query_db, info.action_id)
+            records = await FlowRecordDao.get_records_by_action_id(query_db, info.id, info.check_flow_id)
+            detail = OaPersonnelQuitDetailModel(info=None, records=None)
             detail.info = info
             detail.records = records
             if not detail:
@@ -104,50 +104,35 @@ class PersonnelQuitService:
     async def del_by_id(cls, db: AsyncSession, id: int):
         try:
             await PersonnelQuitDao.del_by_id(db, id)
+            return CrudResponseModel(is_success=True, message='删除成功')
         except Exception as e:
             await db.rollback()
             raise e
 
     @classmethod
-    async def pass_change(cls, db: AsyncSession, data: OaPersonalQuitBaseModel):
+    async def review(cls, db: AsyncSession, data: OaPersonalQuitBaseModel):
         try:
             data.check_time = int(datetime.now().timestamp())
-            change = await PersonnelQuitDao.pass_change(db, data)
+            change = await PersonnelQuitDao.review(db, data)
             await cls.add_record(db, change, data)
             await db.commit()
+            return CrudResponseModel(is_success=True, message='操作成功！')
         except Exception as e:
             await db.rollback()
             raise e
+            return CrudResponseModel(is_success=True, message='操作成功！')
 
-    @classmethod
-    async def reject_change(cls, db: AsyncSession, data: OaPersonalQuitBaseModel):
-        try:
-            data.update_time = int(datetime.now().timestamp())
-            change = await PersonnelQuitDao.reject_change(db, data)
-            await cls.add_record(db, change, data)
-            await db.commit()
-        except Exception as e:
-            await db.rollback()
-            raise e
-
-    @classmethod
-    async def cancel_change(cls, db: AsyncSession, data: OaPersonalQuitBaseModel):
-        try:
-            await PersonnelQuitDao.cancel_change(db, data)
-        except Exception as e:
-            await db.rollback()
-            raise e
     @classmethod
     async def add_record(cls, db: AsyncSession, change: OaFlowRecordBaseModel, model: OaPersonalQuitBaseModel):
         try:
             flow_cate = await FlowCateDao.get_flow_cate_info(db, change.check_flow_id)
             step = await OaFlowStepDao.get_info_by_flow_id(db, change.check_flow_id)
             record = OaFlowRecordBaseModel()
-            record.action_id = change.uid
+            record.action_id = change.id
             record.check_table = flow_cate.name
-            record.check_flow_id = change.check_flow_id
+            record.flow_id = change.check_flow_id
             record.check_files = model.file_ids
-            record.check_uid = change.check_uid
+            record.check_uid = change.check_last_uid
             record.check_status = model.check_status
             record.step_id = step.id if step is not None else 0
             record.content = model.remark

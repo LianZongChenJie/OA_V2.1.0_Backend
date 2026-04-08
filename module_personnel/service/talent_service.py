@@ -14,6 +14,7 @@ from datetime import datetime
 from module_basicdata.dao.public.flow_cate_dao import FlowCateDao
 
 from module_personnel.entity.vo.flow_record_vo import OaFlowRecordBaseModel
+from utils.timeformat import int_time
 
 
 class TalentService:
@@ -37,13 +38,12 @@ class TalentService:
     async def add_service(cls, query_db: AsyncSession, model: OaTalentBaseModel) -> CrudResponseModel:
         if model.id:
             return await cls.update_service(query_db, model)
-
-        if not await cls.check_unique_services(query_db, model):
-            raise ServiceException(message=f'新增审核{model.title}失败，该员工已有再审核流程不能重复提交')
         try:
             model.create_time = int(datetime.now().timestamp())
             model.status = 1
+            model.entry_time = int_time(model.entry_time)
             change = await TalentDao.add(query_db, model)
+            model.remark = '提交了离职申请'
             await cls.add_record(query_db, change, model)
             await query_db.commit()
             return CrudResponseModel(is_success=True, message='新增成功')
@@ -72,7 +72,7 @@ class TalentService:
         try:
             detail = OaTalentDetailModel()
             info = await TalentDao.get_info_by_id(query_db, id)
-            records = await FlowRecordDao.get_records_by_action_id(query_db, info.action_id)
+            records = await FlowRecordDao.get_records_by_action_id(query_db, info.id, info.check_flow_id)
             detail.info = info
             detail.records = records
             if not detail:
@@ -102,50 +102,34 @@ class TalentService:
     async def del_by_id(cls, db: AsyncSession, id: int):
         try:
             await TalentDao.del_by_id(db, id)
+            return CrudResponseModel(is_success=True, message='删除成功')
         except Exception as e:
             await db.rollback()
             raise e
 
     @classmethod
-    async def pass_change(cls, db: AsyncSession, data: OaTalentBaseModel):
+    async def review(cls, db: AsyncSession, data: OaTalentBaseModel):
         try:
             data.check_time = int(datetime.now().timestamp())
-            change = await TalentDao.pass_change(db, data)
+            change = await TalentDao.review(db, data)
             await cls.add_record(db, change, data)
             await db.commit()
+            return CrudResponseModel(is_success=True, message='审核成功')
         except Exception as e:
             await db.rollback()
             raise e
 
-    @classmethod
-    async def reject_change(cls, db: AsyncSession, data: OaTalentBaseModel):
-        try:
-            data.update_time = int(datetime.now().timestamp())
-            change = await TalentDao.reject_change(db, data)
-            await cls.add_record(db, change, data)
-            await db.commit()
-        except Exception as e:
-            await db.rollback()
-            raise e
-
-    @classmethod
-    async def cancel_change(cls, db: AsyncSession, data: OaTalentBaseModel):
-        try:
-            await TalentDao.cancel_change(db, data)
-        except Exception as e:
-            await db.rollback()
-            raise e
     @classmethod
     async def add_record(cls, db: AsyncSession, change: OaFlowRecordBaseModel, model: OaTalentBaseModel):
         try:
             flow_cate = await FlowCateDao.get_flow_cate_info(db, change.check_flow_id)
             step = await OaFlowStepDao.get_info_by_flow_id(db, change.check_flow_id)
             record = OaFlowRecordBaseModel()
-            record.action_id = change.uid
+            record.action_id = change.id
             record.check_table = flow_cate.name
-            record.check_flow_id = change.check_flow_id
+            record.flow_id = change.check_flow_id
             record.check_files = model.file_ids
-            record.check_uid = change.check_uid
+            record.check_uid = change.check_last_uid
             record.check_status = model.check_status
             record.step_id = step.id if step is not None else 0
             record.content = model.remark

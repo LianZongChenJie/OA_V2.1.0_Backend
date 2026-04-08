@@ -15,69 +15,65 @@ class TalentDao:
     async def get_page_list(cls, db: AsyncSession, query_object: OaTalentPageQueryModel,
                             data_scope_sql: ColumnElement,
                             is_page: bool = False) -> PageModel | list[list[dict[str, Any]]]:
+        # 构建基础查询
+        query = select(OaTalent)
+
+        # 构建条件列表
+        conditions = []
+
+        # 通用条件：审核状态
+        if query_object.check_status is not None:
+            conditions.append(OaTalent.check_status == query_object.check_status)
+
+        # 通用条件：审核时间范围
+        if query_object.begin_time and query_object.end_time:
+            start_timestamp = int(datetime.strptime(query_object.begin_time, "%Y-%m-%d %H:%M:%S").timestamp())
+            end_timestamp = int(datetime.strptime(query_object.end_time, "%Y-%m-%d %H:%M:%S").timestamp())
+            conditions.append(OaTalent.check_time.between(start_timestamp, end_timestamp))
+
+        # 根据不同的查询条件添加特定条件
         if query_object.admin_id:
-            query = (select(OaTalent)
-                     .where(
-                        OaTalent.check_status == query_object.check_status if query_object.check_status else True,
-                        OaTalent.check_time.between(
-                            int(datetime.strptime(query_object.begin_time, "%Y-%m-%d %H:%M:%S").timestamp()),
-                            int(datetime.strptime(query_object.end_time, "%Y-%m-%d %H:%M:%S").timestamp()),
-                        ) if query_object.begin_time and query_object.end_time else True,
-                        OaTalent.admin_id == query_object.admin_id,
-                data_scope_sql,
-            ).order_by(desc(OaTalent.create_time)))
+            conditions.append(OaTalent.admin_id == query_object.admin_id)
 
         elif query_object.check_uids:
-            query = (select(OaTalent)
-                     .where(
-                        OaTalent.check_status == query_object.check_status if query_object.check_status else True,
-                        OaTalent.check_time.between(
-                            int(datetime.strptime(query_object.begin_time, "%Y-%m-%d %H:%M:%S").timestamp()),
-                            int(datetime.strptime(query_object.end_time, "%Y-%m-%d %H:%M:%S").timestamp()),
-                        ) if query_object.begin_time and query_object.end_time else True,
-                    func.find_in_set(query_object.check_uids, OaTalent.check_uids) > 0,
-                    data_scope_sql,
-            ).order_by(desc(OaTalent.create_time)))
+            conditions.append(func.find_in_set(query_object.check_uids, OaTalent.check_uids) > 0)
+
         elif query_object.check_history_uids:
-            query = (select(OaTalent)
-            .where(
-                OaTalent.check_status == query_object.check_status if query_object.check_status else True,
-                OaTalent.check_time.between(
-                    int(datetime.strptime(query_object.begin_time, "%Y-%m-%d %H:%M:%S").timestamp()),
-                    int(datetime.strptime(query_object.end_time, "%Y-%m-%d %H:%M:%S").timestamp()),
-                ) if query_object.begin_time and query_object.end_time else True,
-                func.find_in_set(query_object.check_history_uids, OaTalent.check_history_uids) > 0,
-                data_scope_sql,
-            ).order_by(desc(OaTalent.create_time)))
+            conditions.append(
+                func.find_in_set(query_object.check_history_uids, OaTalent.check_history_uids) > 0)
+
         elif query_object.check_copy_uids:
-             query = (select(OaTalent)
-                     .where(
-                OaTalent.check_status == query_object.check_status if query_object.check_status else True,
-                OaTalent.check_time.between(
-                    int(datetime.strptime(query_object.begin_time, "%Y-%m-%d %H:%M:%S").timestamp()),
-                    int(datetime.strptime(query_object.end_time, "%Y-%m-%d %H:%M:%S").timestamp()),
-                ) if query_object.begin_time and query_object.end_time else True,
-                func.find_in_set(query_object.check_copy_uids, OaTalent.check_copy_uids) > 0,
-                data_scope_sql,
-            ).order_by(desc(OaTalent.create_time)))
+            conditions.append(func.find_in_set(query_object.check_copy_uids, OaTalent.check_copy_uids) > 0)
+
         else:
-            query = (select(OaTalent)
-                     .where(
-                        and_(
-                            OaTalent.check_status == query_object.check_status if query_object.check_status else True,
-                            OaTalent.check_time.between(
-                                int(datetime.strptime(query_object.begin_time, "%Y-%m-%d %H:%M:%S").timestamp()),
-                                int(datetime.strptime(query_object.end_time, "%Y-%m-%d %H:%M:%S").timestamp()),
-                            ) if query_object.begin_time and query_object.end_time else True,
-                            or_(
-                                query_object.admin_id == OaTalent.admin_id,
-                                func.find_in_set(query_object.check_uids, OaTalent.check_uids) > 0,
-                                func.find_in_set(query_object.check_copy_uids, OaTalent.check_copy_uids) > 0,
-                                func.find_in_set(query_object.check_history_uids, OaTalent.check_history_uids) > 0
-                            ),
-                        ),
-                        data_scope_sql,
-            ).order_by(desc(OaTalent.create_time)))
+            # 没有特定条件时，使用 OR 组合
+            or_conditions = []
+            if query_object.admin_id:
+                or_conditions.append(OaTalent.admin_id == query_object.admin_id)
+            if query_object.check_uids:
+                or_conditions.append(func.find_in_set(query_object.check_uids, OaTalent.check_uids) > 0)
+            if query_object.check_copy_uids:
+                or_conditions.append(
+                    func.find_in_set(query_object.check_copy_uids, OaTalent.check_copy_uids) > 0)
+            if query_object.check_history_uids:
+                or_conditions.append(
+                    func.find_in_set(query_object.check_history_uids, OaTalent.check_history_uids) > 0)
+
+            if or_conditions:
+                conditions.append(or_(*or_conditions))
+
+        # 添加数据权限条件
+        if data_scope_sql is not None:
+            conditions.append(data_scope_sql)
+
+        # 应用所有条件
+        if conditions:
+            query = query.where(*conditions)
+
+        # 排序
+        query = query.order_by(desc(OaTalent.create_time))
+
+        # 分页查询
         page_list: PageModel | list[list[dict[str, Any]]] = await PageUtil.paginate(
             db, query, query_object.page_num, query_object.page_size, is_page
         )
@@ -85,8 +81,10 @@ class TalentDao:
 
     @classmethod
     async def add(cls, db: AsyncSession, model: OaTalentBaseModel):
-        db_model = OaTalent(**model.model_dump(exclude={"id", "create_time"}, exclude_none=True),
-                                 create_time=model.create_time)
+        db_model = OaTalent(**model.model_dump(exclude={"id", "create_time", 'entry_time'}, exclude_none=True),
+                                 create_time=model.create_time,
+                                 entry_time = model.entry_time,
+                                )
         db.add(db_model)
         await db.commit()
         await db.refresh(db_model)
@@ -98,12 +96,14 @@ class TalentDao:
         result = await db.execute(
             update(OaTalent)
             .values(
-                **model.model_dump(exclude={"id", "create_time"}, exclude_none=True, update_time=model.update_time)
+                **model.model_dump(exclude={"id", "update_time", 'entry_time'}, exclude_none=True)
+                , update_time=model.update_time
+                , entry_time = model.entry_time
             )
             .where(OaTalent.id == model.id)
         )
         await db.commit()
-        return result.rowcount
+        return await cls.get_info_by_id(db, model.id)
 
     @classmethod
     async def get_info_by_id(cls, db: AsyncSession, id: int):
@@ -146,51 +146,25 @@ class TalentDao:
         return result.rowcount
 
     @classmethod
-    async def cancel_change(cls, db: AsyncSession, query_model: OaTalentBaseModel):
-        result = await db.execute(update(OaTalent).values(
-            update_time=int(datetime.now().timestamp()),
-            check_status=query_model.check_status,
-            remark=query_model.remark,
-        ).where(OaTalent.id == query_model.id))
-        await db.commit()
-        return result.rowcount
-
-    @classmethod
     async def count_by_uid(cls, db: AsyncSession, uid: str):
         result = await db.execute(select(func.count()).where(OaTalent.uid == uid))
         return result.scalar()
     @classmethod
-    async def pass_change(cls, db: AsyncSession, data: OaTalentBaseModel):
+    async def review(cls, db: AsyncSession, data: OaTalentBaseModel):
         try:
             result = await db.execute(
                 update(OaTalent)
                 .values(
-                    check_status=2,
-                    check_time=data.check_time,
-                    remark=data.remark,
+                    check_status=data.check_status,
+                    check_time=data.check_time
                 )
                 .where(OaTalent.id == data.id)
             )
             await db.commit()
+            info =  await cls.get_info_by_id(db, data.id)
+            return info
         except Exception as e:
             await db.rollback()
             raise e
         return result.rowcount
 
-    @classmethod
-    async def reject_change(cls, db: AsyncSession, data: OaTalentBaseModel):
-        try:
-            result = await db.execute(
-                update(OaTalent)
-                .values(
-                    check_status=3,
-                    check_time=data.check_time,
-                    remark=data.remark,
-                )
-                .where(OaTalent.id == data.id)
-            )
-            await db.commit()
-            return result.rowcount
-        except Exception as e:
-            await db.rollback()
-            raise e

@@ -8,6 +8,7 @@ from sqlalchemy.sql import ColumnElement
 from module_personnel.entity.vo.care_vo import OaCareBaseModel, OaCarePageQueryModel
 from common.vo import PageModel, CrudResponseModel
 from datetime import datetime
+from utils.timeformat import int_time
 
 
 class CareService:
@@ -31,8 +32,9 @@ class CareService:
     async def add_service(cls, query_db: AsyncSession, model: OaCareBaseModel) -> CrudResponseModel:
         try:
             model.create_time = int(datetime.now().timestamp())
+            model.care_time = int_time(model.care_time)
             model.status = 1
-            rewards = await CareDao.add(query_db, model)
+            await CareDao.add(query_db, model)
             await query_db.commit()
             return CrudResponseModel(is_success=True, message='新增成功')
         except Exception as e:
@@ -44,7 +46,8 @@ class CareService:
     async def update_service(cls, query_db: AsyncSession, model: OaCareBaseModel) -> CrudResponseModel:
         try:
             model.update_time = int(datetime.now().timestamp())
-            change = await CareDao.update(query_db, model)
+            model.care_time = int_time(model.care_time)
+            await CareDao.update(query_db, model)
             await query_db.commit()
             return CrudResponseModel(is_success=True, message='修改成功')
         except Exception as e:
@@ -85,6 +88,7 @@ class CareService:
     async def del_by_id(cls, db: AsyncSession, id: int):
         try:
             await CareDao.del_by_id(db, id)
+            return CrudResponseModel(is_success=True, message='删除成功')
         except Exception as e:
             await db.rollback()
             raise e

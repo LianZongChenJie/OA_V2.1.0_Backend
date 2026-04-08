@@ -1,4 +1,4 @@
-from fastapi import File, Form, Path, Query, Request, Response, UploadFile
+from fastapi import File, Form, Path, Query, Request, Response, UploadFile,Body
 from typing import Annotated
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -7,11 +7,16 @@ from sqlalchemy.sql import ColumnElement
 from common.aspect.data_scope import DataScopeDependency
 from common.aspect.db_seesion import DBSessionDependency
 from common.aspect.interface_auth import UserInterfaceAuthDependency
-from common.aspect.pre_auth import PreAuthDependency
+from common.aspect.pre_auth import PreAuthDependency, CurrentUserDependency
 from common.router import APIRouterPro
 from module_personnel.entity.do.rewards_do import OaRewards
 from module_personnel.entity.vo.rewards_vo import OaRewardsBaseModel, OaRewardsPageQueryModel
 from module_personnel.service.rewards_service import RewardsService
+from utils.camel_converter import ModelConverter
+from utils.response_util import ResponseUtil
+from module_admin.entity.vo.user_vo import (
+    CurrentUserModel
+)
 
 personnel_rewards_controller = APIRouterPro(
     prefix='/personnel/rewards', order_num=3, tags=['人事管理-奖罚管理'], dependencies=[PreAuthDependency()]
@@ -27,38 +32,43 @@ personnel_rewards_controller = APIRouterPro(
 async def get_page_list(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
-    query_object: OaRewardsPageQueryModel,
+    query_object: Annotated[OaRewardsPageQueryModel, Query()],
     data_scope_sql: Annotated[ColumnElement, DataScopeDependency(OaRewards)],
 ) -> Response:
-    return await RewardsService.get_page_list_service(query_db,query_object,data_scope_sql,True)
+    result =  await RewardsService.get_page_list_service(query_db,query_object,data_scope_sql,True)
+    return ResponseUtil.success(model_content=result)
 
-@personnel_rewards_controller.get(
+@personnel_rewards_controller.post(
     "/add",
     summary='新增奖罚管理',
     description='用于新增奖罚管理',
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:personnel:rewards:add')],
 )
-async def add_change(
+async def add_reward(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
-    query_object: OaRewardsBaseModel,
+    query_object: Annotated[OaRewardsBaseModel, Body()],
+    current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
 ) -> Response:
-    return await RewardsService.add_service(query_db, query_object)
+    query_object.admin_id = current_user.user.user_id
+    result =  await RewardsService.add_service(query_db, query_object)
+    return ResponseUtil.success(msg=result.message)
 
-@personnel_rewards_controller.post(
+@personnel_rewards_controller.put(
     "/update",
     summary='更新奖罚管理',
     description='用于更新奖罚管理',
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:personnel:rewards:update')],
 )
-async def update_profile(
+async def update_reward(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
-    model: OaRewardsBaseModel,
+    model: Annotated[OaRewardsBaseModel, Body()],
 )->Response:
-    return await RewardsService().update_service(query_db, model)
+    result =  await RewardsService.update_service(query_db, model)
+    return ResponseUtil.success(msg=result.message)
 
 @personnel_rewards_controller.get(
     "/detail/{id}",
@@ -72,9 +82,10 @@ async def get_detail(
     query_db: Annotated[AsyncSession, DBSessionDependency()],
     id: int,
 ) -> Response:
-    return await RewardsService.get_info_service(query_db, id)
+    result =  await RewardsService.get_info_service(query_db, id)
+    return ResponseUtil.success(data=ModelConverter.time_format(ModelConverter.to_dict(result)))
 
-@personnel_rewards_controller.get(
+@personnel_rewards_controller.delete(
     "/delete/{id}",
     summary='删除奖罚管理',
     description='用于删除奖罚管理',
@@ -86,4 +97,5 @@ async def delete_change(
     query_db: Annotated[AsyncSession, DBSessionDependency()],
     id: int,
 ) -> Response:
-    return await RewardsService.del_by_id(query_db, id)
+    result =  await RewardsService.del_by_id(query_db, id)
+    return ResponseUtil.success(msg=result.message)

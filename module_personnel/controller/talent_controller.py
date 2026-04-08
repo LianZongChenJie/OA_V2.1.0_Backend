@@ -1,4 +1,4 @@
-from fastapi import File, Form, Path, Query, Request, Response, UploadFile
+from fastapi import File, Form, Path, Query, Request, Response, UploadFile, Body
 from typing import Annotated
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,6 +12,7 @@ from common.router import APIRouterPro
 from module_personnel.entity.do.talent_do import OaTalent
 from module_personnel.entity.vo.talent_vo import OaTalentBaseModel, OaTalentPageQueryModel
 from module_personnel.service.talent_service import TalentService
+from utils.response_util import ResponseUtil
 
 talent_controller = APIRouterPro(
     prefix='/personnel/talent', order_num=3, tags=['人事管理-入职申请'], dependencies=[PreAuthDependency()]
@@ -27,38 +28,41 @@ talent_controller = APIRouterPro(
 async def get_page_list(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
-    query_object: OaTalentPageQueryModel,
+    query_object: Annotated[OaTalentPageQueryModel, Query()],
     data_scope_sql: Annotated[ColumnElement, DataScopeDependency(OaTalent)],
 ) -> Response:
-    return await TalentService.get_page_list_service(query_db,query_object,data_scope_sql,True)
+    result = await TalentService.get_page_list_service(query_db,query_object,data_scope_sql,True)
+    return ResponseUtil.success(model_content=result)
 
-@talent_controller.get(
+@talent_controller.post(
     "/add",
     summary='新增入职申请',
     description='用于新增入职申请',
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:personnel:talent:add')],
 )
-async def add_change(
+async def add_talent(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
-    query_object: OaTalentBaseModel,
+    query_object: Annotated[OaTalentBaseModel, Body()],
 ) -> Response:
-    return await TalentService.add_service(query_db, query_object)
+    result=  await TalentService.add_service(query_db, query_object)
+    return ResponseUtil.success(msg=result.message)
 
-@talent_controller.post(
+@talent_controller.put(
     "/update",
     summary='更新入职申请',
     description='用于更新入职申请',
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:personnel:talent:update')],
 )
-async def update_profile(
+async def update_talent(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
-    model: OaTalentBaseModel,
+    model: Annotated[OaTalentBaseModel, Body()],
 )->Response:
-    return await TalentService().update_service(query_db, model)
+    result = await TalentService.update_service(query_db, model)
+    return ResponseUtil.success(msg=result.message)
 
 @talent_controller.get(
     "/detail/{id}",
@@ -67,65 +71,39 @@ async def update_profile(
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:personnel:talent:query')],
 )
-async def get_profile(
+async def get_talent(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
     id: int,
 ) -> Response:
-    return await TalentService.get_info_service(query_db, id)
+    result =  await TalentService.get_info_service(query_db, id)
+    return ResponseUtil.success(data=result)
 
-@talent_controller.get(
+@talent_controller.delete(
     "/delete/{id}",
     summary='删除入职申请',
     description='用于删除入职申请',
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:personnel:talent:delete')],
 )
-async def delete_change(
+async def delete_talent(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
     id: int,
 ) -> Response:
-    return await TalentService.del_by_id(query_db, id)
+    result = await TalentService.del_by_id(query_db, id)
+    return ResponseUtil.success(msg=result.message)
 
 @talent_controller.put(
-    "/pass",
-    summary='审核通过',
-    description='用于审核通过',
+    "/review",
+    summary='审核',
+    description='用于审核入职申请',
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:personnel:talent:pass')],
 )
-async def pass_change(
+async def review(
         request: Request,
         query_db: Annotated[AsyncSession, DBSessionDependency()],
-        data: OaTalentBaseModel,
+        data: Annotated[OaTalentBaseModel, Body()],
 ) -> Response:
-    return await TalentService.pass_change(query_db, data)
-
-@talent_controller.put(
-    "/reject",
-    summary='审核拒绝',
-    description='用于审核拒绝',
-    response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:personnel:talent:reject')],
-)
-async def reject_change(
-        request: Request,
-        query_db: Annotated[AsyncSession, DBSessionDependency()],
-        data: OaTalentBaseModel,
-) -> Response:
-    return await TalentService.reject_change(query_db, data)
-
-@talent_controller.put(
-    "/cancel",
-    summary='撤销申请',
-    description='用于撤销申请',
-    response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:personnel:talent:cancel')],
-)
-async def cancel_change(
-        request: Request,
-        query_db: Annotated[AsyncSession, DBSessionDependency()],
-        data: OaTalentBaseModel,
-) -> Response:
-    return await TalentService.cancel_change(query_db, data)
+    return await TalentService.review(query_db, data)

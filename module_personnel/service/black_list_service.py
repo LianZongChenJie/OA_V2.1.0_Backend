@@ -31,8 +31,7 @@ class BlackListService:
     async def add_service(cls, query_db: AsyncSession, model: OaBlacklistBaseModel) -> CrudResponseModel:
         try:
             model.create_time = int(datetime.now().timestamp())
-            model.status = 1
-            rewards = await BlackListDao.add(query_db, model)
+            await BlackListDao.add(query_db, model)
             await query_db.commit()
             return CrudResponseModel(is_success=True, message='新增成功')
         except Exception as e:
@@ -85,6 +84,7 @@ class BlackListService:
     async def del_by_id(cls, db: AsyncSession, id: int):
         try:
             await BlackListDao.del_by_id(db, id)
+            return CrudResponseModel(is_success=True, message='删除成功')
         except Exception as e:
             await db.rollback()
             raise e

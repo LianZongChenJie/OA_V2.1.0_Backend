@@ -215,51 +215,18 @@ class DepartmentChangeDao:
         return result.rowcount
 
     @classmethod
-    async def cancel_change(cls, db: AsyncSession, query_model: OaDepartmentChangeBassModel):
-        result = await db.execute(update(OaDepartmentChange).values(
-            update_time=int(datetime.now().timestamp()),
-            check_status=query_model.check_status,
-            remark=query_model.remark,
-        ).where(OaDepartmentChange.id == query_model.id))
-        await db.commit()
-        return result.rowcount
-
-    @classmethod
-    async def count_by_uid(cls, db: AsyncSession, uid: str):
-        result = await db.execute(select(func.count()).where(OaDepartmentChange.uid == uid))
-        return result.scalar()
-    @classmethod
-    async def pass_change(cls, db: AsyncSession, data: OaDepartmentChangeBassModel):
+    async def review(cls, db: AsyncSession, data: OaDepartmentChangeBassModel):
         try:
-            result = await db.execute(
+            await db.execute(
                 update(OaDepartmentChange)
                 .values(
-                    check_status=2,
-                    check_time=data.check_time,
-                    remark=data.remark,
+                    check_status=data.check_status,
+                    check_time=data.check_time
                 )
                 .where(OaDepartmentChange.id == data.id)
             )
             await db.commit()
-        except Exception as e:
-            await db.rollback()
-            raise e
-        return result.rowcount
-
-    @classmethod
-    async def reject_change(cls, db: AsyncSession, data: OaDepartmentChangeBassModel):
-        try:
-            result = await db.execute(
-                update(OaDepartmentChange)
-                .values(
-                    check_status=3,
-                    check_time=data.check_time,
-                    remark=data.remark,
-                )
-                .where(OaDepartmentChange.id == data.id)
-            )
-            await db.commit()
-            return result.rowcount
+            return await cls.get_info_by_id(db, data.id)
         except Exception as e:
             await db.rollback()
             raise e

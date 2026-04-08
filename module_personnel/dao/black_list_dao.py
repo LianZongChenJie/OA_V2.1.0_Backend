@@ -1,7 +1,7 @@
 from operator import and_
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update, desc
+from sqlalchemy import select, update, desc, delete
 from sqlalchemy.sql import ColumnElement, func,or_
 from common.vo import PageModel
 from utils.page_util import PageUtil
@@ -20,8 +20,8 @@ class BlackListDao:
                         and_(
                             OaBlacklist.delete_time == 0,
                             or_(
-                                OaBlacklist.title.like("%" + query_object.keyword + "%"),
-                                OaBlacklist.content.like("%" + query_object.keyword + "%")
+                                OaBlacklist.name.like("%" + query_object.keyword + "%") if query_object.keyword else True,
+                                OaBlacklist.remark.like("%" + query_object.keyword + "%") if query_object.keyword else True
                             )
                         ),
                         data_scope_sql,
@@ -46,7 +46,7 @@ class BlackListDao:
         result = await db.execute(
             update(OaBlacklist)
             .values(
-                **model.model_dump(exclude={"id", "create_time"}, exclude_none=True, update_time=model.update_time)
+                **model.model_dump(exclude={"id", "update_time"}, exclude_none=True), update_time=model.update_time
             )
             .where(OaBlacklist.id == model.id)
         )
@@ -90,7 +90,7 @@ class BlackListDao:
 
     @classmethod
     async def del_by_id(cls, db: AsyncSession, id: int):
-        result = await db.execute(update(OaBlacklist).values(delete_time=int(datetime.now().timestamp())).where(OaBlacklist.id == id))
+        result = await db.execute(delete(OaBlacklist).where(OaBlacklist.id == id))
         await db.commit()
         return result.rowcount
 

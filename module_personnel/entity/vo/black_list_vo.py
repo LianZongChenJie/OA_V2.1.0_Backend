@@ -7,15 +7,15 @@ from typing import Optional
 class OaBlacklistBaseModel(BaseModel):
     """黑名单 VO - 用于数据展示"""
     model_config = ConfigDict(alias_generator=to_camel, from_attributes=True)
-    id: int | None= Field(..., description='主键ID')
-    name:str | None= Field(..., description='姓名')
-    mobile:str | None= Field(..., description='手机号码')
-    idcard:str | None= Field(..., description='身份证')
+    id: int | None= Field(default=None, description='主键ID')
+    name:str | None= Field(default=None, description='姓名')
+    mobile:str | None= Field(default=None, description='手机号码')
+    idcard:str | None= Field(default=None, description='身份证')
     remark: str | None = Field(None, description='备注信息')
-    admin_id: int | None= Field(..., description='创建人')
+    admin_id: int | None= Field(default=None, description='创建人')
     admin_name: str | None = Field(None, description='创建人姓名')
-    create_time: int | None= Field(..., description='申请时间')
-    update_time: int | None= Field(..., description='更新信息时间')
+    create_time: int | None= Field(default=None, description='申请时间')
+    update_time: int | None= Field(default=None, description='更新信息时间')
 
 
     @field_serializer('create_time')
@@ -26,8 +26,6 @@ class OaBlacklistBaseModel(BaseModel):
     @field_serializer('update_time')
     def serialize_update_time(self, value: Optional[int]) -> Optional[str]:
         """序列化更新时间"""
-        return format_timestamp(value)
-        """序列化删除时间"""
         return format_timestamp(value)
 
 class OaBlacklistPageQueryModel(OaBlacklistBaseModel):

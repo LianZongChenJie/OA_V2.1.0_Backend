@@ -99,13 +99,14 @@ class TemplateUpdateModel(BaseModel):
 
 class TemplateResponseModel(TemplateBaseModel):
     """模板响应模型"""
+    model_config = ConfigDict(alias_generator=to_camel, from_attributes=True)
     id: int
     create_time: int
     update_time: int
     delete_time: int
 
-    class Config:
-        orm_mode = True
+    # class Config:
+    #     orm_mode = True
 
 
 class TemplateQueryParams(BaseModel):

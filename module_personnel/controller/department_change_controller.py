@@ -7,12 +7,15 @@ from sqlalchemy.sql import ColumnElement
 from common.aspect.data_scope import DataScopeDependency
 from common.aspect.db_seesion import DBSessionDependency
 from common.aspect.interface_auth import UserInterfaceAuthDependency
-from common.aspect.pre_auth import PreAuthDependency
+from common.aspect.pre_auth import PreAuthDependency, CurrentUserDependency
 from common.router import APIRouterPro
 from module_personnel.entity.do.department_change_do import OaDepartmentChange
 from module_personnel.entity.vo.department_change_vo import OaDepartmentChangePageQueryModel, OaDepartmentChangeBassModel
 from module_personnel.service.department_change_service import DepartmentChangeService
 from utils.response_util import ResponseUtil
+from module_admin.entity.vo.user_vo import (
+    CurrentUserModel
+)
 
 dept_change_controller = APIRouterPro(
     prefix='/personnel/deptChange', order_num=3, tags=['人事管理-人事调动'], dependencies=[PreAuthDependency()]
@@ -31,7 +34,8 @@ async def get_page_list(
     query_object: Annotated[OaDepartmentChangePageQueryModel, Query()],
     data_scope_sql: Annotated[ColumnElement, DataScopeDependency(OaDepartmentChange)],
 ) -> Response:
-    return await DepartmentChangeService.get_page_list_service(query_db,query_object,data_scope_sql,True)
+    result =  await DepartmentChangeService.get_page_list_service(query_db,query_object,data_scope_sql,True)
+    return ResponseUtil.success(model_content=result)
 
 @dept_change_controller.post(
     "/add",
@@ -94,46 +98,18 @@ async def delete_change(
     return ResponseUtil.success(data=result.message)
 
 @dept_change_controller.put(
-    "/pass",
-    summary='审核通过',
-    description='用于审核通过',
+    "/review",
+    summary='审核',
+    description='用于审核操作',
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:deptChange:pass')],
 )
-async def pass_change(
+async def review(
         request: Request,
         query_db: Annotated[AsyncSession, DBSessionDependency()],
         data: Annotated[OaDepartmentChangeBassModel, Body()],
+        current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
 ) -> Response:
-    result =  await DepartmentChangeService.pass_change(query_db, data)
-    return ResponseUtil.success(data=result.message)
-
-@dept_change_controller.put(
-    "/reject",
-    summary='审核拒绝',
-    description='用于审核拒绝',
-    response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:deptChange:reject')],
-)
-async def reject_change(
-        request: Request,
-        query_db: Annotated[AsyncSession, DBSessionDependency()],
-        data: Annotated[OaDepartmentChangeBassModel, Body()],
-) -> Response:
-    result =  await DepartmentChangeService.reject_change(query_db, data)
-    return ResponseUtil.success(data=result.message)
-
-@dept_change_controller.put(
-    "/cancel",
-    summary='撤销申请',
-    description='用于撤销申请',
-    response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:deptChange:cancel')],
-)
-async def cancel_change(
-        request: Request,
-        query_db: Annotated[AsyncSession, DBSessionDependency()],
-        data: Annotated[OaDepartmentChangeBassModel, Body()],
-) -> Response:
-    result =  await DepartmentChangeService.cancel_change(query_db, data)
+    data.check_last_uid = current_user.user.user_id
+    result =  await DepartmentChangeService.review(query_db, data)
     return ResponseUtil.success(data=result.message)
