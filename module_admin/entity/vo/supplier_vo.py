@@ -5,7 +5,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
 from pydantic_validation_decorator import NotBlank, Size, Xss
 
-from module_admin.entity.vo.supplier_contact_vo import AddSupplierContactModel
+from module_admin.entity.vo.supplier_contact_vo import AddSupplierContactModel, SupplierContactModel
 
 
 class SupplierModel(BaseModel):
@@ -40,6 +40,9 @@ class SupplierModel(BaseModel):
     create_time: int | None = Field(default=None, description='添加时间')
     update_time: int | None = Field(default=None, description='修改时间')
     delete_time: int | None = Field(default=None, description='删除时间')
+    
+    # 扩展字段：联系人列表（仅用于详情返回）
+    contact_list: list[SupplierContactModel] | None = Field(default=None, description='联系人列表')
 
     @Xss(field_name='title', message='供应商名称不能包含脚本字符')
     @NotBlank(field_name='title', message='供应商名称不能为空')

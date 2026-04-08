@@ -257,13 +257,28 @@ class SupplierService:
     @classmethod
     async def supplier_detail_services(cls, query_db: AsyncSession, supplier_id: int) -> SupplierModel:
         """
-        获取供应商详细信息 service
+        获取供应商详细信息 service（包含联系人列表）
 
         :param query_db: orm 对象
         :param supplier_id: 供应商 id
         :return: 供应商 id 对应的信息
         """
-        supplier = await SupplierDao.get_supplier_detail_by_id(query_db, supplier_id)
-        result = SupplierModel(**CamelCaseUtil.transform_result(supplier)) if supplier else SupplierModel()
+        result_data = await SupplierDao.get_supplier_detail_by_id(query_db, supplier_id)
+        
+        if not result_data:
+            return SupplierModel()
+        
+        # 获取供应商主表信息
+        supplier = result_data.get('supplier')
+        contact_list = result_data.get('contact_list', [])
+        
+        # 将供应商 ORM 对象转换为字典
+        supplier_dict = CamelCaseUtil.transform_result(supplier)
+        
+        # 添加联系人列表
+        supplier_dict['contact_list'] = contact_list
+        
+        # 创建 SupplierModel 实例
+        result = SupplierModel(**supplier_dict)
 
         return result

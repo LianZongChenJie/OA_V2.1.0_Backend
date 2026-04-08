@@ -49,37 +49,27 @@ class PurchasedCateService:
         :param query_db: orm 对象
         :param pid: 父分类 ID
                     - None 或 0: 返回完整树（所有根节点及其子树）
-                    - 其他值: 返回指定 id 节点的子树（包含该节点及其所有子孙节点）
+                    - 其他值: 返回指定 pid 下的直接子节点列表（扁平列表，不包含树形结构）
         :return: 采购品分类树信息对象
         """
-        # 获取所有分类数据
-        all_categories = await PurchasedCateDao.get_all_purchased_cate_list(query_db)
-        all_categories_dict = [cate.to_dict() for cate in all_categories]
-        
-        # 构建完整的树形结构
-        tree_structure = cls.list_to_tree(all_categories_dict)
-        
         if pid is not None and pid > 0:
-            # 如果传入了具体的 pid（大于0），返回以该 id 为根的子树
-            def find_node_by_id(nodes, target_id):
-                """递归查找指定 ID 的节点"""
-                for node in nodes:
-                    if node.id == target_id:
-                        return node
-                    if node.children:
-                        result = find_node_by_id(node.children, target_id)
-                        if result:
-                            return result
-                return None
+            # 如果传入了具体的 pid（大于0），返回该 pid 下的直接子分类（扁平列表）
+            purchased_cate_list_result = await PurchasedCateDao.get_purchased_cate_children_list(query_db, pid)
             
-            result_node = find_node_by_id(tree_structure, pid)
-            if result_node:
-                return CamelCaseUtil.transform_result([result_node])
-            else:
-                # 如果找不到指定的节点，返回空列表
-                return []
+            # 转换为树模型格式（扁平列表）
+            _purchased_cate_list = []
+            for item in purchased_cate_list_result:
+                cate_dict = item.copy()
+                cate_dict['label'] = item.get('title')
+                cate_dict['parentId'] = item.get('pid')
+                _purchased_cate_list.append(PurchasedCateTreeModel(**cate_dict))
+            
+            return CamelCaseUtil.transform_result(_purchased_cate_list)
         else:
-            # pid 为 None 或 0，返回完整的树形结构（所有根节点）
+            # pid 为 None 或 0，返回完整的树形结构（所有根节点及其子树）
+            all_categories = await PurchasedCateDao.get_all_purchased_cate_list(query_db)
+            all_categories_dict = [cate.to_dict() for cate in all_categories]
+            tree_structure = cls.list_to_tree(all_categories_dict)
             return CamelCaseUtil.transform_result(tree_structure)
 
     @classmethod

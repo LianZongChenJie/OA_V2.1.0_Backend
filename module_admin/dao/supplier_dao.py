@@ -19,21 +19,65 @@ class SupplierDao:
     """
 
     @classmethod
-    async def get_supplier_detail_by_id(cls, db: AsyncSession, supplier_id: int) -> OaSupplier | None:
+    async def get_supplier_detail_by_id(cls, db: AsyncSession, supplier_id: int) -> dict[str, Any] | None:
         """
-        根据供应商 id 获取供应商详细信息
+        根据供应商 id 获取供应商详细信息（包含联系人列表）
 
         :param db: orm 对象
         :param supplier_id: 供应商 id
-        :return: 供应商信息对象
+        :return: 供应商信息对象（包含联系人列表）
         """
+        # 查询供应商主表信息
         supplier_info = (
             (await db.execute(select(OaSupplier).where(OaSupplier.id == supplier_id)))
             .scalars()
             .first()
         )
 
-        return supplier_info
+        if not supplier_info:
+            return None
+
+        # 查询联系人列表
+        contact_list = (
+            (await db.execute(
+                select(OaSupplierContact)
+                .where(
+                    OaSupplierContact.sid == supplier_id,
+                    OaSupplierContact.delete_time == 0
+                )
+                .order_by(OaSupplierContact.is_default.desc(), OaSupplierContact.create_time.asc())
+            ))
+            .scalars()
+            .all()
+        )
+
+        # 转换为字典列表
+        contacts = []
+        for contact in contact_list:
+            contact_dict = {
+                'id': contact.id,
+                'sid': contact.sid,
+                'is_default': contact.is_default,
+                'name': contact.name,
+                'sex': contact.sex,
+                'mobile': contact.mobile,
+                'qq': contact.qq,
+                'wechat': contact.wechat,
+                'email': contact.email,
+                'nickname': contact.nickname,
+                'department': contact.department,
+                'position': contact.position,
+                'admin_id': contact.admin_id,
+                'create_time': contact.create_time,
+                'update_time': contact.update_time,
+                'delete_time': contact.delete_time,
+            }
+            contacts.append(contact_dict)
+
+        return {
+            'supplier': supplier_info,
+            'contact_list': contacts
+        }
 
     @classmethod
     async def get_supplier_detail_by_info(cls, db: AsyncSession, supplier: SupplierModel) -> OaSupplier | None:
@@ -97,7 +141,7 @@ class SupplierDao:
         :param supplier: 供应商对象
         :return:
         """
-        supplier_dict = supplier.model_dump(by_alias=False)
+        supplier_dict = supplier.model_dump(by_alias=False, exclude={'contact_list'})
         db_supplier = OaSupplier(**supplier_dict)
         db.add(db_supplier)
         await db.flush()

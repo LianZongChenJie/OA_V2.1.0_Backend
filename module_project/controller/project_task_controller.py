@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import Path, Query, Request, Response
+from fastapi import Body, Path, Query, Request, Response
 from pydantic_validation_decorator import ValidateFields
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -12,6 +12,8 @@ from common.enums import BusinessType
 from common.router import APIRouterPro
 from common.vo import DataResponseModel, PageResponseModel, ResponseBaseModel
 from module_admin.entity.vo.user_vo import CurrentUserModel
+from module_dashboard.entity.vo.schedule_vo import OaScheduleBaseModel, OaSchedulePageQueryModel
+from module_dashboard.service.schedule_service import ScheduleService
 from module_project.entity.vo.project_task_vo import (
     AddProjectTaskModel,
     DeleteProjectTaskModel,
@@ -24,7 +26,7 @@ from utils.log_util import logger
 from utils.response_util import ResponseUtil
 
 project_task_controller = APIRouterPro(
-    prefix='/project/task', order_num=2, tags=['项目任务管理模块'], dependencies=[PreAuthDependency()]
+    prefix='/project/task', order_num=20, tags=['项目管理 - 任务管理'], dependencies=[PreAuthDependency()]
 )
 
 
@@ -55,6 +57,41 @@ async def get_project_task_list(
     logger.info('获取成功')
 
     return ResponseUtil.success(model_content=project_task_page_query_result)
+
+
+@project_task_controller.get(
+    '/hour',
+    summary='获取任务工时列表接口',
+    description='用于获取任务工时记录列表（支持按任务ID、时间范围、关键词等筛选）',
+    dependencies=[UserInterfaceAuthDependency('project:task:hour:list')],
+)
+async def get_project_task_hour_list(
+        request: Request,
+        schedule_page_query: Annotated[OaSchedulePageQueryModel, Query()],
+        query_db: Annotated[AsyncSession, DBSessionDependency()],
+        current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
+) -> Response:
+    """
+    获取任务工时列表
+    
+    对应 PHP 接口：project/task/hour?page=1&limit=20&range_time=&username=&uid=&keywords=
+    
+    :param request: Request 对象
+    :param schedule_page_query: 查询参数（包含 tid, range_time, keywords, uid 等）
+    :param query_db: 数据库会话
+    :param current_user: 当前用户
+    :return: 工时列表
+    """
+    # 调用 ScheduleService 获取工时列表
+    hour_list_result = await ScheduleService.get_page_list_service(
+        query_db,
+        schedule_page_query,
+        None,  # data_scope_sql 暂时不传
+        True
+    )
+    logger.info('获取任务工时列表成功')
+
+    return ResponseUtil.success(data=hour_list_result)
 
 
 @project_task_controller.post(
@@ -104,6 +141,45 @@ async def edit_project_task(
     return ResponseUtil.success(msg=edit_project_task_result.message)
 
 
+@project_task_controller.put(
+    '/hour',
+    summary='调整任务工时接口',
+    description='用于调整（新增或编辑）任务工时记录',
+    response_model=ResponseBaseModel,
+    dependencies=[UserInterfaceAuthDependency('project:task:hour:edit')],
+)
+@Log(title='任务工时管理', business_type=BusinessType.UPDATE)
+async def adjust_task_hour(
+        request: Request,
+        hour_data: Annotated[OaScheduleBaseModel, Body()],
+        query_db: Annotated[AsyncSession, DBSessionDependency()],
+        current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
+) -> Response:
+    """
+    调整任务工时（新增或编辑）
+    
+    :param request: Request 对象
+    :param hour_data: 工时数据
+    :param query_db: 数据库会话
+    :param current_user: 当前用户
+    :return: 操作结果
+    """
+    # 设置创建人 ID
+    if not hour_data.admin_id:
+        hour_data.admin_id = current_user.user.user_id
+    
+    if hour_data.id and hour_data.id > 0:
+        # 编辑工时
+        result = await ScheduleService.update_service(query_db, hour_data)
+        logger.info(f'编辑工时 {hour_data.id} 成功')
+    else:
+        # 新增工时
+        result = await ScheduleService.add_service(query_db, hour_data)
+        logger.info('新增工时成功')
+
+    return ResponseUtil.success(msg=result.message)
+
+
 @project_task_controller.delete(
     '/{id}',
     summary='删除项目任务接口',
@@ -126,6 +202,33 @@ async def delete_project_task(
     return ResponseUtil.success(msg=delete_project_task_result.message)
 
 
+@project_task_controller.delete(
+    '/hour/{hour_id}',
+    summary='删除任务工时接口',
+    description='用于删除指定的工时记录',
+    response_model=ResponseBaseModel,
+    dependencies=[UserInterfaceAuthDependency('project:task:hour:remove')],
+)
+@Log(title='任务工时管理', business_type=BusinessType.DELETE)
+async def delete_task_hour(
+        request: Request,
+        hour_id: Annotated[int, Path(description='工时记录 ID')],
+        query_db: Annotated[AsyncSession, DBSessionDependency()],
+) -> Response:
+    """
+    删除任务工时
+    
+    :param request: Request 对象
+    :param hour_id: 工时记录 ID
+    :param query_db: 数据库会话
+    :return: 操作结果
+    """
+    result = await ScheduleService.del_by_id(query_db, hour_id)
+    logger.info(f'删除工时 {hour_id} 成功')
+
+    return ResponseUtil.success(msg=result.message)
+
+
 @project_task_controller.get(
     '/{id}',
     summary='获取项目任务详情接口',
@@ -142,3 +245,68 @@ async def query_project_task_detail(
     logger.info(f'获取 id 为{id}的信息成功')
 
     return ResponseUtil.success(data=detail_project_task_result)
+
+
+@project_task_controller.get(
+    '/{task_id}/hours',
+    summary='获取指定任务的工时列表接口',
+    description='用于获取指定任务的工时记录列表',
+    response_model=PageResponseModel[OaScheduleBaseModel],
+    dependencies=[UserInterfaceAuthDependency('project:task:hour:list')],
+)
+async def get_task_hour_list(
+        request: Request,
+        task_id: Annotated[int, Path(description='任务 ID')],
+        schedule_page_query: Annotated[OaSchedulePageQueryModel, Query()],
+        query_db: Annotated[AsyncSession, DBSessionDependency()],
+        current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
+) -> Response:
+    """
+    获取指定任务的工时列表
+    
+    :param request: Request 对象
+    :param task_id: 任务 ID
+    :param schedule_page_query: 查询参数
+    :param query_db: 数据库会话
+    :param current_user: 当前用户
+    :return: 工时列表
+    """
+    # 设置 tid 筛选条件
+    schedule_page_query.tid = task_id
+    
+    # 调用 ScheduleService 获取工时列表
+    hour_list_result = await ScheduleService.get_page_list_service(
+        query_db,
+        schedule_page_query,
+        None,  # data_scope_sql 暂时不传
+        True
+    )
+    logger.info(f'获取任务 {task_id} 的工时列表成功')
+
+    return ResponseUtil.success(data=hour_list_result)
+
+
+@project_task_controller.get(
+    '/hour/{hour_id}',
+    summary='获取工时详情接口',
+    description='用于获取指定工时记录的详细信息',
+    response_model=DataResponseModel[OaScheduleBaseModel],
+    dependencies=[UserInterfaceAuthDependency('project:task:hour:query')],
+)
+async def get_task_hour_detail(
+        request: Request,
+        hour_id: Annotated[int, Path(description='工时记录 ID')],
+        query_db: Annotated[AsyncSession, DBSessionDependency()],
+) -> Response:
+    """
+    获取工时详情
+    
+    :param request: Request 对象
+    :param hour_id: 工时记录 ID
+    :param query_db: 数据库会话
+    :return: 工时详情
+    """
+    hour_detail = await ScheduleService.get_info_service(query_db, hour_id)
+    logger.info(f'获取工时 {hour_id} 详情成功')
+
+    return ResponseUtil.success(data=hour_detail)

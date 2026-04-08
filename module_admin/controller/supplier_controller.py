@@ -145,3 +145,21 @@ async def set_system_supplier_status(
     logger.info(set_supplier_result.message)
 
     return ResponseUtil.success(msg=set_supplier_result.message)
+
+
+@supplier_controller.get(
+    '/{id}',
+    summary='获取供应商详情接口',
+    description='用于获取指定供应商的详细信息（包含联系人列表）',
+    response_model=DataResponseModel[SupplierModel],
+    dependencies=[UserInterfaceAuthDependency('system:supplier:query')],
+)
+async def query_detail_system_supplier(
+        request: Request,
+        id: Annotated[int, Path(description='供应商 ID')],
+        query_db: Annotated[AsyncSession, DBSessionDependency()],
+) -> Response:
+    detail_supplier_result = await SupplierService.supplier_detail_services(query_db, id)
+    logger.info(f'获取 id 为{id}的供应商信息成功')
+
+    return ResponseUtil.success(data=detail_supplier_result)

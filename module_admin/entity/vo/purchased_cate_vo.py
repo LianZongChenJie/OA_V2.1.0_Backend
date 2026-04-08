@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from pydantic.alias_generators import to_camel
 from pydantic_validation_decorator import NotBlank, Size, Xss
 
@@ -21,6 +21,21 @@ class PurchasedCateModel(BaseModel):
     admin_id: int | None = Field(default=None, description='创建人')
     create_time: int | None = Field(default=None, description='创建时间')
     update_time: int | None = Field(default=None, description='更新时间')
+
+    @field_validator('status', mode='before')
+    @classmethod
+    def validate_status(cls, v):
+        """验证 status 字段的值，支持字符串转整数"""
+        if v is None:
+            return v
+        if isinstance(v, str):
+            try:
+                v = int(v)
+            except ValueError:
+                raise ValueError('status 必须是 -1、0 或 1')
+        if v not in [-1, 0, 1]:
+            raise ValueError('status 必须是 -1、0 或 1')
+        return v
 
     @Xss(field_name='title', message='分类名称不能包含脚本字符')
     @NotBlank(field_name='title', message='分类名称不能为空')

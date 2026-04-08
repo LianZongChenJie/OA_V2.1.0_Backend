@@ -29,7 +29,7 @@ class PurchasedService:
             cls, query_db: AsyncSession, query_object: PurchasedPageQueryModel, is_page: bool = False
     ) -> PageModel | list[dict[str, Any]]:
         """
-        获取采购品列表信息 service
+        获取采购品列表信息 service（包含分类名称）
 
         :param query_db: orm 对象
         :param query_object: 查询参数对象
@@ -37,8 +37,42 @@ class PurchasedService:
         :return: 采购品列表信息对象
         """
         purchased_list_result = await PurchasedDao.get_purchased_list(query_db, query_object, is_page)
-
-        return purchased_list_result
+        
+        # 如果返回的是分页数据，需要处理 rows 中的每一项
+        if isinstance(purchased_list_result, PageModel):
+            processed_rows = []
+            for item in purchased_list_result.rows:
+                # item 是一个列表 [采购品字典, 分类名称]
+                if isinstance(item, (list, tuple)) and len(item) >= 1:
+                    purchased_dict = item[0] if isinstance(item[0], dict) else CamelCaseUtil.transform_result(item[0])
+                    cate_name = item[1] if len(item) > 1 else None
+                    # 添加分类名称到采购品字典中
+                    purchased_dict['cateName'] = cate_name if cate_name else ''
+                    processed_rows.append(purchased_dict)
+                elif isinstance(item, dict):
+                    item['cateName'] = item.get('cate_name', '') or ''
+                    processed_rows.append(item)
+                else:
+                    processed_rows.append(CamelCaseUtil.transform_result(item))
+            
+            purchased_list_result.rows = processed_rows
+            return purchased_list_result
+        else:
+            # 如果不是分页数据，直接返回列表
+            processed_list = []
+            for item in purchased_list_result:
+                if isinstance(item, (list, tuple)) and len(item) >= 1:
+                    purchased_dict = item[0] if isinstance(item[0], dict) else CamelCaseUtil.transform_result(item[0])
+                    cate_name = item[1] if len(item) > 1 else None
+                    purchased_dict['cateName'] = cate_name if cate_name else ''
+                    processed_list.append(purchased_dict)
+                elif isinstance(item, dict):
+                    item['cateName'] = item.get('cate_name', '') or ''
+                    processed_list.append(item)
+                else:
+                    processed_list.append(CamelCaseUtil.transform_result(item))
+            
+            return processed_list
 
     @classmethod
     async def check_purchased_title_unique_services(

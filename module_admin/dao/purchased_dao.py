@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from common.vo import PageModel
 from module_admin.entity.do.purchased_do import OaPurchased
+from module_admin.entity.do.purchased_cate_do import OaPurchasedCate
 from module_admin.entity.vo.purchased_vo import PurchasedModel, PurchasedPageQueryModel
 from utils.page_util import PageUtil
 
@@ -61,7 +62,7 @@ class PurchasedDao:
             cls, db: AsyncSession, query_object: PurchasedPageQueryModel, is_page: bool = False
     ) -> PageModel | list[dict[str, Any]]:
         """
-        根据查询参数获取采购品列表信息
+        根据查询参数获取采购品列表信息（包含分类名称）
 
         :param db: orm 对象
         :param query_object: 查询参数对象
@@ -69,7 +70,11 @@ class PurchasedDao:
         :return: 采购品列表信息对象
         """
         query = (
-            select(OaPurchased)
+            select(
+                OaPurchased,
+                OaPurchasedCate.title.label('cate_name')
+            )
+            .outerjoin(OaPurchasedCate, OaPurchased.cate_id == OaPurchasedCate.id)
             .where(
                 OaPurchased.delete_time == 0,
                 OaPurchased.title.like(f'%{query_object.keywords}%') if query_object.keywords else True,

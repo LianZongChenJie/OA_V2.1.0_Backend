@@ -11,11 +11,12 @@ class PurchasedModel(BaseModel):
     采购品表对应 pydantic 模型
     """
 
-    model_config = ConfigDict(alias_generator=to_camel, from_attributes=True)
+    model_config = ConfigDict(alias_generator=to_camel, from_attributes=True, populate_by_name=True)
 
     id: int | None = Field(default=None, description='采购品 ID')
     title: str | None = Field(default=None, description='采购品名称')
     cate_id: int | None = Field(default=None, description='采购分类 id')
+    cate_name: str | None = Field(default=None, description='采购分类名称')
     thumb: int | None = Field(default=None, description='缩略图 id')
     code: str | None = Field(default=None, description='产品编码')
     barcode: str | None = Field(default=None, description='条形码')
@@ -29,8 +30,8 @@ class PurchasedModel(BaseModel):
     album_ids: str | None = Field(default=None, description='采购品相册 ids')
     file_ids: str | None = Field(default=None, description='采购品附件 ids')
     stock: int | None = Field(default=None, description='库存')
-    is_object: Literal[1, 2] | None = Field(default=None, description='是否是实物，1 是 2 不是')
-    status: Literal[-1, 0, 1] | None = Field(default=None, description='状态：-1 删除 0 禁用 1 启用')
+    is_object: int | None = Field(default=None, description='是否是实物，1 是 2 不是')
+    status: int | None = Field(default=None, description='状态：-1 删除 0 禁用 1 启用')
     create_time: int | None = Field(default=None, description='创建时间')
     update_time: int | None = Field(default=None, description='更新时间')
     delete_time: int | None = Field(default=None, description='删除时间')
@@ -65,6 +66,7 @@ class PurchasedPageQueryModel(PurchasedModel):
     page_num: int = Field(default=1, description='当前页码')
     page_size: int = Field(default=10, description='每页记录数')
     keywords: str | None = Field(default=None, description='搜索关键字')
+    status: int | None = Field(default=None, description='状态：-1 删除 0 禁用 1 启用')
 
 
 class AddPurchasedModel(PurchasedModel):

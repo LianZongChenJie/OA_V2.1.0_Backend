@@ -60,6 +60,9 @@ class OaScheduleQueryModel(OaScheduleBaseModel):
 
     begin_time: str | None = Field(None, description='开始时间')
     end_time: str | None = Field(None, description='结束时间')
+    range_time: str | None = Field(None, description='时间范围（格式：开始时间 至 结束时间）')
+    keywords: str | None = Field(None, description='搜索关键词')
+    uid: int | None = Field(None, description='用户ID筛选')
 
 class OaSchedulePageQueryModel(OaScheduleQueryModel):
     """工作计划分页查询VO"""
