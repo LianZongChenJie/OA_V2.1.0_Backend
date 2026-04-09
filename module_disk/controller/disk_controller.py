@@ -48,14 +48,12 @@ async def get_disk_list(
         disk_page_query: Annotated[DiskPageQueryModel, Query()],
         query_db: Annotated[AsyncSession, DBSessionDependency()],
         current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
-        pid: Annotated[int, Query(description='父文件夹ID')] = 0,
-        group_id: Annotated[int, Query(description='分享空间ID')] = 0,
 ) -> Response:
     where_conditions = await DiskService.build_query_conditions(
         disk_page_query,
         current_user.user.user_id,
-        pid,
-        group_id,
+        disk_page_query.pid or 0,
+        disk_page_query.group_id or 0,
         disk_page_query.is_star == 1 if disk_page_query.is_star else False,
         disk_page_query.ext
     )
@@ -68,6 +66,38 @@ async def get_disk_list(
         is_page=True
     )
     logger.info('获取成功')
+
+    return ResponseUtil.success(model_content=disk_list_result)
+
+
+@disk_controller.get(
+    '/clearlist',
+    summary='获取回收站文件列表接口',
+    description='用于获取回收站中的文件列表',
+    response_model=PageResponseModel[DiskModel],
+    dependencies=[UserInterfaceAuthDependency('disk:list')],
+)
+async def get_disk_clearlist(
+        request: Request,
+        disk_page_query: Annotated[DiskPageQueryModel, Query()],
+        query_db: Annotated[AsyncSession, DBSessionDependency()],
+        current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
+) -> Response:
+    where_conditions = await DiskService.build_clearlist_query_conditions(
+        disk_page_query,
+        current_user.user.user_id,
+        disk_page_query.pid or 0,
+        disk_page_query.ext
+    )
+
+    disk_list_result = await DiskService.get_disk_list_services(
+        query_db,
+        disk_page_query,
+        current_user.user.user_id,
+        where_conditions,
+        is_page=True
+    )
+    logger.info('获取回收站列表成功')
 
     return ResponseUtil.success(model_content=disk_list_result)
 
@@ -118,6 +148,49 @@ async def add_disk_folder(
     logger.info(add_disk_result.message)
 
     return ResponseUtil.success(msg=add_disk_result.message)
+
+
+@disk_controller.post(
+    '/article',
+    summary='新建在线文档接口',
+    description='用于新建在线文档（会同时创建文档记录和网盘记录）',
+    response_model=ResponseBaseModel,
+    dependencies=[UserInterfaceAuthDependency('disk:add')],
+)
+@ValidateFields(validate_model='add_disk')
+@Log(title='网盘文件管理', business_type=BusinessType.INSERT)
+async def add_disk_article(
+        request: Request,
+        add_disk: AddDiskModel,
+        query_db: Annotated[AsyncSession, DBSessionDependency()],
+        current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
+) -> Response:
+    from module_disk.entity.vo.article_vo import AddArticleModel
+    from module_disk.service.article_service import ArticleService
+    
+    # 1. 先创建在线文档记录
+    article_data = AddArticleModel(
+        name=add_disk.name,
+        origin_url='',
+        content='',
+        file_ids='',
+    )
+    
+    article_result = await ArticleService.add_article_services(
+        request, query_db, article_data, current_user.user.user_id
+    )
+    
+    # 2. 再创建网盘记录，关联文档 ID
+    add_disk.types = 1  # 类型：1 在线文档
+    add_disk.action_id = article_result.data['id']  # 关联文档 ID
+    add_disk.file_ext = 'article'  # 文件扩展名标记
+    
+    disk_result = await DiskService.add_disk_services(
+        request, query_db, add_disk, current_user.user.user_id, current_user.user.dept_id or 0
+    )
+    
+    logger.info(f'新建在线文档成功，文档ID: {article_result.data["id"]}, 网盘ID: {add_disk.id}')
+    return ResponseUtil.success(msg='创建成功', data={'article_id': article_result.data['id'], 'disk_id': add_disk.id})
 
 
 @disk_controller.put(

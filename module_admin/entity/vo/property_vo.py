@@ -1,6 +1,7 @@
-from typing import Literal, Any
+from typing import Literal, Any, Union
+from datetime import date
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from pydantic.alias_generators import to_camel
 from pydantic_validation_decorator import NotBlank, Size, Xss
 from decimal import Decimal
@@ -19,8 +20,8 @@ class PropertyModel(BaseModel):
     cate_id: int | None = Field(default=None, description='资产分类id')
     brand_id: int | None = Field(default=None, description='品牌名称')
     unit_id: int | None = Field(default=None, description='单位')
-    quality_time: int | None = Field(default=None, description='质保到期日期')
-    buy_time: int | None = Field(default=None, description='购进日期')
+    quality_time: Union[int, str, None] = Field(default=None, description='质保到期日期（支持时间戳或日期字符串）')
+    buy_time: Union[int, str, None] = Field(default=None, description='购进日期（支持时间戳或日期字符串）')
     price: Decimal | None = Field(default=None, description='价格')
     rate: Decimal | None = Field(default=None, description='年折旧率')
     model_: str | None = Field(default=None, description='规格型号')
@@ -36,6 +37,13 @@ class PropertyModel(BaseModel):
     create_time: int | None = Field(default=None, description='创建时间')
     update_id: int | None = Field(default=None, description='编辑人')
     update_time: int | None = Field(default=None, description='更新时间')
+    
+    # 扩展字段：关联查询结果
+    cate_name: str | None = Field(default=None, description='资产分类名称')
+    brand_name: str | None = Field(default=None, description='品牌名称')
+    unit_name: str | None = Field(default=None, description='计量单位名称')
+    admin_name: str | None = Field(default=None, description='创建人姓名')
+    update_name: str | None = Field(default=None, description='最后修改人姓名')
 
     @Xss(field_name='title', message='名称不能包含脚本字符')
     @NotBlank(field_name='title', message='名称不能为空')

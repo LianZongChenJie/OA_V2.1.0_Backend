@@ -73,23 +73,64 @@ class DiskService:
 
         conditions = []
         conditions.append(OaDisk.delete_time == 0)
-        conditions.append(OaDisk.admin_id == user_id)
+        
+        # 权限控制：只查询当前用户创建的文件（可选，根据业务需求决定是否需要）
+        # conditions.append(OaDisk.admin_id == user_id)
 
-        if group_id > 0:
+        # group_id 筛选：如果指定了 group_id 则按 group_id 查询，否则不限制
+        if group_id and group_id > 0:
             conditions.append(OaDisk.group_id == group_id)
-        else:
-            conditions.append(OaDisk.group_id == 0)
 
+        # 标星筛选
         if is_star_filter:
             conditions.append(OaDisk.types < 2)
             conditions.append(OaDisk.is_star == 1)
+        # 文件扩展名筛选
         elif ext_filter:
             ext_list = [ext.strip() for ext in ext_filter.split(',') if ext.strip()]
             if ext_list:
                 conditions.append(OaDisk.file_ext.in_(ext_list))
+        # 默认按 pid 查询
         else:
             conditions.append(OaDisk.pid == pid)
 
+        # 关键字搜索
+        if query_object.keywords:
+            conditions.append(OaDisk.name.like(f'%{query_object.keywords}%'))
+
+        return conditions
+
+    @classmethod
+    async def build_clearlist_query_conditions(
+            cls, query_object: DiskPageQueryModel, user_id: int, pid: int = 0, ext_filter: str = None
+    ) -> list:
+        """
+        构建回收站查询条件
+
+        :param query_object: 查询参数对象
+        :param user_id: 当前用户ID
+        :param pid: 父文件夹ID
+        :param ext_filter: 文件扩展名筛选
+        :return: 查询条件列表
+        """
+        conditions = []
+        conditions.append(OaDisk.admin_id == user_id)
+        conditions.append(OaDisk.clear_time == 0)
+        
+        # 如果 pid > 0，查询指定文件夹下的已删除文件
+        # 如果 pid = 0，查询所有已删除的文件（delete_time > 0）
+        if pid > 0:
+            conditions.append(OaDisk.pid == pid)
+        else:
+            conditions.append(OaDisk.delete_time > 0)
+
+        # 文件扩展名筛选
+        if ext_filter:
+            ext_list = [ext.strip() for ext in ext_filter.split(',') if ext.strip()]
+            if ext_list:
+                conditions.append(OaDisk.file_ext.in_(ext_list))
+
+        # 关键字搜索
         if query_object.keywords:
             conditions.append(OaDisk.name.like(f'%{query_object.keywords}%'))
 

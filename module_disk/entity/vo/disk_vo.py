@@ -48,7 +48,6 @@ class DiskPageQueryModel(DiskModel):
     page_size: int = Field(default=10, description='每页记录数')
     keywords: str | None = Field(default=None, description='搜索关键字')
     ext: str | None = Field(default=None, description='文件扩展名筛选，逗号分隔')
-    is_star: int | None = Field(default=None, description='是否标星筛选')
 
 
 class AddDiskModel(DiskModel):
