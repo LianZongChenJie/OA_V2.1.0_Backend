@@ -134,7 +134,7 @@ class AreaDao:
                         OaArea.pid == model.pid if model.pid else True,
                         OaArea.name == model.name if model.name else True
                     )
-                    .order_by(desc(OaArea.create_time))
+                    .order_by(desc(OaArea.id))
                     .distinct()
                 )
             )

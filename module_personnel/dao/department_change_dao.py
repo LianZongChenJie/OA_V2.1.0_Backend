@@ -1,9 +1,12 @@
-from operator import and_
-
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, desc
+from sqlalchemy.orm import aliased
 from sqlalchemy.sql import ColumnElement, func,or_
 from common.vo import PageModel
+from module_admin.entity.do.dept_do import SysDept
+from module_admin.entity.do.user_do import SysUser
+from module_personnel.dao.flow_record_dao import FlowRecordDao
+from utils.camel_converter import ModelConverter
 from utils.page_util import PageUtil
 from module_personnel.entity.vo.department_change_vo import OaDepartmentChangePageQueryModel, OaDepartmentChangeBassModel
 from module_personnel.entity.do.department_change_do import OaDepartmentChange
@@ -11,94 +14,47 @@ from typing import Any
 from datetime import datetime
 
 class DepartmentChangeDao:
-    # @classmethod
-    # async def get_page_list(cls, db: AsyncSession, query_object: OaDepartmentChangePageQueryModel,
-    #                         data_scope_sql: ColumnElement,
-    #                         is_page: bool = False) -> PageModel | list[list[dict[str, Any]]]:
-    #     if query_object.admin_id:
-    #         query = (select(OaDepartmentChange)
-    #                  .where(
-    #                     OaDepartmentChange.check_status == query_object.check_status if query_object.check_status else True,
-    #                     OaDepartmentChange.check_time.between(
-    #                         int(datetime.strptime(query_object.begin_time, "%Y-%m-%d %H:%M:%S").timestamp()),
-    #                         int(datetime.strptime(query_object.end_time, "%Y-%m-%d %H:%M:%S").timestamp()),
-    #                     ) if query_object.begin_time and query_object.end_time else True,
-    #                     OaDepartmentChange.admin_id == query_object.admin_id,
-    #             data_scope_sql,
-    #         ).order_by(desc(OaDepartmentChange.create_time)))
-    #
-    #     elif query_object.check_uids:
-    #         query = (select(OaDepartmentChange)
-    #                  .where(
-    #                     OaDepartmentChange.check_status == query_object.check_status if query_object.check_status else True,
-    #                     OaDepartmentChange.check_time.between(
-    #                         int(datetime.strptime(query_object.begin_time, "%Y-%m-%d %H:%M:%S").timestamp()),
-    #                         int(datetime.strptime(query_object.end_time, "%Y-%m-%d %H:%M:%S").timestamp()),
-    #                     ) if query_object.begin_time and query_object.end_time else True,
-    #                 func.find_in_set(query_object.check_uids, OaDepartmentChange.check_uids) > 0,
-    #                 data_scope_sql,
-    #         ).order_by(desc(OaDepartmentChange.create_time)))
-    #     elif query_object.check_history_uids:
-    #         query = (select(OaDepartmentChange)
-    #                  .where(
-    #                     OaDepartmentChange.check_status == query_object.check_status if query_object.check_status else True,
-    #                     OaDepartmentChange.check_time.between(
-    #                         int(datetime.strptime(query_object.begin_time, "%Y-%m-%d %H:%M:%S").timestamp()),
-    #                         int(datetime.strptime(query_object.end_time, "%Y-%m-%d %H:%M:%S").timestamp()),
-    #                     ) if query_object.begin_time and query_object.end_time else True,
-    #                 func.find_in_set(query_object.check_history_uids, OaDepartmentChange.check_history_uids) > 0,
-    #                 data_scope_sql,
-    #         ).order_by(desc(OaDepartmentChange.create_time)))
-    #     elif query_object.check_copy_uids:
-    #          query = (select(OaDepartmentChange)
-    #                  .where(
-    #             OaDepartmentChange.check_status == query_object.check_status if query_object.check_status else True,
-    #             OaDepartmentChange.check_time.between(
-    #                 int(datetime.strptime(query_object.begin_time, "%Y-%m-%d %H:%M:%S").timestamp()),
-    #                 int(datetime.strptime(query_object.end_time, "%Y-%m-%d %H:%M:%S").timestamp()),
-    #             ) if query_object.begin_time and query_object.end_time else True,
-    #             func.find_in_set(query_object.check_copy_uids, OaDepartmentChange.check_copy_uids) > 0,
-    #             data_scope_sql,
-    #         ).order_by(desc(OaDepartmentChange.create_time)))
-    #     else:
-    #         query = (select(OaDepartmentChange)
-    #                  .where(
-    #                     and_(
-    #                         OaDepartmentChange.check_status == query_object.check_status if query_object.check_status else True,
-    #                         OaDepartmentChange.check_time.between(
-    #                             int(datetime.strptime(query_object.begin_time, "%Y-%m-%d %H:%M:%S").timestamp()),
-    #                             int(datetime.strptime(query_object.end_time, "%Y-%m-%d %H:%M:%S").timestamp()),
-    #                         ) if query_object.begin_time and query_object.end_time else True,
-    #                         or_(
-    #                             query_object.admin_id == OaDepartmentChange.admin_id,
-    #                             func.find_in_set(query_object.check_uids, OaDepartmentChange.check_uids) > 0,
-    #                             func.find_in_set(query_object.check_copy_uids, OaDepartmentChange.check_copy_uids) > 0,
-    #                             func.find_in_set(query_object.check_history_uids, OaDepartmentChange.check_history_uids) > 0
-    #                         )
-    #                     ),
-    #                     data_scope_sql,
-    #         ).order_by(desc(OaDepartmentChange.create_time)))
-    #     page_list: PageModel | list[list[dict[str, Any]]] = await PageUtil.paginate(
-    #         db, query, query_object.page_num, query_object.page_size, is_page
-    #     )
-    #     return page_list
 
     @classmethod
     async def get_page_list(cls, db: AsyncSession, query_object: OaDepartmentChangePageQueryModel,
                             data_scope_sql: ColumnElement,
                             is_page: bool = False) -> PageModel | list[list[dict[str, Any]]]:
+        """
+        获取部门变动分页查询列表列表
+        """
+        # 创建别名
+        user = aliased(SysUser, name='user')
+        admin = aliased(SysUser, name='admin')
+        from_dept = aliased(SysDept, name='from_dept')
+        to_dept = aliased(SysDept, name='to_dept')
+        last_checker = aliased(SysUser, name='last_checker')
 
         # 构建基础查询
-        query = select(OaDepartmentChange)
+        query = select(
+            OaDepartmentChange,
+            user.nick_name.label('nick_name'),
+            from_dept.dept_name.label('from_name'),
+            to_dept.dept_name.label('to_name'),
+            admin.nick_name.label('admin_name'),
+            last_checker.nick_name.label('check_last_name')
+        ).join(
+            user, OaDepartmentChange.uid == user.user_id, isouter=True
+        ).join(
+            from_dept, OaDepartmentChange.from_did == from_dept.dept_id, isouter=True
+        ).join(
+            to_dept, OaDepartmentChange.to_did == to_dept.dept_id, isouter=True
+        ).join(
+            admin, OaDepartmentChange.admin_id == admin.user_id, isouter=True
+        ).join(
+            last_checker, OaDepartmentChange.check_last_uid == last_checker.user_id, isouter=True
+        )
 
         # 构建条件列表
         conditions = []
 
-        # 通用条件：审核状态
         if query_object.check_status is not None:
             conditions.append(OaDepartmentChange.check_status == query_object.check_status)
 
-        # 通用条件：审核时间范围
         if query_object.begin_time and query_object.end_time:
             start_timestamp = int(datetime.strptime(query_object.begin_time, "%Y-%m-%d %H:%M:%S").timestamp())
             end_timestamp = int(datetime.strptime(query_object.end_time, "%Y-%m-%d %H:%M:%S").timestamp())
@@ -119,7 +75,6 @@ class DepartmentChangeDao:
             conditions.append(func.find_in_set(query_object.check_copy_uids, OaDepartmentChange.check_copy_uids) > 0)
 
         else:
-            # 没有特定条件时，使用 OR 组合
             or_conditions = []
             if query_object.admin_id:
                 or_conditions.append(OaDepartmentChange.admin_id == query_object.admin_id)
@@ -135,25 +90,98 @@ class DepartmentChangeDao:
             if or_conditions:
                 conditions.append(or_(*or_conditions))
 
-        # 添加数据权限条件
         if data_scope_sql is not None:
             conditions.append(data_scope_sql)
 
-        # 应用所有条件
         if conditions:
             query = query.where(*conditions)
 
-        # 排序
         query = query.order_by(desc(OaDepartmentChange.create_time))
 
         # 分页查询
-        page_list: PageModel | list[list[dict[str, Any]]] = await PageUtil.paginate(
+        page_list = await PageUtil.paginate_dict(
             db, query, query_object.page_num, query_object.page_size, is_page
         )
+
+        # 补充当前审批人和历史审批人信息
+        if page_list and hasattr(page_list, 'rows') and page_list.rows:
+            all_uids = set()
+
+            # 收集所有需要查询的 UIDs
+            for row in page_list.rows:
+                # 将 RowMapping 转换为字典以便读取
+                row_dict = dict(row)
+                dept_change = row_dict.get('OaDepartmentChange')
+
+                if dept_change:
+                    check_uids = getattr(dept_change, 'check_uids', '')
+                    check_history_uids = getattr(dept_change, 'check_history_uids', '')
+                else:
+                    check_uids = row_dict.get('check_uids', '')
+                    check_history_uids = row_dict.get('check_history_uids', '')
+
+                if check_uids:
+                    all_uids.update([int(uid) for uid in check_uids.split(',') if uid])
+                if check_history_uids:
+                    all_uids.update([int(uid) for uid in check_history_uids.split(',') if uid])
+
+            # 批量查询用户名称
+            user_map = {}
+            if all_uids:
+                user_stmt = select(SysUser.user_id, SysUser.nick_name).where(
+                    SysUser.user_id.in_(all_uids)
+                )
+                user_result = await db.execute(user_stmt)
+                for uid, name in user_result.all():
+                    user_map[uid] = name
+
+            # 创建新的行列表（普通字典）
+            new_rows = []
+            for row in page_list.rows:
+                # 转换为普通字典
+                new_row = dict(row)
+                dept_change = new_row.get('OaDepartmentChange')
+
+                if dept_change:
+                    check_uids = getattr(dept_change, 'check_uids', '')
+                    check_history_uids = getattr(dept_change, 'check_history_uids', '')
+                else:
+                    check_uids = new_row.get('check_uids', '')
+                    check_history_uids = new_row.get('check_history_uids', '')
+
+                # 当前审批人名称
+                if check_uids:
+                    uids = [int(uid) for uid in check_uids.split(',') if uid]
+                    new_row['checkUserNames'] = [user_map.get(uid, '') for uid in uids]
+                    new_row['checkUserNamesStr'] = ','.join(filter(None, new_row['checkUserNames']))
+                else:
+                    new_row['checkUserNames'] = []
+                    new_row['checkUserNamesStr'] = ''
+
+                # 历史审批人名称
+                if check_history_uids:
+                    uids = [int(uid) for uid in check_history_uids.split(',') if uid]
+                    new_row['checkHistoryNames'] = [user_map.get(uid, '') for uid in uids]
+                    new_row['checkHistoryNamesStr'] = ','.join(filter(None, new_row['checkHistoryNames']))
+                else:
+                    new_row['checkHistoryNames'] = []
+                    new_row['checkHistoryNamesStr'] = ''
+
+                new_rows.append(new_row)
+
+            # 替换为修改后的字典列表
+            page_list.rows = new_rows
+
         return page_list
 
     @classmethod
     async def add(cls, db: AsyncSession, model: OaDepartmentChangeBassModel):
+        """
+        添加部门变动
+        :param db:
+        :param model:
+        :return:
+        """
         db_model = OaDepartmentChange(**model.model_dump(exclude={"id", "create_time",'move_time','connect_time'}, exclude_none=True),
                                  create_time=model.create_time, move_time = model.move_time, connect_time = model.connect_time)
         db.add(db_model)
@@ -164,6 +192,12 @@ class DepartmentChangeDao:
 
     @classmethod
     async def update(cls, db: AsyncSession, model: OaDepartmentChangeBassModel):
+        """
+        更新部门变动
+        :param db:
+        :param model:
+        :return:
+        """
         result = await db.execute(
             update(OaDepartmentChange)
             .values(
@@ -176,11 +210,140 @@ class DepartmentChangeDao:
 
     @classmethod
     async def get_info_by_id(cls, db: AsyncSession, id: int):
-        query = (select(OaDepartmentChange)
-        .where(
-            OaDepartmentChange.id == id))
-        link_info = await db.scalar(query)
-        return link_info
+        """
+        获取部门变动详情
+        :param db:
+        :param id:
+        :return:
+        """
+        # 创建别名
+        user = aliased(SysUser, name='user')
+        admin = aliased(SysUser, name='admin')
+        from_dept = aliased(SysDept, name='from_dept')
+        to_dept = aliased(SysDept, name='to_dept')
+        last_checker = aliased(SysUser, name='last_checker')
+
+        # 查询基本信息
+        stmt = select(
+            OaDepartmentChange,
+            user.nick_name.label('nick_name'),
+            from_dept.dept_name.label('from_name'),
+            to_dept.dept_name.label('to_name'),
+            admin.nick_name.label('admin_name'),
+            last_checker.nick_name.label('check_last_name')
+        ).join(
+            user, OaDepartmentChange.uid == user.user_id, isouter=True
+        ).join(
+            from_dept, OaDepartmentChange.from_did == from_dept.dept_id, isouter=True
+        ).join(
+            to_dept, OaDepartmentChange.to_did == to_dept.dept_id, isouter=True
+        ).join(
+            admin, OaDepartmentChange.admin_id == admin.user_id, isouter=True
+        ).join(
+            last_checker, OaDepartmentChange.check_last_uid == last_checker.user_id, isouter=True
+        ).where(
+            OaDepartmentChange.id == id,
+            OaDepartmentChange.delete_time == 0
+        )
+
+        result = await db.execute(stmt)
+        row = result.first()
+        if not row:
+            return None
+
+            # 获取实体
+        dept_change = row[0]
+
+        # 构建 info 字典
+        info = {
+            'id': dept_change.id,
+            'uid': dept_change.uid,
+            'from_did': dept_change.from_did,
+            'to_did': dept_change.to_did,
+            'connect_id': dept_change.connect_id,
+            'connect_time': dept_change.connect_time,
+            'connect_uids': dept_change.connect_uids,
+            'file_ids': dept_change.file_ids,
+            'move_time': dept_change.move_time,
+            'status': dept_change.status,
+            'remark': dept_change.remark,
+            'admin_id': dept_change.admin_id,
+            'did': dept_change.did,
+            'check_status': dept_change.check_status,
+            'check_flow_id': dept_change.check_flow_id,
+            'check_step_sort': dept_change.check_step_sort,
+            'check_uids': dept_change.check_uids,
+            'check_last_uid': dept_change.check_last_uid,
+            'check_history_uids': dept_change.check_history_uids,
+            'check_copy_uids': dept_change.check_copy_uids,
+            'check_time': dept_change.check_time,
+            'create_time': dept_change.create_time,
+            'update_time': dept_change.update_time,
+            'delete_time': dept_change.delete_time,
+            # 关联字段
+            'nick_name': row.nick_name,
+            'from_name': row.from_name,
+            'to_name': row.to_name,
+            'admin_name': row.admin_name,
+            'check_last_name': row.check_last_name
+        }
+
+        # 补充审批人名称
+        info = await cls._enrich_checker_names(db, info)
+
+        # 查询审批记录
+        records = await FlowRecordDao.get_records_by_action_id(
+            db, dept_change.id, dept_change.check_flow_id
+        )
+
+        return {
+            'info': info,
+            'records': records
+        }
+
+    @classmethod
+    async def _enrich_checker_names(cls, db: AsyncSession, info: dict) -> dict:
+        """补充当前审批人和历史审批人名称"""
+
+        # 当前审批人
+        check_uids = info.get('check_uids')
+        if check_uids:
+            uids = [int(uid) for uid in check_uids.split(',') if uid]
+            if uids:
+                stmt = select(SysUser.user_id, SysUser.nick_name).where(
+                    SysUser.user_id.in_(uids)
+                )
+                result = await db.execute(stmt)
+                users = result.all()
+                info['check_user_names'] = [u.nick_name for u in users]
+                info['check_user_names_str'] = ','.join(info['check_user_names'])
+            else:
+                info['check_user_names'] = []
+                info['check_user_names_str'] = ''
+        else:
+            info['check_user_names'] = []
+            info['check_user_names_str'] = ''
+
+        # 历史审批人
+        check_history_uids = info.get('check_history_uids')
+        if check_history_uids:
+            uids = [int(uid) for uid in check_history_uids.split(',') if uid]
+            if uids:
+                stmt = select(SysUser.user_id, SysUser.nick_name).where(
+                    SysUser.user_id.in_(uids)
+                )
+                result = await db.execute(stmt)
+                users = result.all()
+                info['check_history_names'] = [u.nick_name for u in users]
+                info['check_history_names_str'] = ','.join(info['check_history_names'])
+            else:
+                info['check_history_names'] = []
+                info['check_history_names_str'] = ''
+        else:
+            info['check_history_names'] = []
+            info['check_history_names_str'] = ''
+
+        return info
 
     @classmethod
     async def get_info_by_uid(cls, db: AsyncSession, model: OaDepartmentChangeBassModel) -> OaDepartmentChange | None:
@@ -210,12 +373,24 @@ class DepartmentChangeDao:
         return query_info
     @classmethod
     async def del_by_id(cls, db: AsyncSession, id: int):
+        """
+        删除部门变动
+        :param db:
+        :param id:
+        :return:
+        """
         result = await db.execute(update(OaDepartmentChange).values(delete_time=int(datetime.now().timestamp())).where(OaDepartmentChange.id == id))
         await db.commit()
         return result.rowcount
 
     @classmethod
     async def review(cls, db: AsyncSession, data: OaDepartmentChangeBassModel):
+        """
+        审核部门变动
+        :param db:
+        :param data:
+        :return:
+        """
         try:
             await db.execute(
                 update(OaDepartmentChange)

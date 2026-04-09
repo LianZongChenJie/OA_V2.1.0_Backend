@@ -219,6 +219,11 @@ class UserService:
                     raise ServiceException(message=f'修改用户{page_object.user_name}失败，手机号码已存在')
                 if page_object.email and not await cls.check_email_unique_services(query_db, page_object):
                     raise ServiceException(message=f'修改用户{page_object.user_name}失败，邮箱账号已存在')
+            # 统计登录次数
+            if user_info.data.login_num:
+                edit_user['login_num'] = user_info.data.login_num + 1
+            else:
+                edit_user['login_num'] = user_info.data.login_num if user_info.data.login_num else 0
             try:
                 await UserDao.edit_user_dao(query_db, edit_user)
                 if page_object.type not in {'status', 'avatar', 'pwd'}:

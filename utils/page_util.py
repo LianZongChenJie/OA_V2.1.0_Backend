@@ -80,6 +80,41 @@ class PageUtil:
 
         return result
 
+    @classmethod
+    async def paginate_dict(
+            cls, db: AsyncSession, query: Select, page_num: int, page_size: int, is_page: bool = False
+    ) -> PageModel | list[dict[str, Any]]:
+        """
+        分页查询，返回字典格式
+        :param db:
+        :param query:
+        :param page_num:
+        :param page_size:
+        :param is_page:
+        :return:
+        """
+        if is_page:
+            total = (await db.execute(select(func.count('*')).select_from(query.subquery()))).scalar()
+            query_result = await db.execute(query.offset((page_num - 1) * page_size).limit(page_size))
+
+            # 使用 mappings() 获取字典格式
+            paginated_data = query_result.mappings().all()
+
+            has_next = math.ceil(total / page_size) > page_num
+            result = PageModel[Any](
+                rows=CamelCaseUtil.transform_result(paginated_data),
+                pageNum=page_num,
+                pageSize=page_size,
+                total=total,
+                hasNext=has_next,
+            )
+        else:
+            query_result = await db.execute(query)
+            # 使用 mappings() 获取字典格式
+            result = CamelCaseUtil.transform_result(query_result.mappings().all())
+
+        return result
+
 
 def get_page_obj(data_list: list, page_num: int, page_size: int) -> PageModel:
     """

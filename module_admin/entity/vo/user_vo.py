@@ -77,6 +77,7 @@ class UserModel(BaseModel):
     del_flag: Literal['0', '2'] | None = Field(default=None, description='删除标志（0代表存在 2代表删除）')
     login_ip: str | None = Field(default=None, description='最后登录IP')
     login_date: datetime | None = Field(default=None, description='最后登录时间')
+    login_num: int | None = Field(default=None, description='登录次数')
     is_lock: int | None = Field(default=None, description='是否锁屏')
     pwd_update_date: datetime | None = Field(default=None, description='密码最后更新时间')
     create_by: str | None = Field(default=None, description='创建者')

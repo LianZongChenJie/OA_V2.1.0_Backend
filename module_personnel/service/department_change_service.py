@@ -8,26 +8,29 @@ from module_personnel.dao.department_change_dao import DepartmentChangeDao
 from module_personnel.dao.flow_record_dao import FlowRecordDao
 from sqlalchemy.sql import ColumnElement
 from module_personnel.entity.vo.department_change_vo import OaDepartmentChangeBassModel, \
-    OaDepartmentChangePageQueryModel, OaDepartmentChangeDetailModel
+    OaDepartmentChangePageQueryModel
 from common.vo import PageModel, CrudResponseModel
 from datetime import datetime
 from module_basicdata.dao.public.flow_cate_dao import FlowCateDao
 
 from module_personnel.entity.vo.flow_record_vo import OaFlowRecordBaseModel
+from utils.camel_converter import ResponseConverter
 from utils.timeformat import int_time
 
 
 class DepartmentChangeService:
+    time_fields = ['create_time', 'update_time', 'delete_time', 'check_time',
+                   'connect_time', 'move_time', 'pay_time', 'enter_time',
+                   'start_time', 'end_time', 'open_time']
     @classmethod
     async def get_page_list_service(cls, query_db: AsyncSession, query_object: OaDepartmentChangePageQueryModel,
                                     data_scope_sql: ColumnElement, is_page: bool = False) -> PageModel[
                                                                                                  OaDepartmentChangeBassModel] | \
                                                                                              list[dict[str, Any]]:
+
         query_list = await DepartmentChangeDao.get_page_list(query_db, query_object, data_scope_sql, is_page)
         if is_page:
-            result_list = PageModel[OaDepartmentChangeBassModel](**{
-                **query_list.model_dump(by_alias=True)
-            })
+            return ResponseConverter.convert_page_result(query_list, cls.time_fields)
         else:
             result_list = []
             if query_list:
@@ -74,11 +77,11 @@ class DepartmentChangeService:
 
     @classmethod
     async def get_info_service(cls, query_db: \
-            AsyncSession, id: int) -> OaDepartmentChangeBassModel:
+            AsyncSession, id: int) -> dict:
         try:
-            info = await DepartmentChangeDao.get_info_by_id(query_db, id)
-            records = await FlowRecordDao.get_records_by_action_id(query_db, info.id,info.check_flow_id)
-            detail = OaDepartmentChangeDetailModel(info=info, records=records)
+            detail = await DepartmentChangeDao.get_info_by_id(query_db, id)
+            detail['info'] = ResponseConverter.convert_to_camel_and_format_time(detail['info'],cls.time_fields)
+            detail['records'] = ResponseConverter.convert_to_camel_and_format_time_list(detail['records'],cls.time_fields)
             if not detail:
                 raise ServiceException(message="未找到该数据")
             return detail

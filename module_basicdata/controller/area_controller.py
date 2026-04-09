@@ -61,10 +61,10 @@ async def update_area(
 ) -> Response:
     try:
         area = await AreaService.update(query_db,update_model)
+        return ResponseUtil.success(data=area.message)
     except Exception as e:
         logger.error(e)
-        return ResponseUtil.failure("更新失败")
-    return ResponseUtil.success(data = area.message)
+        return ResponseUtil.error(msg=e.message)
 
 @area_controller.put(
     "/changeStatus",
