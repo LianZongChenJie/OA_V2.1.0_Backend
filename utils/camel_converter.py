@@ -176,8 +176,6 @@ class ResponseConverter:
     @classmethod
     def convert_to_camel_and_format_time_list(cls, datas: List[dict], time_fields:list) -> List[dict]:
         """将字典的键转换为驼峰并格式化时间字段"""
-        time_fields = ['connect_time', 'move_time', 'check_time',
-                       'create_time', 'update_time', 'delete_time']
         result = []
         for data in datas:
             if data is None:
