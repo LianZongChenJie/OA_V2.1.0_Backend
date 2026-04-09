@@ -9,14 +9,14 @@ from typing import List, Dict
 
 class AreaDao:
     @classmethod
-    async def get_area_tree(cls, db : AsyncSession) -> list[AreaTreeModel]:
+    async def get_area_tree(cls, db : AsyncSession, area: AreaBaseModel) -> list[AreaTreeModel]:
         """
         将区域列表转换为树形结构
 
         :param area_list: 区域列表
         :return: 树形结构的区域列表
         """
-        areas = await cls.get_list(db)
+        areas = await cls.get_list(db, area)
         # 构建ID到节点的映射
         node_map = {}
         for area in areas:
@@ -36,7 +36,7 @@ class AreaDao:
         tree = []
         for area in areas:
             node = node_map[area.id]
-            if area.pid == 0:
+            if area.pid == area.pid:
                 tree.append(node)
             else:
                 if area.pid in node_map:
@@ -56,10 +56,11 @@ class AreaDao:
                 cls._sort_children(node['children'])
 
     @classmethod
-    async def get_list(cls, db: AsyncSession) -> list[AreaBaseModel]:
+    async def get_list(cls, db: AsyncSession, area: AreaBaseModel) -> list[AreaBaseModel]:
         query = (select(OaArea)
         .where(
-            OaArea.status == "1"))
+            OaArea.status == "1",
+            OaArea.pid == area.pid if area.pid else True,))
         result = await db.execute(query)
         area_list = result.scalars().all()
         return area_list

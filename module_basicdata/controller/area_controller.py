@@ -2,10 +2,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from common.aspect.db_seesion import DBSessionDependency
 from common.aspect.interface_auth import UserInterfaceAuthDependency
 from common.aspect.pre_auth import PreAuthDependency
+from common.enums import BusinessType
 from common.router import APIRouterPro
 from module_basicdata.entity.vo.public.area_vo import AreaTreeModel, AreaBaseModel
 from fastapi import File, Form, Path, Query, Request, Response, UploadFile
 from typing import Annotated
+from common.annotation.log_annotation import Log
 
 from module_basicdata.service.public.area_service import AreaService
 from utils.log_util import logger
@@ -23,8 +25,9 @@ area_controller = APIRouterPro(
 )
 async def get_area_tree(
     query_db: Annotated[AsyncSession, DBSessionDependency()],
+    area_model: Annotated[AreaBaseModel, Query()],
 ) -> Response:
-    area_list = await AreaService.get_list_tree(query_db)
+    area_list = await AreaService.get_list_tree(query_db,area_model)
     return ResponseUtil.success(data=area_list)
 
 @area_controller.post(
@@ -34,6 +37,7 @@ async def get_area_tree(
     response_model=AreaTreeModel,
     dependencies=[UserInterfaceAuthDependency('basicdata:area:add')],
 )
+@Log(title='区域信息', business_type=BusinessType.INSERT)
 async def add_area(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
@@ -49,6 +53,7 @@ async def add_area(
     response_model=AreaTreeModel,
     dependencies=[UserInterfaceAuthDependency('basicdata:area:update')],
 )
+@Log(title='区域信息', business_type=BusinessType.UPDATE)
 async def update_area(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
@@ -68,6 +73,7 @@ async def update_area(
     response_model=AreaTreeModel,
     dependencies=[UserInterfaceAuthDependency('basicdata:area:changeStatus')],
 )
+@Log(title='区域信息', business_type=BusinessType.UPDATE)
 async def change_status(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
@@ -87,6 +93,7 @@ async def change_status(
     response_model=AreaTreeModel,
     dependencies=[UserInterfaceAuthDependency('basicdata:area:getDataByLevel')],
 )
+@Log(title='区域信息', business_type=BusinessType.OTHER)
 async def get_area_by_level(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
@@ -107,6 +114,7 @@ async def get_area_by_level(
     response_model=AreaBaseModel,
     dependencies=[UserInterfaceAuthDependency('basicdata:area:getById')],
 )
+@Log(title='区域信息', business_type=BusinessType.OTHER)
 async def get_area_by_id(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],

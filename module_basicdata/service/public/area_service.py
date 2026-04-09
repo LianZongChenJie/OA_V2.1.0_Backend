@@ -10,8 +10,8 @@ from module_basicdata.entity.vo.public.area_vo import AreaTreeModel, AreaBaseMod
 
 class AreaService:
     @classmethod
-    async def get_list_tree(cls, db: AsyncSession) -> list[AreaTreeModel]:
-        return await AreaDao.get_area_tree(db)
+    async def get_list_tree(cls, db: AsyncSession, area: AreaBaseModel) -> list[AreaTreeModel]:
+        return await AreaDao.get_area_tree(db, area)
 
     @classmethod
     async def save(cls, db: AsyncSession, area: AreaTreeModel) -> CrudResponseModel:
