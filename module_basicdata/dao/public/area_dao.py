@@ -60,7 +60,7 @@ class AreaDao:
         query = (select(OaArea)
         .where(
             OaArea.status == "1",
-            OaArea.pid == area.pid if area.pid else True,))
+            OaArea.pid == area.pid if (area.pid is not None) else True,))
         result = await db.execute(query)
         area_list = result.scalars().all()
         return area_list
