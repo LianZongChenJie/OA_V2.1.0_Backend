@@ -46,25 +46,38 @@ class PropertyCateService:
         获取资产分类树信息 service
 
         :param query_db: orm 对象
-        :param pid: 父分类 ID，如果为 None 则返回根节点（pid=0 或 pid 为空的项）
+        :param pid: 父分类 ID
+                    - None: 返回完整树（所有根节点及其子树）
+                    - 0: 返回所有根节点（pid=0）的完整子树
+                    - 其他值: 返回指定 pid 下的完整子树（不包含 pid 以上的节点）
         :return: 资产分类树信息对象
         """
-        if pid is not None:
-            # 如果指定了 pid，只返回该 pid 下的直接子分类（不构建树形结构）
-            property_cate_list_result = await PropertyCateDao.get_property_cate_children_list(query_db, pid)
-            # 转换为树模型格式（扁平列表）
+        # 获取所有分类数据
+        all_categories = await PropertyCateDao.get_all_property_cate_list(query_db)
+        
+        if pid is None or pid == 0:
+            # 返回完整树或根节点树
+            tree_result = cls.list_to_tree(all_categories)
+            return CamelCaseUtil.transform_result(tree_result)
+        else:
+            # 返回指定 pid 下的完整子树
+            # 先获取该 pid 的所有子节点 ID（递归）
+            all_child_ids = await cls.get_child_property_cate_ids(query_db, pid)
+            
+            # 过滤出只包含这些子节点的列表（不包括 pid 本身）
+            filtered_categories = [item for item in all_categories if item['id'] in all_child_ids and item['id'] != pid]
+            
+            # 转换为树模型格式
             _property_cate_list = []
-            for item in property_cate_list_result:
+            for item in filtered_categories:
                 cate_dict = item.copy()
                 cate_dict['label'] = item.get('title')
                 cate_dict['parentId'] = item.get('pid')
                 _property_cate_list.append(PropertyCateTreeModel(**cate_dict))
-            return CamelCaseUtil.transform_result(_property_cate_list)
-        else:
-            # 如果没有指定 pid，返回完整的树形结构
-            property_cate_list_result = await PropertyCateDao.get_all_property_cate_list(query_db)
-            property_cate_tree_result = cls.list_to_tree(property_cate_list_result)
-            return CamelCaseUtil.transform_result(property_cate_tree_result)
+            
+            # 在这些节点中构建树形结构
+            tree_result = cls.build_filtered_tree(_property_cate_list, pid)
+            return CamelCaseUtil.transform_result(tree_result)
 
     @classmethod
     def list_to_tree(cls, property_cate_list: list[dict[str, Any]]) -> list[PropertyCateTreeModel]:
@@ -98,6 +111,68 @@ class PropertyCateService:
                 container.append(d)
             else:
                 children: list[PropertyCateTreeModel] = parent.children
+                if not children:
+                    children = []
+                children.append(d)
+                parent.children = children
+
+        return container
+
+    @classmethod
+    def build_filtered_tree(cls, node_list: list[PropertyCateTreeModel], root_pid: int) -> list[PropertyCateTreeModel]:
+        """
+        工具方法：从过滤后的节点列表中构建树形结构
+        
+        :param node_list: 过滤后的节点列表
+        :param root_pid: 根节点的 pid（用于确定哪些是顶层节点）
+        :return: 树形结构列表
+        """
+        # 转成 id 为 key 的字典
+        mapping: dict[int, PropertyCateTreeModel] = dict(
+            zip([i.id for i in node_list], node_list, strict=False)
+        )
+
+        # 树容器
+        container: list[PropertyCateTreeModel] = []
+
+        for d in node_list:
+            # 如果父节点不在当前列表中，或者父节点是 root_pid，则作为根节点
+            parent = mapping.get(d.parentId) if d.parentId else None
+            if parent is None or d.parentId == root_pid:
+                container.append(d)
+            else:
+                children: list[PropertyCateTreeModel] = parent.children if parent.children else []
+                if not children:
+                    children = []
+                children.append(d)
+                parent.children = children
+
+        return container
+
+    @classmethod
+    def build_subtree(cls, node_list: list[PropertyCateTreeModel], root_pid: int) -> list[PropertyCateTreeModel]:
+        """
+        工具方法：从节点列表中构建以指定 pid 为根的子树
+        
+        :param node_list: 节点列表
+        :param root_pid: 根节点的 pid
+        :return: 子树列表
+        """
+        # 转成 id 为 key 的字典
+        mapping: dict[int, PropertyCateTreeModel] = dict(
+            zip([i.id for i in node_list], node_list, strict=False)
+        )
+
+        # 树容器
+        container: list[PropertyCateTreeModel] = []
+
+        for d in node_list:
+            # 如果找不到父级项，或者父级是 root_pid，则是根节点
+            parent = mapping.get(d.parentId) if d.parentId else None
+            if parent is None or d.parentId == root_pid or d.parentId == 0:
+                container.append(d)
+            else:
+                children: list[PropertyCateTreeModel] = parent.children if parent.children else []
                 if not children:
                     children = []
                 children.append(d)

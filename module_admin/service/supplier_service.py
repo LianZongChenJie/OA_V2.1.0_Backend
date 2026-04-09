@@ -158,7 +158,7 @@ class SupplierService:
             cls, request: Request, query_db: AsyncSession, page_object: EditSupplierModel
     ) -> CrudResponseModel:
         """
-        编辑供应商信息 service
+        编辑供应商信息 service（包含联系人管理）
 
         :param request: Request 对象
         :param query_db: orm 对象
@@ -173,12 +173,59 @@ class SupplierService:
                 raise ServiceException(message=f'修改供应商{page_object.title}失败，供应商名称已存在')
 
             try:
-                edit_supplier['update_time'] = int(datetime.now().timestamp())
+                current_time = int(datetime.now().timestamp())
+                
+                # 1. 更新供应商主表信息
+                edit_supplier['update_time'] = current_time
                 await SupplierDao.edit_supplier_dao(query_db, edit_supplier)
+                
+                # 2. 处理联系人列表
+                contact_list = page_object.contact_list if page_object.contact_list is not None else []
+                
+                # 获取数据库中现有的联系人列表
+                existing_contacts = await SupplierDao.get_supplier_contacts_by_sid(query_db, page_object.id)
+                existing_contact_ids = {contact['id'] for contact in existing_contacts}
+                
+                # 传入的联系人 ID 集合
+                incoming_contact_ids = set()
+                
+                for idx, contact in enumerate(contact_list):
+                    # 设置更新时间
+                    contact.update_time = current_time
+                    
+                    if contact.id and contact.id in existing_contact_ids:
+                        # 更新已有联系人
+                        incoming_contact_ids.add(contact.id)
+                        await SupplierDao.edit_supplier_contact_dao(query_db, contact)
+                        logger.info(f'更新联系人 ID: {contact.id}, 姓名: {contact.name}')
+                    else:
+                        # 新增联系人
+                        contact.sid = page_object.id
+                        contact.admin_id = page_object.admin_id or 0
+                        contact.create_time = current_time
+                        contact.delete_time = 0
+                        
+                        # 如果是第一个联系人且没有默认联系人，设为默认
+                        if idx == 0 and not any(c.is_default == 1 for c in contact_list):
+                            contact.is_default = 1
+                        
+                        new_contact = await SupplierDao.add_supplier_contact_dao(query_db, contact)
+                        incoming_contact_ids.add(new_contact.id)
+                        logger.info(f'新增联系人: {contact.name}, 生成 ID: {new_contact.id}')
+                
+                # 3. 删除不在传入列表中的联系人（软删除）
+                contacts_to_delete = existing_contact_ids - incoming_contact_ids
+                if contacts_to_delete:
+                    for contact_id in contacts_to_delete:
+                        await SupplierDao.delete_supplier_contact_dao(query_db, contact_id, current_time)
+                        logger.info(f'删除联系人 ID: {contact_id}')
+                
                 await query_db.commit()
+                logger.info(f'=== 编辑供应商完成 === 供应商 ID: {page_object.id}, 联系人数量: {len(contact_list)}')
                 return CrudResponseModel(is_success=True, message='更新成功')
             except Exception as e:
                 await query_db.rollback()
+                logger.error(f'=== 编辑供应商异常 === 错误信息：{str(e)}', exc_info=True)
                 raise e
         else:
             raise ServiceException(message='供应商不存在')

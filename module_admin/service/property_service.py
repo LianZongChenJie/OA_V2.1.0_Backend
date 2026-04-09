@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any
+from typing import Any, Union
 
 from fastapi import Request
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,11 +16,41 @@ from module_admin.entity.vo.property_vo import (
     PropertyPageQueryModel,
 )
 from utils.common_util import CamelCaseUtil
+from utils.log_util import logger
 
 class PropertyService:
     """
     资产管理服务层
     """
+
+    @classmethod
+    def convert_date_to_timestamp(cls, date_value: Union[int, str, None]) -> int | None:
+        """
+        将日期值转换为时间戳
+        
+        :param date_value: 日期值（可以是时间戳整数或日期字符串）
+        :return: 时间戳整数
+        """
+        if date_value is None:
+            return None
+        
+        # 如果已经是整数（时间戳），直接返回
+        if isinstance(date_value, int):
+            return date_value
+        
+        # 如果是字符串，尝试转换
+        if isinstance(date_value, str):
+            try:
+                # 尝试解析 YYYY-MM-DD 格式
+                return int(datetime.strptime(date_value, '%Y-%m-%d').timestamp())
+            except (ValueError, TypeError):
+                try:
+                    # 尝试解析 YYYY-MM-DD HH:MM:SS 格式
+                    return int(datetime.strptime(date_value, '%Y-%m-%d %H:%M:%S').timestamp())
+                except (ValueError, TypeError):
+                    return None
+        
+        return None
 
     @classmethod
     async def get_property_list_services(
@@ -35,6 +65,31 @@ class PropertyService:
         :return: 资产列表信息对象
         """
         property_list_result = await PropertyDao.get_property_list(query_db, query_object, is_page)
+        
+        # 如果返回的是分页结果，需要转换 rows 中的数据
+        if hasattr(property_list_result, 'rows'):
+            transformed_rows = []
+            for row in property_list_result.rows:
+                # row 是一个元组 (SysProperty, cate_name, brand_name, unit_name, admin_name, update_name)
+                if isinstance(row, (list, tuple)):
+                    property_obj = row[0]
+                    extra_fields = {
+                        'cateName': row[1] if len(row) > 1 else None,
+                        'brandName': row[2] if len(row) > 2 else None,
+                        'unitName': row[3] if len(row) > 3 else None,
+                        'adminName': row[4] if len(row) > 4 else None,
+                        'updateName': row[5] if len(row) > 5 else None,
+                    }
+                    
+                    # 将 ORM 对象转换为字典（已经是驼峰命名）
+                    property_dict = CamelCaseUtil.transform_result(property_obj)
+                    # 合并扩展字段（已经是驼峰命名）
+                    property_dict.update(extra_fields)
+                    transformed_rows.append(property_dict)
+                else:
+                    transformed_rows.append(CamelCaseUtil.transform_result(row))
+            
+            property_list_result.rows = transformed_rows
 
         return property_list_result
 
@@ -84,35 +139,52 @@ class PropertyService:
 
         try:
             current_time = int(datetime.now().timestamp() * 1000)
-            add_property = PropertyModel(
-                title=page_object.title,
-                code=page_object.code,
-                thumb=page_object.thumb,
-                cate_id=page_object.cate_id,
-                brand_id=page_object.brand_id,
-                unit_id=page_object.unit_id,
-                quality_time=page_object.quality_time,
-                buy_time=page_object.buy_time,
-                price=page_object.price,
-                rate=page_object.rate,
-                model_=page_object.model_,
-                address=page_object.address,
-                user_dids=page_object.user_dids,
-                user_ids=page_object.user_ids,
-                content=page_object.content,
-                file_ids=page_object.file_ids,
-                source=page_object.source if page_object.source is not None else 1,
-                purchase_id=page_object.purchase_id,
-                status=page_object.status if page_object.status is not None else 1,
-                admin_id=page_object.admin_id if page_object.admin_id is not None else 0,
-                create_time=current_time,
-                update_time=current_time
-            )
-            await PropertyDao.add_property_dao(query_db, add_property)
+            
+            # 转换日期字段为时间戳
+            quality_time = cls.convert_date_to_timestamp(page_object.quality_time)
+            buy_time = cls.convert_date_to_timestamp(page_object.buy_time)
+            
+            # 直接使用原始请求数据
+            body = await request.json()
+            
+            # 构建数据字典 - 注意前端发送的是驼峰命名
+            add_dict = {
+                'title': body.get('title'),
+                'code': body.get('code', ''),
+                'thumb': int(body.get('thumb', 0) or 0),
+                'cate_id': int(body.get('cateId', 0) or 0),
+                'brand_id': int(body.get('brandId', 0) or 0),
+                'unit_id': int(body.get('unitId', 0) or 0),
+                'quality_time': quality_time if quality_time is not None else 0,
+                'buy_time': buy_time if buy_time is not None else 0,
+                'price': float(body.get('price', 0) or 0),
+                'rate': float(body.get('rate', 0) or 0),
+                'model_': body.get('model', ''),
+                'address': body.get('address', ''),
+                'user_dids': str(body.get('userDids', '') or ''),
+                'user_ids': str(body.get('userIds', '') or ''),
+                'content': body.get('content', ''),
+                'file_ids': body.get('fileIds', ''),
+                'source': int(body.get('source', 1) or 1),
+                'purchase_id': int(body.get('purchaseId', 0) or 0),
+                'status': int(body.get('status', 1) or 1),
+                'admin_id': int(page_object.admin_id) if page_object.admin_id else 0,
+                'create_time': current_time,
+                'update_time': current_time,
+            }
+            
+            logger.info(f'Service 层 - 传递给 DAO 的数据: {add_dict}')
+            
+            # 直接调用 DAO 层，传入字典而不是 PropertyModel 对象
+            await PropertyDao.add_property_dao_from_dict(query_db, add_dict)
             await query_db.commit()
+            logger.info(f'========== 新增资产成功 ==========')
             return CrudResponseModel(is_success=True, message='新增成功')
         except Exception as e:
             await query_db.rollback()
+            logger.error(f'新增资产失败: {str(e)}')
+            import traceback
+            logger.error(traceback.format_exc())
             raise e
 
     @classmethod
@@ -135,6 +207,13 @@ class PropertyService:
                 raise ServiceException(message=f'修改资产{page_object.title}失败，资产名称已存在')
 
             try:
+                # 转换日期字段为时间戳
+                if 'quality_time' in edit_property:
+                    edit_property['quality_time'] = cls.convert_date_to_timestamp(edit_property['quality_time'])
+                
+                if 'buy_time' in edit_property:
+                    edit_property['buy_time'] = cls.convert_date_to_timestamp(edit_property['buy_time'])
+                
                 edit_property['update_time'] = int(datetime.now().timestamp())
                 await PropertyDao.edit_property_dao(query_db, edit_property)
                 await query_db.commit()
@@ -193,17 +272,12 @@ class PropertyService:
         if property_info.id:
             try:
                 update_time = int(datetime.now().timestamp())
-
-                if page_object.status == 0:
-                    await PropertyDao.disable_property_dao(
-                        query_db,
-                        PropertyModel(id=page_object.id, update_time=update_time)
-                    )
-                elif page_object.status == 1:
-                    await PropertyDao.enable_property_dao(
-                        query_db,
-                        PropertyModel(id=page_object.id, update_time=update_time)
-                    )
+                
+                # 直接使用通用更新方法，支持所有状态值
+                await PropertyDao.edit_property_dao(
+                    query_db, 
+                    {'id': page_object.id, 'status': page_object.status, 'update_time': update_time}
+                )
 
                 await query_db.commit()
                 return CrudResponseModel(is_success=True, message='操作成功')

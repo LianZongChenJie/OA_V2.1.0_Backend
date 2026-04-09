@@ -97,7 +97,19 @@ async def edit_system_supplier(
         request: Request,
         edit_supplier: EditSupplierModel,
         query_db: Annotated[AsyncSession, DBSessionDependency()],
+        current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
 ) -> Response:
+    # 从 current_user 获取用户 ID
+    user_id = current_user.user.user_id if current_user.user and current_user.user.user_id else 0
+    edit_supplier.admin_id = user_id
+    
+    # 处理联系人列表
+    if edit_supplier.contact_list:
+        for contact in edit_supplier.contact_list:
+            # 设置创建人（仅对新增联系人有效）
+            if not contact.admin_id:
+                contact.admin_id = user_id
+    
     edit_supplier_result = await SupplierService.edit_supplier_services(request, query_db, edit_supplier)
     logger.info(edit_supplier_result.message)
 

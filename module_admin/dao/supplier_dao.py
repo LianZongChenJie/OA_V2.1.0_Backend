@@ -249,3 +249,84 @@ class SupplierDao:
         await db.flush()
 
         return db_contact
+
+    @classmethod
+    async def get_supplier_contacts_by_sid(cls, db: AsyncSession, sid: int) -> list[dict[str, Any]]:
+        """
+        根据供应商 ID 获取联系人列表
+
+        :param db: orm 对象
+        :param sid: 供应商 ID
+        :return: 联系人列表
+        """
+        contact_list = (
+            (await db.execute(
+                select(OaSupplierContact)
+                .where(
+                    OaSupplierContact.sid == sid,
+                    OaSupplierContact.delete_time == 0
+                )
+                .order_by(OaSupplierContact.is_default.desc(), OaSupplierContact.create_time.asc())
+            ))
+            .scalars()
+            .all()
+        )
+
+        contacts = []
+        for contact in contact_list:
+            contact_dict = {
+                'id': contact.id,
+                'sid': contact.sid,
+                'is_default': contact.is_default,
+                'name': contact.name,
+                'sex': contact.sex,
+                'mobile': contact.mobile,
+                'qq': contact.qq,
+                'wechat': contact.wechat,
+                'email': contact.email,
+                'nickname': contact.nickname,
+                'department': contact.department,
+                'position': contact.position,
+                'admin_id': contact.admin_id,
+                'create_time': contact.create_time,
+                'update_time': contact.update_time,
+                'delete_time': contact.delete_time,
+            }
+            contacts.append(contact_dict)
+
+        return contacts
+
+    @classmethod
+    async def edit_supplier_contact_dao(cls, db: AsyncSession, contact: AddSupplierContactModel) -> None:
+        """
+        编辑供应商联系人数据库操作
+
+        :param db: orm 对象
+        :param contact: 联系人对象
+        :return:
+        """
+        contact_dict = contact.model_dump(by_alias=False, exclude_none=True)
+        contact_id = contact_dict.pop('id', None)
+        
+        if contact_id:
+            await db.execute(
+                update(OaSupplierContact)
+                .where(OaSupplierContact.id == contact_id)
+                .values(**contact_dict)
+            )
+
+    @classmethod
+    async def delete_supplier_contact_dao(cls, db: AsyncSession, contact_id: int, update_time: int) -> None:
+        """
+        删除供应商联系人数据库操作（软删除）
+
+        :param db: orm 对象
+        :param contact_id: 联系人 ID
+        :param update_time: 更新时间
+        :return:
+        """
+        await db.execute(
+            update(OaSupplierContact)
+            .where(OaSupplierContact.id == contact_id)
+            .values(delete_time=update_time, update_time=update_time)
+        )
