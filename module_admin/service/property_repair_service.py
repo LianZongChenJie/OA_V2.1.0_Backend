@@ -56,12 +56,9 @@ class PropertyRepairService:
                     repair_dict = CamelCaseUtil.transform_result(repair_obj)
                     # 合并扩展字段
                     repair_dict.update(extra_fields)
-                    # 格式化时间字段
-                    repair_dict = ModelConverter.time_format(repair_dict)
                     transformed_rows.append(repair_dict)
                 else:
                     transformed_dict = CamelCaseUtil.transform_result(row)
-                    transformed_dict = ModelConverter.time_format(transformed_dict)
                     transformed_rows.append(transformed_dict)
             
             repair_list_result.rows = transformed_rows
@@ -210,8 +207,6 @@ class PropertyRepairService:
             repair_dict = CamelCaseUtil.transform_result(repair_obj)
             # 合并扩展字段
             repair_dict.update(extra_fields)
-            # 格式化时间字段
-            repair_dict = ModelConverter.time_format(repair_dict)
             
             return PropertyRepairModel(**repair_dict)
         else:

@@ -343,7 +343,12 @@ class CarRepairService:
         :return: 记录 ID 对应的信息
         """
         repair = await CarRepairDao.get_car_repair_detail_by_id(query_db, repair_id)
-        result = CarRepairPageQueryModel(**CamelCaseUtil.transform_result(repair)) if repair else CarRepairPageQueryModel()
+        if repair:
+            repair_dict = CamelCaseUtil.transform_result(repair)
+            repair_dict = ModelConverter.time_format(repair_dict)
+            result = CarRepairPageQueryModel(**repair_dict)
+        else:
+            result = CarRepairPageQueryModel()
 
         return result
 

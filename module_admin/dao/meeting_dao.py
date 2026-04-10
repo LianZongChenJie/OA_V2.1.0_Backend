@@ -44,6 +44,38 @@ class MeetingRoomDao:
         return room_info
 
     @classmethod
+    async def get_meeting_room_list(
+            cls, db: AsyncSession, query_object: MeetingRoomPageQueryModel, is_page: bool = False
+    ) -> PageModel | list[dict]:
+        """
+        根据查询参数获取会议室列表信息
+        """
+        from module_admin.entity.do.user_do import SysUser
+
+        query = select(OaMeetingRoom, SysUser.nick_name.label('admin_name')).join(
+            SysUser, SysUser.user_id == OaMeetingRoom.keep_uid, isouter=True
+        ).where(OaMeetingRoom.status != -1)
+
+        if query_object.keywords:
+            query = query.where(
+                or_(
+                    OaMeetingRoom.title.like(f'%{query_object.keywords}%'),
+                    OaMeetingRoom.address.like(f'%{query_object.keywords}%'),
+                )
+            )
+
+        if query_object.status is not None:
+            query = query.where(OaMeetingRoom.status == query_object.status)
+
+        query = query.order_by(OaMeetingRoom.id.desc())
+
+        room_list: PageModel | list[dict] = await PageUtil.paginate(
+            db, query, query_object.page_num, query_object.page_size, is_page
+        )
+
+        return room_list
+
+    @classmethod
     async def add_meeting_room_dao(cls, db: AsyncSession, room: dict) -> OaMeetingRoom:
         """
         新增会议室数据库操作

@@ -26,6 +26,8 @@ class OaPlanBaseModel(BaseModel):
     create_time: int | None = Field(None, description='创建时间')
     update_time: int | None = Field(None, description='更新时间')
 
+    create_admin: str | None = Field(None, description='创建人姓名')
+
     @field_serializer('create_time')
     def serialize_create_time(self, value: Optional[int]) -> Optional[str]:
         """序列化创建时间"""
@@ -47,6 +49,9 @@ class OaPlanQueryModel(OaPlanBaseModel):
     before_time: int|None = Field(None, description='提前提醒时间')
     begin_time: str|None = Field(None, description='查询开始日期')
     end_time: str|None  = Field(None, description='查询结束日期')
+    keywords: str | None = Field(None, description='搜索关键词')
+    uid: int | None = Field(None, description='用户ID')
+    type: str | None = Field(None, description='日程类型')
     page_num: int | None = Field(1, description='页码')
     page_size: int | None = Field(20, description='页面数据量')
 

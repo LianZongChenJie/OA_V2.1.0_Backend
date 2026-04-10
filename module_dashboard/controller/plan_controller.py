@@ -1,4 +1,4 @@
-from fastapi import File, Form, Path, Query, Request, Response, UploadFile,Body
+from fastapi import File, Form, Path, Query, Request, Response, UploadFile, Body
 from typing import Annotated
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import ColumnElement
@@ -16,17 +16,20 @@ from module_admin.entity.vo.user_vo import (
 )
 from utils.camel_converter import ModelConverter
 from utils.response_util import ResponseUtil
+from common.annotation.log_annotation import Log
+from common.enums import BusinessType
+from utils.log_util import logger
 
 dashboard_plan_controller = APIRouterPro(
-    prefix='/dashboard/plan', order_num=3, tags=['个人办公-日程安排'], dependencies=[PreAuthDependency()]
+    prefix='/oa/plan', order_num=3, tags=['个人办公-日程安排'], dependencies=[PreAuthDependency()]
 )
 
 @dashboard_plan_controller.get(
-    "/list",
+    "/datalist",
     summary='获取日程安排列表',
-    description='用于获取日程安排列表',
+    description='用于获取日程安排分页列表',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:plan:uery')],
+    dependencies=[UserInterfaceAuthDependency('oa:plan:list')],
 )
 async def get_page_list(
     request: Request,
@@ -34,7 +37,25 @@ async def get_page_list(
     query_object: Annotated[OaPlanQueryModel, Query()],
     data_scope_sql: Annotated[ColumnElement, DataScopeDependency(OaPlan)],
 ) -> Response:
-    result =  await PlanService.get_page_list_service(query_db,query_object,data_scope_sql,False)
+    result = await PlanService.get_page_list_service(query_db, query_object, data_scope_sql, False)
+    logger.info('获取日程安排列表成功')
+    return ResponseUtil.success(data=result)
+
+@dashboard_plan_controller.get(
+    "/calendar",
+    summary='获取日历日程列表',
+    description='用于获取日历视图的日程安排',
+    response_model=None,
+    dependencies=[UserInterfaceAuthDependency('oa:plan:calendar')],
+)
+async def get_calendar_list(
+    request: Request,
+    query_db: Annotated[AsyncSession, DBSessionDependency()],
+    query_object: Annotated[OaPlanQueryModel, Query()],
+    data_scope_sql: Annotated[ColumnElement, DataScopeDependency(OaPlan)],
+) -> Response:
+    result = await PlanService.get_calendar_list_service(query_db, query_object, data_scope_sql, False)
+    logger.info('获取日历日程列表成功')
     return ResponseUtil.success(data=result)
 
 @dashboard_plan_controller.post(
@@ -42,8 +63,9 @@ async def get_page_list(
     summary='新增日程安排',
     description='用于新增日程安排',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:plan:add')],
+    dependencies=[UserInterfaceAuthDependency('oa:plan:add')],
 )
+@Log(title='日程安排', business_type=BusinessType.INSERT)
 async def add_plan(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
@@ -52,6 +74,7 @@ async def add_plan(
 ) -> Response:
     query_object.admin_id = current_user.user.user_id
     result = await PlanService.add_service(query_db, query_object)
+    logger.info(result.message)
     return ResponseUtil.success(msg=result.message)
 
 @dashboard_plan_controller.put(
@@ -59,14 +82,16 @@ async def add_plan(
     summary='更新日程安排',
     description='用于更新日程安排',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:plan:update')],
+    dependencies=[UserInterfaceAuthDependency('oa:plan:update')],
 )
+@Log(title='日程安排', business_type=BusinessType.UPDATE)
 async def update_plan(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
     model: Annotated[OaPlanBaseModel, Body()],
-)->Response:
+) -> Response:
     result = await PlanService().update_service(query_db, model)
+    logger.info(result.message)
     return ResponseUtil.success(msg=result.message)
 
 @dashboard_plan_controller.get(
@@ -74,59 +99,46 @@ async def update_plan(
     summary='获取日程安排详情',
     description='用于获取日程安排详情',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:plan:uery')],
+    dependencies=[UserInterfaceAuthDependency('oa:plan:query')],
 )
 async def get_plan_by_id(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
     id: int,
 ) -> Response:
-    result =  await PlanService.get_info_service(query_db, id)
-    return ResponseUtil.success(data=ModelConverter.time_format(ModelConverter.to_dict(result)))
+    result = await PlanService.get_info_service(query_db, id)
+    logger.info(f'获取日程安排详情成功，ID: {id}')
+    return ResponseUtil.success(data=result)
+
+@dashboard_plan_controller.get(
+    "/view/{id}",
+    summary='读取日程弹层详情',
+    description='用于读取日程弹层详情',
+    response_model=None,
+    dependencies=[UserInterfaceAuthDependency('oa:plan:query')],
+)
+async def view_plan(
+    request: Request,
+    query_db: Annotated[AsyncSession, DBSessionDependency()],
+    id: int,
+) -> Response:
+    result = await PlanService.get_info_service(query_db, id)
+    logger.info(f'读取日程弹层详情成功，ID: {id}')
+    return ResponseUtil.success(data=result)
 
 @dashboard_plan_controller.delete(
-    "/delete/{id}",
+    "/del/{id}",
     summary='删除日程安排',
     description='用于删除日程安排',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:plan:delete')],
+    dependencies=[UserInterfaceAuthDependency('oa:plan:delete')],
 )
+@Log(title='日程安排', business_type=BusinessType.DELETE)
 async def delete_plan(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
     id: int,
 ) -> Response:
-    result =  await PlanService.del_by_id(query_db, id)
+    result = await PlanService.del_by_id(query_db, id)
+    logger.info(result.message)
     return ResponseUtil.success(msg=result.message)
-
-
-@dashboard_plan_controller.get(
-    "/calendar/list",
-    summary='获取日程安排列表',
-    description='用于获取日程安排列表',
-    response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:plan:uery')],
-)
-async def get_calendar_list(
-    request: Request,
-    query_db: Annotated[AsyncSession, DBSessionDependency()],
-    query_object: Annotated[OaPlanQueryModel, Query()],
-    data_scope_sql: Annotated[ColumnElement, DataScopeDependency(OaPlan)],
-) -> Response:
-    result =  await PlanService.get_calendar_list_service(query_db,query_object,data_scope_sql,False)
-    return ResponseUtil.success(data=result)
-
-@dashboard_plan_controller.get(
-    "/calendar/detail/{id}",
-    summary='获取日历日程安排详情',
-    description='用于获取日历日程安排详情',
-    response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:plan:uery')],
-)
-async def get_calendar_plan_by_id(
-    request: Request,
-    query_db: Annotated[AsyncSession, DBSessionDependency()],
-    id: int,
-) -> Response:
-    result =  await PlanService.get_calendar_info_service(query_db, id)
-    return ResponseUtil.success(data=result)

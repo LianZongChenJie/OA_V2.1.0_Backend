@@ -133,13 +133,55 @@ class CarRepairModel(BaseModel):
     file_ids: str | None = Field(default=None, description='附件 ID')
     handled: int | None = Field(default=None, description='经手人 ID')
     admin_id: int | None = Field(default=None, description='创建人')
-    create_time: int | None = Field(default=None, description='创建时间')
-    update_time: int | None = Field(default=None, description='更新时间')
-    delete_time: int | None = Field(default=None, description='删除时间')
+    create_time: int | str | None = Field(default=None, description='创建时间')
+    update_time: int | str | None = Field(default=None, description='更新时间')
+    delete_time: int | str | None = Field(default=None, description='删除时间')
 
     # 关联查询返回的字段
     car_name: str | None = Field(default=None, description='车辆名称')
     handled_name: str | None = Field(default=None, description='处理人姓名')
+
+    @field_validator('create_time', mode='before')
+    @classmethod
+    def validate_create_time(cls, value: Any) -> int | str | None:
+        """
+        验证并转换创建时间字段，支持时间戳和日期字符串
+        """
+        if value is None or value == '':
+            return None
+        
+        if isinstance(value, (int, str)):
+            return value
+        
+        return value
+
+    @field_validator('update_time', mode='before')
+    @classmethod
+    def validate_update_time(cls, value: Any) -> int | str | None:
+        """
+        验证并转换更新时间字段，支持时间戳和日期字符串
+        """
+        if value is None or value == '':
+            return None
+        
+        if isinstance(value, (int, str)):
+            return value
+        
+        return value
+
+    @field_validator('delete_time', mode='before')
+    @classmethod
+    def validate_delete_time(cls, value: Any) -> int | str | None:
+        """
+        验证并转换删除时间字段，支持时间戳和日期字符串
+        """
+        if value is None or value == '' or value == 0:
+            return None
+        
+        if isinstance(value, (int, str)):
+            return value
+        
+        return value
 
     @field_validator('repair_time', mode='before')
     @classmethod

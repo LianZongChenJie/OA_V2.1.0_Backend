@@ -1,0 +1,73 @@
+from sqlalchemy import BigInteger, Column, Integer, String, Text
+
+from config.database import Base
+
+
+class OaAdmin(Base):
+    """
+    员工表
+    """
+
+    __tablename__ = 'oa_admin'
+    __table_args__ = {'comment': '员工表'}
+
+    id = Column(Integer, primary_key=True, nullable=False, autoincrement=True, comment='ID')
+    userid = Column(String(100), nullable=False, server_default='', comment='企业微信userid')
+    username = Column(String(100), nullable=False, server_default='', comment='登录用户名')
+    pwd = Column(String(100), nullable=False, server_default='', comment='登录密码')
+    salt = Column(String(100), nullable=True, server_default='', comment='密码盐')
+    reg_pwd = Column(String(100), nullable=False, server_default='', comment='初始密码')
+    name = Column(String(100), nullable=False, server_default='', comment='员工姓名')
+    email = Column(String(100), nullable=False, server_default='', comment='电子邮箱')
+    mobile = Column(BigInteger, nullable=False, server_default='0', comment='手机号码')
+    sex = Column(Integer, nullable=False, server_default='0', comment='性别:1男,2女')
+    nickname = Column(String(100), nullable=False, server_default='', comment='别名')
+    thumb = Column(String(255), nullable=True, comment='头像')
+    theme = Column(String(50), nullable=True, server_default='white', comment='系统主题')
+    did = Column(Integer, nullable=True, server_default='0', comment='主部门id')
+    pid = Column(Integer, nullable=True, server_default='0', comment='上级主管id')
+    position_id = Column(Integer, nullable=True, server_default='0', comment='职位id')
+    position_name = Column(Integer, nullable=True, server_default='0', comment='职务')
+    position_rank = Column(Integer, nullable=True, server_default='0', comment='职级')
+    type = Column(Integer, nullable=True, server_default='0', comment='员工类型:0未设置,1正式,2试用,3实习')
+    is_staff = Column(Integer, nullable=True, server_default='1', comment='身份类型:1企业员工,2劳务派遣,3兼职员工')
+    job_number = Column(String(255), nullable=True, server_default='', comment='工号')
+    birthday = Column(String(255), nullable=True, server_default='', comment='生日')
+    age = Column(Integer, nullable=True, server_default='0', comment='年龄')
+    work_date = Column(String(255), nullable=True, server_default='', comment='开始工作时间')
+    work_location = Column(Integer, nullable=True, server_default='0', comment='工作地点')
+    native_place = Column(String(255), nullable=True, server_default='', comment='籍贯')
+    nation = Column(String(255), nullable=True, server_default='', comment='民族')
+    home_address = Column(String(255), nullable=True, server_default='', comment='家庭地址')
+    current_address = Column(String(255), nullable=True, server_default='', comment='现居地址')
+    contact = Column(String(255), nullable=True, server_default='', comment='紧急联系人')
+    contact_mobile = Column(String(255), nullable=True, server_default='', comment='紧急联系人电话')
+    resident_type = Column(Integer, nullable=True, server_default='0', comment='户口性质:1农村户口,2城镇户口')
+    resident_place = Column(String(255), nullable=True, server_default='', comment='户口所在地')
+    graduate_school = Column(String(255), nullable=True, server_default='', comment='毕业学校')
+    graduate_day = Column(String(255), nullable=True, server_default='', comment='毕业日期')
+    political = Column(Integer, nullable=True, server_default='1', comment='政治面貌:1中共党员,2团员')
+    marital_status = Column(Integer, nullable=True, server_default='1', comment='婚姻状况:1未婚,2已婚,3离异')
+    idcard = Column(String(255), nullable=True, server_default='', comment='身份证')
+    education = Column(String(255), nullable=True, server_default='', comment='学位')
+    speciality = Column(String(255), nullable=True, server_default='', comment='专业')
+    social_account = Column(String(255), nullable=True, server_default='', comment='社保账号')
+    medical_account = Column(String(255), nullable=True, server_default='', comment='医保账号')
+    provident_account = Column(String(255), nullable=True, server_default='', comment='公积金账号')
+    bank_account = Column(String(255), nullable=True, server_default='', comment='银行卡号')
+    bank_info = Column(String(255), nullable=True, server_default='', comment='开户行')
+    file_ids = Column(String(500), nullable=True, server_default='', comment='档案附件')
+    desc = Column(Text, nullable=True, comment='员工个人简介')
+    is_hide = Column(Integer, nullable=True, server_default='0', comment='是否隐藏联系方式:0否,1是')
+    entry_time = Column(BigInteger, nullable=True, server_default='0', comment='员工入职日期')
+    create_time = Column(BigInteger, nullable=True, server_default='0', comment='注册时间')
+    update_time = Column(BigInteger, nullable=True, server_default='0', comment='更新信息时间')
+    delete_time = Column(BigInteger, nullable=True, server_default='0', comment='删除时间')
+    last_login_time = Column(BigInteger, nullable=True, server_default='0', comment='最后登录时间')
+    login_num = Column(Integer, nullable=True, server_default='0', comment='登录次数')
+    last_login_ip = Column(String(64), nullable=True, server_default='', comment='最后登录IP')
+    is_lock = Column(Integer, nullable=True, server_default='0', comment='是否锁屏:1是0否')
+    auth_did = Column(Integer, nullable=True, server_default='0', comment='数据权限类型')
+    auth_dids = Column(String(500), nullable=True, server_default='', comment='可见部门数据')
+    son_dids = Column(String(500), nullable=True, server_default='', comment='可见子部门数据')
+    status = Column(Integer, nullable=True, server_default='1', comment='状态：-1待入职,0禁止登录,1正常,2离职')

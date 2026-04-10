@@ -1,8 +1,8 @@
 import re
 from datetime import datetime
-from typing import Literal
+from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from pydantic.alias_generators import to_camel
 from pydantic_validation_decorator import Network, NotBlank, Size, Xss
 
@@ -339,3 +339,60 @@ class CrudUserRoleModel(BaseModel):
     user_ids: str | None = Field(default=None, description='用户ID信息')
     role_id: int | None = Field(default=None, description='角色ID')
     role_ids: str | None = Field(default=None, description='角色ID信息')
+
+
+class ContactsBookModel(BaseModel):
+    """
+    通讯录员工信息模型
+    """
+
+    model_config = ConfigDict(alias_generator=to_camel, from_attributes=True)
+
+    id: int | None = Field(default=None, description='员工ID')
+    username: str | None = Field(default=None, description='登录用户名')
+    name: str | None = Field(default=None, description='员工姓名')
+    nickname: str | None = Field(default=None, description='别名')
+    email: str | None = Field(default=None, description='电子邮箱')
+    mobile: str | None = Field(default=None, description='手机号码')
+    sex: int | None = Field(default=None, description='性别:1男,2女')
+    thumb: str | None = Field(default=None, description='头像')
+    did: int | None = Field(default=None, description='主部门ID')
+    pid: int | None = Field(default=None, description='上级主管ID')
+    position_id: int | None = Field(default=None, description='职位ID')
+    job_number: str | None = Field(default=None, description='工号')
+    entry_time: int | str | None = Field(default=None, description='入职日期')
+    desc: str | None = Field(default=None, description='员工个人简介')
+    is_hide: int | None = Field(default=None, description='是否隐藏联系方式:0否,1是')
+    status: int | None = Field(default=None, description='状态：-1待入职,0禁止登录,1正常,2离职')
+    
+    # 关联字段
+    department: str | None = Field(default=None, description='主部门名称')
+    position: str | None = Field(default=None, description='职位名称')
+    departments: list[str] | str | None = Field(default=None, description='次要部门列表')
+
+    @field_validator('mobile', mode='before')
+    @classmethod
+    def validate_mobile(cls, value: Any) -> str | None:
+        """处理手机号，从整数转换为字符串"""
+        if value is None or value == '' or value == 0:
+            return None
+        return str(value)
+
+    @field_validator('entry_time', mode='before')
+    @classmethod
+    def validate_entry_time(cls, value: Any) -> int | str | None:
+        """处理入职时间"""
+        if value is None or value == '' or value == 0:
+            return None
+        return value
+
+
+class ContactsBookPageQueryModel(ContactsBookModel):
+    """
+    通讯录分页查询模型
+    """
+
+    page_num: int = Field(default=1, description='当前页码')
+    page_size: int = Field(default=20, description='每页记录数')
+    keywords: str | None = Field(default=None, description='搜索关键词')
+    did: int | None = Field(default=None, description='部门ID')
