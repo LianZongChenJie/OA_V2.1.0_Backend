@@ -120,7 +120,26 @@ class TenderDao:
             cls, db: AsyncSession, attachment: AddTenderAttachmentModel
     ) -> OaProjectTenderAttachment:
         """新增投标附件"""
-        db_attachment = OaProjectTenderAttachment(**attachment.model_dump(by_alias=True))
+        # 构建数据字典，只包含数据库表存在的字段
+        attachment_data = {
+            'project_tender_id': attachment.project_tender_id,
+            'file_name': attachment.file_name,
+            'file_path': attachment.file_path,
+        }
+        
+        # 可选字段，只有在有值时才添加
+        if attachment.file_size is not None:
+            attachment_data['file_size'] = attachment.file_size
+        if attachment.file_ext is not None:
+            attachment_data['file_ext'] = attachment.file_ext
+        if attachment.file_mime is not None:
+            attachment_data['file_mime'] = attachment.file_mime
+        if attachment.sort is not None:
+            attachment_data['sort'] = attachment.sort
+        if attachment.delete_time is not None:
+            attachment_data['delete_time'] = attachment.delete_time
+        
+        db_attachment = OaProjectTenderAttachment(**attachment_data)
         db.add(db_attachment)
         await db.flush()
         await db.refresh(db_attachment)

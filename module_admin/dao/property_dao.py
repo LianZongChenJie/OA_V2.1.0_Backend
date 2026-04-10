@@ -75,6 +75,33 @@ class PropertyDao:
         # 创建用户表的别名，用于查询更新人
         UpdateUser = alias(SysUser.__table__, 'update_user')
         
+        # 构建查询条件列表
+        conditions = [
+            SysProperty.status != -1,
+        ]
+        
+        # 添加动态查询条件
+        if query_object.title:
+            conditions.append(SysProperty.title.like(f'%{query_object.title}%'))
+        
+        if query_object.code:
+            conditions.append(SysProperty.code.like(f'%{query_object.code}%'))
+        
+        if query_object.cate_id is not None:
+            conditions.append(SysProperty.cate_id == query_object.cate_id)
+        
+        if query_object.brand_id is not None:
+            conditions.append(SysProperty.brand_id == query_object.brand_id)
+        
+        if query_object.unit_id is not None:
+            conditions.append(SysProperty.unit_id == query_object.unit_id)
+        
+        if query_object.status is not None:
+            conditions.append(SysProperty.status == query_object.status)
+        
+        if query_object.source is not None:
+            conditions.append(SysProperty.source == query_object.source)
+        
         # 构建联合查询，关联分类、品牌、单位和用户表
         query = (
             select(
@@ -90,16 +117,7 @@ class PropertyDao:
             .outerjoin(SysPropertyUnit, SysProperty.unit_id == SysPropertyUnit.id)
             .outerjoin(SysUser, SysProperty.admin_id == SysUser.user_id)
             .outerjoin(UpdateUser, SysProperty.update_id == UpdateUser.c.user_id)
-            .where(
-                SysProperty.status != -1,
-                SysProperty.title.like(f'%{query_object.title}%') if query_object.title else True,
-                SysProperty.code.like(f'%{query_object.code}%') if query_object.code else True,
-                SysProperty.cate_id == query_object.cate_id if query_object.cate_id is not None else True,
-                SysProperty.brand_id == query_object.brand_id if query_object.brand_id is not None else True,
-                SysProperty.unit_id == query_object.unit_id if query_object.unit_id is not None else True,
-                SysProperty.status == query_object.status if query_object.status is not None else True,
-                SysProperty.source == query_object.source if query_object.source is not None else True,
-            )
+            .where(*conditions)
             .order_by(SysProperty.create_time.desc())
             .distinct()
         )

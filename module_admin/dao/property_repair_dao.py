@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import and_, select, update
+from sqlalchemy import and_, select, update, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from common.vo import PageModel
@@ -43,26 +43,41 @@ class PropertyRepairDao:
         :param is_page: 是否开启分页
         :return: 维修记录列表信息对象
         """
-        # 使用关联查询获取资产名称和跟进人姓名
+        # 使用关联查询获取资产名称、分类、品牌和跟进人姓名
         from module_admin.entity.do.property_do import OaProperty
+        from module_admin.entity.do.property_cate_do import SysPropertyCate
+        from module_admin.entity.do.property_brand_do import SysPropertyBrand
         from module_admin.entity.do.user_do import SysUser
         
         query = (
-            select(OaPropertyRepair, OaProperty.title.label('property_name'), SysUser.nick_name.label('director_name'))
+            select(
+                OaPropertyRepair,
+                OaProperty.title.label('property_name'),
+                SysPropertyCate.title.label('cate_name'),
+                SysPropertyBrand.title.label('brand_name'),
+                SysUser.nick_name.label('director_name')
+            )
             .join(OaProperty, OaProperty.id == OaPropertyRepair.property_id, isouter=True)
+            .join(SysPropertyCate, SysPropertyCate.id == OaProperty.cate_id, isouter=True)
+            .join(SysPropertyBrand, SysPropertyBrand.id == OaProperty.brand_id, isouter=True)
             .join(SysUser, SysUser.user_id == OaPropertyRepair.director_id, isouter=True)
             .where(OaPropertyRepair.delete_time == 0)
         )
         
-        # 关键词搜索
+        # 关键词搜索（搜索资产名称或维修原因）
         if query_object.keywords:
-            query = query.where(OaProperty.title.like(f'%{query_object.keywords}%'))
-        
+            query = query.where(
+                or_(
+                    OaProperty.title.like(f'%{query_object.keywords}%'),
+                    OaPropertyRepair.content.like(f'%{query_object.keywords}%'),
+                )
+            )
+
         # 时间范围查询
         if query_object.begin_time and query_object.end_time:
             try:
                 begin_timestamp = int(datetime.fromisoformat(query_object.begin_time).timestamp())
-                end_timestamp = int(datetime.fromisoformat(query_object.end_time).timestamp())
+                end_timestamp = int(datetime.fromisoformat(query_object.end_time + ' 23:59:59').timestamp())
                 query = query.where(
                     and_(
                         OaPropertyRepair.repair_time >= begin_timestamp,
@@ -92,7 +107,7 @@ class PropertyRepairDao:
         # 排除關聯查詢字段，只保留數據庫表中存在的字段
         db_repair_data = {
             k: v for k, v in repair.items() 
-            if k not in ['property_name', 'director_name']
+            if k not in ['property_name', 'cate_name', 'brand_name', 'director_name']
         }
         db_repair = OaPropertyRepair(**db_repair_data)
         db.add(db_repair)
@@ -112,7 +127,7 @@ class PropertyRepairDao:
         # 排除關聯查詢字段，只保留數據庫表中存在的字段
         db_repair_data = {
             k: v for k, v in repair.items() 
-            if k not in ['property_name', 'director_name']
+            if k not in ['property_name', 'cate_name', 'brand_name', 'director_name']
         }
         await db.execute(update(OaPropertyRepair), [db_repair_data])
 

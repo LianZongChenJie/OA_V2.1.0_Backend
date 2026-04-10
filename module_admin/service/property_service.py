@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import Any, Union
 
 from fastapi import Request
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from common.constant import CommonConstant
@@ -15,6 +16,7 @@ from module_admin.entity.vo.property_vo import (
     PropertyModel,
     PropertyPageQueryModel,
 )
+from utils.camel_converter import ModelConverter
 from utils.common_util import CamelCaseUtil
 from utils.log_util import logger
 
@@ -27,17 +29,17 @@ class PropertyService:
     def convert_date_to_timestamp(cls, date_value: Union[int, str, None]) -> int | None:
         """
         将日期值转换为时间戳
-        
+
         :param date_value: 日期值（可以是时间戳整数或日期字符串）
         :return: 时间戳整数
         """
         if date_value is None:
             return None
-        
+
         # 如果已经是整数（时间戳），直接返回
         if isinstance(date_value, int):
             return date_value
-        
+
         # 如果是字符串，尝试转换
         if isinstance(date_value, str):
             try:
@@ -49,7 +51,7 @@ class PropertyService:
                     return int(datetime.strptime(date_value, '%Y-%m-%d %H:%M:%S').timestamp())
                 except (ValueError, TypeError):
                     return None
-        
+
         return None
 
     @classmethod
@@ -65,7 +67,7 @@ class PropertyService:
         :return: 资产列表信息对象
         """
         property_list_result = await PropertyDao.get_property_list(query_db, query_object, is_page)
-        
+
         # 如果返回的是分页结果，需要转换 rows 中的数据
         if hasattr(property_list_result, 'rows'):
             transformed_rows = []
@@ -80,15 +82,19 @@ class PropertyService:
                         'adminName': row[4] if len(row) > 4 else None,
                         'updateName': row[5] if len(row) > 5 else None,
                     }
-                    
+
                     # 将 ORM 对象转换为字典（已经是驼峰命名）
                     property_dict = CamelCaseUtil.transform_result(property_obj)
                     # 合并扩展字段（已经是驼峰命名）
                     property_dict.update(extra_fields)
+                    # 格式化时间字段
+                    property_dict = ModelConverter.time_format(property_dict)
                     transformed_rows.append(property_dict)
                 else:
-                    transformed_rows.append(CamelCaseUtil.transform_result(row))
-            
+                    transformed_dict = CamelCaseUtil.transform_result(row)
+                    transformed_dict = ModelConverter.time_format(transformed_dict)
+                    transformed_rows.append(transformed_dict)
+
             property_list_result.rows = transformed_rows
 
         return property_list_result
@@ -102,8 +108,10 @@ class PropertyService:
         :return: 资产列表信息对象
         """
         property_list_result = await PropertyDao.get_all_property_list(query_db)
+        transformed_list = CamelCaseUtil.transform_result(property_list_result)
 
-        return CamelCaseUtil.transform_result(property_list_result)
+        # 格式化时间字段
+        return ModelConverter.list_time_format(transformed_list)
 
     @classmethod
     async def check_property_title_unique_services(
@@ -138,15 +146,15 @@ class PropertyService:
             raise ServiceException(message=f'新增资产{page_object.title}失败，资产名称已存在')
 
         try:
-            current_time = int(datetime.now().timestamp() * 1000)
-            
+            current_time = int(datetime.now().timestamp())
+
             # 转换日期字段为时间戳
             quality_time = cls.convert_date_to_timestamp(page_object.quality_time)
             buy_time = cls.convert_date_to_timestamp(page_object.buy_time)
-            
+
             # 直接使用原始请求数据
             body = await request.json()
-            
+
             # 构建数据字典 - 注意前端发送的是驼峰命名
             add_dict = {
                 'title': body.get('title'),
@@ -172,9 +180,9 @@ class PropertyService:
                 'create_time': current_time,
                 'update_time': current_time,
             }
-            
+
             logger.info(f'Service 层 - 传递给 DAO 的数据: {add_dict}')
-            
+
             # 直接调用 DAO 层，传入字典而不是 PropertyModel 对象
             await PropertyDao.add_property_dao_from_dict(query_db, add_dict)
             await query_db.commit()
@@ -210,11 +218,16 @@ class PropertyService:
                 # 转换日期字段为时间戳
                 if 'quality_time' in edit_property:
                     edit_property['quality_time'] = cls.convert_date_to_timestamp(edit_property['quality_time'])
-                
+
                 if 'buy_time' in edit_property:
                     edit_property['buy_time'] = cls.convert_date_to_timestamp(edit_property['buy_time'])
-                
+
                 edit_property['update_time'] = int(datetime.now().timestamp())
+
+                # 确保 update_id 被设置
+                if page_object.update_id is not None:
+                    edit_property['update_id'] = page_object.update_id
+
                 await PropertyDao.edit_property_dao(query_db, edit_property)
                 await query_db.commit()
                 return CrudResponseModel(is_success=True, message='更新成功')
@@ -272,10 +285,10 @@ class PropertyService:
         if property_info.id:
             try:
                 update_time = int(datetime.now().timestamp())
-                
+
                 # 直接使用通用更新方法，支持所有状态值
                 await PropertyDao.edit_property_dao(
-                    query_db, 
+                    query_db,
                     {'id': page_object.id, 'status': page_object.status, 'update_time': update_time}
                 )
 
@@ -296,7 +309,57 @@ class PropertyService:
         :param property_id: 资产 ID
         :return: 资产 ID 对应的信息
         """
+        from module_admin.entity.do.property_do import OaProperty
+        from module_admin.entity.do.property_cate_do import SysPropertyCate
+        from module_admin.entity.do.property_brand_do import SysPropertyBrand
+        from module_admin.entity.do.property_unit_do import SysPropertyUnit
+        from module_admin.entity.do.user_do import SysUser
+        from sqlalchemy import alias
+        
         property = await PropertyDao.get_property_detail_by_id(query_db, property_id)
-        result = PropertyModel(**CamelCaseUtil.transform_result(property)) if property else PropertyModel()
-
-        return result
+        
+        if not property:
+            raise ServiceException(message=f'资产 ID {property_id} 不存在')
+        
+        # 连表查询获取关联字段
+        UpdateUser = alias(SysUser.__table__, 'update_user')
+        
+        query = (
+            select(
+                OaProperty,
+                SysPropertyCate.title.label('cate_name'),
+                SysPropertyBrand.title.label('brand_name'),
+                SysPropertyUnit.title.label('unit_name'),
+                SysUser.nick_name.label('admin_name'),
+                UpdateUser.c.nick_name.label('update_name')
+            )
+            .outerjoin(SysPropertyCate, OaProperty.cate_id == SysPropertyCate.id)
+            .outerjoin(SysPropertyBrand, OaProperty.brand_id == SysPropertyBrand.id)
+            .outerjoin(SysPropertyUnit, OaProperty.unit_id == SysPropertyUnit.id)
+            .outerjoin(SysUser, OaProperty.admin_id == SysUser.user_id)
+            .outerjoin(UpdateUser, OaProperty.update_id == UpdateUser.c.user_id)
+            .where(OaProperty.id == property_id)
+        )
+        
+        result = (await query_db.execute(query)).first()
+        
+        if result:
+            property_obj = result[0]
+            extra_fields = {
+                'cateName': result[1] if len(result) > 1 else None,
+                'brandName': result[2] if len(result) > 2 else None,
+                'unitName': result[3] if len(result) > 3 else None,
+                'adminName': result[4] if len(result) > 4 else None,
+                'updateName': result[5] if len(result) > 5 else None,
+            }
+            
+            # 将 ORM 对象转换为字典
+            property_dict = CamelCaseUtil.transform_result(property_obj)
+            # 合并扩展字段
+            property_dict.update(extra_fields)
+            # 格式化时间字段
+            property_dict = ModelConverter.time_format(property_dict)
+            
+            return PropertyModel(**property_dict)
+        else:
+            raise ServiceException(message=f'资产 ID {property_id} 不存在')

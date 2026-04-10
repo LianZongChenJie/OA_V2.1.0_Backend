@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Literal, Any
+from typing import Literal, Any, Union
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from pydantic.alias_generators import to_camel
 from pydantic_validation_decorator import NotBlank, Size, Xss
@@ -14,18 +14,20 @@ class PropertyRepairModel(BaseModel):
 
     id: int | None = Field(default=None, description='ID')
     property_id: int | None = Field(default=None, description='資產 ID')
-    repair_time: int | None = Field(default=None, description='維修日期')
+    repair_time: Union[int, str, None] = Field(default=None, description='維修日期')
     director_id: int | None = Field(default=None, description='跟進人 ID')
     admin_id: int | None = Field(default=None, description='創建人')
     cost: Decimal | None = Field(default=None, description='維修費用')
     content: str | None = Field(default=None, description='維修原因')
     file_ids: str | None = Field(default=None, description='附件 ids')
-    create_time: int | None = Field(default=None, description='創建時間')
-    update_time: int | None = Field(default=None, description='更新時間')
-    delete_time: int | None = Field(default=None, description='刪除時間')
+    create_time: Union[int, str, None] = Field(default=None, description='創建時間')
+    update_time: Union[int, str, None] = Field(default=None, description='更新時間')
+    delete_time: Union[int, str, None] = Field(default=None, description='刪除時間')
 
     # 關聯查詢返回的字段
     property_name: str | None = Field(default=None, description='資產名稱')
+    cate_name: str | None = Field(default=None, description='資產分類名稱')
+    brand_name: str | None = Field(default=None, description='資產品牌名稱')
     director_name: str | None = Field(default=None, description='跟進人姓名')
 
     @field_validator('repair_time', mode='before')
@@ -34,7 +36,7 @@ class PropertyRepairModel(BaseModel):
         """
         验证并转换维修时间字段，支持时间戳和日期字符串
         """
-        if value is None:
+        if value is None or value == '':
             return None
         
         # 如果已经是整数（时间戳），直接返回
@@ -55,6 +57,30 @@ class PropertyRepairModel(BaseModel):
                     pass
         
         return value
+
+    @field_validator('create_time', mode='before')
+    @classmethod
+    def validate_create_time(cls, v):
+        """处理 create_time 字段，支持时间戳整数或日期字符串"""
+        if v is None or v == '':
+            return None
+        return v
+
+    @field_validator('update_time', mode='before')
+    @classmethod
+    def validate_update_time(cls, v):
+        """处理 update_time 字段，支持时间戳整数或日期字符串"""
+        if v is None or v == '':
+            return None
+        return v
+
+    @field_validator('delete_time', mode='before')
+    @classmethod
+    def validate_delete_time(cls, v):
+        """处理 delete_time 字段，支持时间戳整数或日期字符串"""
+        if v is None or v == '' or v == 0:
+            return None
+        return v
 
     @Xss(field_name='content', message='維修原因不能包含腳本字符')
     @Size(field_name='content', min_length=0, max_length=65535, message='維修原因長度不能超過 65535 個字符')

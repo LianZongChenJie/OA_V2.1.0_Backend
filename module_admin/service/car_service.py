@@ -27,6 +27,7 @@ from module_admin.entity.vo.car_vo import (
     EditCarMileageModel,
     DeleteCarMileageModel,
 )
+from utils.camel_converter import ModelConverter
 from utils.common_util import CamelCaseUtil
 
 
@@ -48,8 +49,33 @@ class CarService:
         :return: 车辆列表信息对象
         """
         car_list_result = await CarDao.get_car_list(query_db, query_object, is_page)
+        
+        # 如果返回的是分页结果，需要转换 rows 中的数据
+        if hasattr(car_list_result, 'rows'):
+            transformed_rows = []
+            for row in car_list_result.rows:
+                # row 是一个元组 (OaCar, driver_name)
+                if isinstance(row, (list, tuple)):
+                    car_obj = row[0]
+                    extra_fields = {
+                        'driverName': row[1] if len(row) > 1 else None,
+                    }
+                    
+                    # 将 ORM 对象转换为字典（已经是驼峰命名）
+                    car_dict = CamelCaseUtil.transform_result(car_obj)
+                    # 合并扩展字段
+                    car_dict.update(extra_fields)
+                    # 格式化时间字段
+                    car_dict = ModelConverter.time_format(car_dict)
+                    transformed_rows.append(car_dict)
+                else:
+                    transformed_dict = CamelCaseUtil.transform_result(row)
+                    transformed_dict = ModelConverter.time_format(transformed_dict)
+                    transformed_rows.append(transformed_dict)
+            
+            car_list_result.rows = transformed_rows
 
-        return CamelCaseUtil.transform_result(car_list_result)
+        return car_list_result
 
     @classmethod
     async def add_car_services(
@@ -183,8 +209,34 @@ class CarRepairService:
         :return: 维修/保养记录列表信息对象
         """
         repair_list_result = await CarRepairDao.get_car_repair_list(query_db, query_object, is_page)
+        
+        # 如果返回的是分页结果，需要转换 rows 中的数据
+        if hasattr(repair_list_result, 'rows'):
+            transformed_rows = []
+            for row in repair_list_result.rows:
+                # row 是一个元组 (OaCarRepair, car_name, handled_name)
+                if isinstance(row, (list, tuple)):
+                    repair_obj = row[0]
+                    extra_fields = {
+                        'carName': row[1] if len(row) > 1 else None,
+                        'handledName': row[2] if len(row) > 2 else None,
+                    }
+                    
+                    # 将 ORM 对象转换为字典（已经是驼峰命名）
+                    repair_dict = CamelCaseUtil.transform_result(repair_obj)
+                    # 合并扩展字段
+                    repair_dict.update(extra_fields)
+                    # 格式化时间字段
+                    repair_dict = ModelConverter.time_format(repair_dict)
+                    transformed_rows.append(repair_dict)
+                else:
+                    transformed_dict = CamelCaseUtil.transform_result(row)
+                    transformed_dict = ModelConverter.time_format(transformed_dict)
+                    transformed_rows.append(transformed_dict)
+            
+            repair_list_result.rows = transformed_rows
 
-        return CamelCaseUtil.transform_result(repair_list_result)
+        return repair_list_result
 
     @classmethod
     async def add_car_repair_services(
@@ -314,8 +366,35 @@ class CarFeeService:
         :return: 费用记录列表信息对象
         """
         fee_list_result = await CarFeeDao.get_car_fee_list(query_db, query_object, is_page)
+        
+        # 如果返回的是分页结果，需要转换 rows 中的数据
+        if hasattr(fee_list_result, 'rows'):
+            transformed_rows = []
+            for row in fee_list_result.rows:
+                # row 是一个元组 (OaCarFee, car_name, handled_name, types_str)
+                if isinstance(row, (list, tuple)):
+                    fee_obj = row[0]
+                    extra_fields = {
+                        'carName': row[1] if len(row) > 1 else None,
+                        'handledName': row[2] if len(row) > 2 else None,
+                        'typesStr': row[3] if len(row) > 3 else None,
+                    }
+                    
+                    # 将 ORM 对象转换为字典（已经是驼峰命名）
+                    fee_dict = CamelCaseUtil.transform_result(fee_obj)
+                    # 合并扩展字段
+                    fee_dict.update(extra_fields)
+                    # 格式化时间字段
+                    fee_dict = ModelConverter.time_format(fee_dict)
+                    transformed_rows.append(fee_dict)
+                else:
+                    transformed_dict = CamelCaseUtil.transform_result(row)
+                    transformed_dict = ModelConverter.time_format(transformed_dict)
+                    transformed_rows.append(transformed_dict)
+            
+            fee_list_result.rows = transformed_rows
 
-        return CamelCaseUtil.transform_result(fee_list_result)
+        return fee_list_result
 
     @classmethod
     async def add_car_fee_services(
@@ -446,8 +525,18 @@ class CarMileageService:
         :return: 里程记录列表信息对象
         """
         mileage_list_result = await CarMileageDao.get_car_mileage_list(query_db, query_object, car_id, is_page)
+        
+        # 如果返回的是分页结果，需要转换 rows 中的数据
+        if hasattr(mileage_list_result, 'rows'):
+            transformed_rows = []
+            for row in mileage_list_result.rows:
+                transformed_dict = CamelCaseUtil.transform_result(row)
+                transformed_dict = ModelConverter.time_format(transformed_dict)
+                transformed_rows.append(transformed_dict)
+            
+            mileage_list_result.rows = transformed_rows
 
-        return CamelCaseUtil.transform_result(mileage_list_result)
+        return mileage_list_result
 
     @classmethod
     async def add_car_mileage_services(

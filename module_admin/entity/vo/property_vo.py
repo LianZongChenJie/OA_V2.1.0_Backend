@@ -34,9 +34,9 @@ class PropertyModel(BaseModel):
     purchase_id: int | None = Field(default=None, description='采购单ID')
     status: Literal[-1, 0, 1, 2, 3, 4] | None = Field(default=None, description='状态：-1删除 0闲置,1在用,2维修,3报废,4丢失')
     admin_id: int | None = Field(default=None, description='创建人')
-    create_time: int | None = Field(default=None, description='创建时间')
+    create_time: Union[int, str, None] = Field(default=None, description='创建时间')
     update_id: int | None = Field(default=None, description='编辑人')
-    update_time: int | None = Field(default=None, description='更新时间')
+    update_time: Union[int, str, None] = Field(default=None, description='更新时间')
     
     # 扩展字段：关联查询结果
     cate_name: str | None = Field(default=None, description='资产分类名称')
@@ -44,6 +44,48 @@ class PropertyModel(BaseModel):
     unit_name: str | None = Field(default=None, description='计量单位名称')
     admin_name: str | None = Field(default=None, description='创建人姓名')
     update_name: str | None = Field(default=None, description='最后修改人姓名')
+
+    @field_validator('status', mode='before')
+    @classmethod
+    def validate_status(cls, v):
+        """将字符串类型的 status 转换为整数"""
+        if v is None or v == '':
+            return None
+        if isinstance(v, str):
+            try:
+                return int(v)
+            except (ValueError, TypeError):
+                return None
+        return v
+
+    @field_validator('source', mode='before')
+    @classmethod
+    def validate_source(cls, v):
+        """将字符串类型的 source 转换为整数"""
+        if v is None or v == '':
+            return None
+        if isinstance(v, str):
+            try:
+                return int(v)
+            except (ValueError, TypeError):
+                return None
+        return v
+
+    @field_validator('create_time', mode='before')
+    @classmethod
+    def validate_create_time(cls, v):
+        """处理 create_time 字段，支持时间戳整数或日期字符串"""
+        if v is None or v == '':
+            return None
+        return v
+
+    @field_validator('update_time', mode='before')
+    @classmethod
+    def validate_update_time(cls, v):
+        """处理 update_time 字段，支持时间戳整数或日期字符串"""
+        if v is None or v == '':
+            return None
+        return v
 
     @Xss(field_name='title', message='名称不能包含脚本字符')
     @NotBlank(field_name='title', message='名称不能为空')

@@ -69,6 +69,7 @@ class WebsiteAccountService:
             return CrudResponseModel(is_success=True, message='修改成功')
         except Exception as e:
             await query_db.rollback()
+            logger.error(f'编辑网站账号失败：{str(e)}', exc_info=True)
             raise ServiceException(message=f'修改失败：{str(e)}') from e
 
     @classmethod

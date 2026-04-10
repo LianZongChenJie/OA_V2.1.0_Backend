@@ -16,6 +16,7 @@ from module_admin.entity.vo.property_repair_vo import (
     PropertyRepairModel,
     PropertyRepairPageQueryModel,
 )
+from utils.camel_converter import ModelConverter
 from utils.common_util import CamelCaseUtil
 
 class PropertyRepairService:
@@ -36,8 +37,36 @@ class PropertyRepairService:
         :return: 維修記錄列表信息對象
         """
         repair_list_result = await PropertyRepairDao.get_property_repair_list(query_db, query_object, is_page)
+        
+        # 如果返回的是分页结果，需要转换 rows 中的数据
+        if hasattr(repair_list_result, 'rows'):
+            transformed_rows = []
+            for row in repair_list_result.rows:
+                # row 是一个元组 (OaPropertyRepair, property_name, cate_name, brand_name, director_name)
+                if isinstance(row, (list, tuple)):
+                    repair_obj = row[0]
+                    extra_fields = {
+                        'propertyName': row[1] if len(row) > 1 else None,
+                        'cateName': row[2] if len(row) > 2 else None,
+                        'brandName': row[3] if len(row) > 3 else None,
+                        'directorName': row[4] if len(row) > 4 else None,
+                    }
+                    
+                    # 将 ORM 对象转换为字典（已经是驼峰命名）
+                    repair_dict = CamelCaseUtil.transform_result(repair_obj)
+                    # 合并扩展字段
+                    repair_dict.update(extra_fields)
+                    # 格式化时间字段
+                    repair_dict = ModelConverter.time_format(repair_dict)
+                    transformed_rows.append(repair_dict)
+                else:
+                    transformed_dict = CamelCaseUtil.transform_result(row)
+                    transformed_dict = ModelConverter.time_format(transformed_dict)
+                    transformed_rows.append(transformed_dict)
+            
+            repair_list_result.rows = transformed_rows
 
-        return CamelCaseUtil.transform_result(repair_list_result)
+        return repair_list_result
 
     @classmethod
     async def add_property_repair_services(
@@ -143,7 +172,47 @@ class PropertyRepairService:
         :param repair_id: 維修記錄 ID
         :return: 維修記錄 ID 對應的信息
         """
-        repair = await PropertyRepairDao.get_property_repair_detail_by_id(query_db, repair_id)
-        result = PropertyRepairModel(**CamelCaseUtil.transform_result(repair)) if repair else PropertyRepairModel()
-
-        return result
+        from module_admin.entity.do.property_repair_do import OaPropertyRepair
+        from module_admin.entity.do.property_do import OaProperty
+        from module_admin.entity.do.property_cate_do import SysPropertyCate
+        from module_admin.entity.do.property_brand_do import SysPropertyBrand
+        from module_admin.entity.do.user_do import SysUser
+        from sqlalchemy import select
+        
+        # 连表查询获取关联字段
+        query = (
+            select(
+                OaPropertyRepair,
+                OaProperty.title.label('property_name'),
+                SysPropertyCate.title.label('cate_name'),
+                SysPropertyBrand.title.label('brand_name'),
+                SysUser.nick_name.label('director_name')
+            )
+            .outerjoin(OaProperty, OaPropertyRepair.property_id == OaProperty.id)
+            .outerjoin(SysPropertyCate, OaProperty.cate_id == SysPropertyCate.id)
+            .outerjoin(SysPropertyBrand, OaProperty.brand_id == SysPropertyBrand.id)
+            .outerjoin(SysUser, OaPropertyRepair.director_id == SysUser.user_id)
+            .where(OaPropertyRepair.id == repair_id)
+        )
+        
+        result = (await query_db.execute(query)).first()
+        
+        if result:
+            repair_obj = result[0]
+            extra_fields = {
+                'propertyName': result[1] if len(result) > 1 else None,
+                'cateName': result[2] if len(result) > 2 else None,
+                'brandName': result[3] if len(result) > 3 else None,
+                'directorName': result[4] if len(result) > 4 else None,
+            }
+            
+            # 将 ORM 对象转换为字典
+            repair_dict = CamelCaseUtil.transform_result(repair_obj)
+            # 合并扩展字段
+            repair_dict.update(extra_fields)
+            # 格式化时间字段
+            repair_dict = ModelConverter.time_format(repair_dict)
+            
+            return PropertyRepairModel(**repair_dict)
+        else:
+            raise ServiceException(message=f'維修記錄 ID {repair_id} 不存在')

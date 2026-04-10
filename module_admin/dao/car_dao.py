@@ -178,8 +178,40 @@ class CarRepairDao:
         if query_object.keywords:
             query = query.where(OaCar.title.like(f'%{query_object.keywords}%'))
 
+        # 单个时间点查询（优先）
+        if query_object.repair_time:
+            try:
+                from datetime import date
+                repair_time_value = query_object.repair_time
+                
+                # 解析时间参数（支持日期字符串或时间戳）
+                if isinstance(repair_time_value, str):
+                    # 如果是日期字符串格式（包含 - 或 /）
+                    if '-' in repair_time_value or '/' in repair_time_value:
+                        repair_dt = datetime.fromisoformat(repair_time_value)
+                        repair_timestamp = int(repair_dt.timestamp())
+                    else:
+                        # 假设是时间戳字符串
+                        repair_timestamp = int(repair_time_value)
+                else:
+                    repair_timestamp = int(repair_time_value)
+                
+                # 将时间戳转换为当天的开始和结束时间
+                repair_date = datetime.fromtimestamp(repair_timestamp).date()
+                begin_timestamp = int(datetime.combine(repair_date, datetime.min.time()).timestamp())
+                end_timestamp = int(datetime.combine(repair_date, datetime.max.time()).timestamp())
+                
+                query = query.where(
+                    and_(
+                        OaCarRepair.repair_time >= begin_timestamp,
+                        OaCarRepair.repair_time <= end_timestamp,
+                    )
+                )
+            except (ValueError, TypeError, OSError) as e:
+                # 解析失败时忽略该条件
+                pass
         # 时间范围查询
-        if query_object.diff_time:
+        elif query_object.diff_time:
             try:
                 time_range = query_object.diff_time.split('~')
                 if len(time_range) == 2:

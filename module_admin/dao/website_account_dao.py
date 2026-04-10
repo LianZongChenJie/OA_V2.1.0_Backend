@@ -64,18 +64,30 @@ class WebsiteAccountDao:
     @classmethod
     async def edit_website_account_dao(cls, db: AsyncSession, account: EditWebsiteAccountModel) -> OaWebsiteAccount:
         """编辑网站账号信息"""
+        # 构建更新数据，排除不需要更新的字段
         edit_data = account.model_dump(exclude_unset=True, exclude={'id'}, by_alias=True)
+        
+        # 移除不应该由编辑接口修改的字段
+        edit_data.pop('created_at', None)  # 创建时间不应修改
+        edit_data.pop('updated_at', None)  # 更新时间由数据库自动管理
+        edit_data.pop('create_time', None)  # 创建时间戳不应修改
+        edit_data.pop('delete_time', None)  # 删除时间不应通过编辑修改
+        
+        # 设置更新时间戳
         edit_data['update_time'] = int(datetime.now().timestamp())
 
+        # MySQL 不支持 RETURNING 子句，需要先更新再查询
         query = (
             update(OaWebsiteAccount)
             .where(OaWebsiteAccount.id == account.id, OaWebsiteAccount.delete_time == 0)
             .values(**edit_data)
-            .returning(OaWebsiteAccount)
         )
-        result = await db.execute(query)
+        await db.execute(query)
         await db.flush()
-        return result.scalar()
+        
+        # 重新查询获取更新后的数据
+        updated_account = await cls.get_website_account_detail_by_id(db, account.id)
+        return updated_account
 
     @classmethod
     async def delete_website_account_dao(cls, db: AsyncSession, account_ids: List[int], delete_time: int):

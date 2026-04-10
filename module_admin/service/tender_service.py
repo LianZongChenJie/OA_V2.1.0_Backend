@@ -245,19 +245,13 @@ class TenderService:
         if not tender_info:
             raise ServiceException(message=f'关联的投标信息不存在，ID：{page_object.project_tender_id}')
 
-        # 补充空值适配VO模型
-        page_object.create_by = page_object.create_by or ''
-        page_object.create_time = page_object.create_time or ''
-        page_object.update_by = page_object.update_by or ''
-        page_object.update_time = page_object.update_time or ''
-        page_object.delete_time = page_object.delete_time or 0
-
         try:
             await TenderDao.add_tender_attachment_dao(query_db, page_object)
             await query_db.commit()
             return CrudResponseModel(is_success=True, message='新增附件成功')
         except Exception as e:
             await query_db.rollback()
+            logger.error(f'新增附件失败：{str(e)}', exc_info=True)
             raise ServiceException(message=f'新增附件失败：{str(e)}') from e
 
     @classmethod

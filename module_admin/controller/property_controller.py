@@ -101,7 +101,9 @@ async def edit_system_property(
         request: Request,
         edit_property: EditPropertyModel,
         query_db: Annotated[AsyncSession, DBSessionDependency()],
+        current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
 ) -> Response:
+    edit_property.update_id = current_user.user.user_id
     edit_property_result = await PropertyService.edit_property_services(request, query_db, edit_property)
     logger.info(edit_property_result.message)
 
