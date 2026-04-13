@@ -1,4 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 from typing import Any
 
 from exceptions.exception import ServiceException
@@ -56,19 +57,67 @@ class WorkService:
         新增工作汇报
         """
         try:
-            add_model = OaWorkBaseModel(**model.model_dump(exclude_none=True, exclude={'users', 'read_users', 'comment_auth', 'person_name'}))
+            if not model.types:
+                raise ServiceException(message="汇报类型不能为空")
+            
+            if not model.start_date:
+                raise ServiceException(message="开始日期不能为空")
+            
+            add_model = OaWorkBaseModel(**model.model_dump(exclude_none=True, exclude={'users', 'read_users', 'comment_auth', 'person_name', 'begin_time', 'end_time', 'keywords', 'is_send', 'send', 'read', 'diff_time', 'range_date'}))
             add_model.admin_id = current_user_id
-            add_model.start_date = int_time(str(model.start_date)) if model.start_date and isinstance(model.start_date, str) and len(str(model.start_date).strip()) > 0 else (model.start_date if isinstance(model.start_date, int) else 0)
-            add_model.end_date = int_time(str(model.end_date)) if model.end_date and isinstance(model.end_date, str) and len(str(model.end_date).strip()) > 0 else (model.end_date if isinstance(model.end_date, int) else 0)
-            add_model.create_time = int(datetime.now().timestamp())
-            add_model.update_time = add_model.create_time
+            
+            start_date_str = str(model.start_date).strip() if model.start_date else ''
+            if start_date_str and len(start_date_str) > 0 and start_date_str != 'string':
+                add_model.start_date = int_time(start_date_str)
+            else:
+                raise ServiceException(message="开始日期格式不正确")
+            
+            end_date_str = str(model.end_date).strip() if model.end_date else ''
+            if end_date_str and len(end_date_str) > 0 and end_date_str != 'string':
+                add_model.end_date = int_time(end_date_str)
+            else:
+                add_model.end_date = add_model.start_date
+            
+            now_timestamp = int(datetime.now().timestamp())
+            add_model.create_time = now_timestamp
+            add_model.update_time = now_timestamp
+            add_model.delete_time = 0
             
             if model.is_send:
-                add_model.send_time = add_model.create_time
+                add_model.send_time = now_timestamp
+            else:
+                add_model.send_time = 0
+            
+            if model.to_uids and model.to_uids.strip() and model.to_uids != 'string':
+                add_model.to_uids = model.to_uids.strip()
+            else:
+                if model.is_send:
+                    raise ServiceException(message="接收人不能为空")
+                add_model.to_uids = ''
+            
+            if model.works and model.works.strip() and model.works != 'string':
+                add_model.works = model.works
+            else:
+                add_model.works = ''
+            
+            if model.plans and model.plans.strip() and model.plans != 'string':
+                add_model.plans = model.plans
+            else:
+                add_model.plans = ''
+            
+            if model.remark and model.remark.strip() and model.remark != 'string':
+                add_model.remark = model.remark
+            else:
+                add_model.remark = ''
+            
+            if model.file_ids and model.file_ids.strip() and model.file_ids != 'string':
+                add_model.file_ids = model.file_ids.strip()
+            else:
+                add_model.file_ids = ''
             
             work_record = await WorkDao.add(query_db, add_model)
             
-            if model.is_send and model.to_uids:
+            if model.is_send and model.to_uids and model.to_uids.strip():
                 users = [uid.strip() for uid in model.to_uids.split(',') if uid.strip()]
                 send_data = []
                 for uid in users:
@@ -79,20 +128,25 @@ class WorkService:
                                 'work_id': work_record.id,
                                 'to_uid': uid_int,
                                 'from_uid': current_user_id,
-                                'send_time': add_model.create_time
+                                'send_time': now_timestamp,
+                                'read_time': 0,
+                                'delete_time': 0
                             })
                     except (ValueError, TypeError):
                         continue
                 
                 if send_data:
                     await WorkDao.add_work_records(query_db, send_data)
-                    await WorkDao.update_send_time(query_db, work_record.id, add_model.create_time)
+                    await WorkDao.update_send_time(query_db, work_record.id, now_timestamp)
             
             await query_db.commit()
             return CrudResponseModel(is_success=True, message='发送成功' if model.is_send else '保存成功')
+        except ServiceException:
+            raise
         except Exception as e:
             await query_db.rollback()
-            raise e
+            logger.error(f"新增工作汇报失败: {str(e)}", exc_info=True)
+            raise ServiceException(message=f"保存失败：{str(e)}")
 
     @classmethod
     async def update_service(cls, query_db: AsyncSession, model: OaWorkQueryModel, current_user_id: int) -> CrudResponseModel:

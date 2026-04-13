@@ -16,6 +16,7 @@ from module_admin.entity.vo.seal_cate_vo import (
     SealCatePageQueryModel,
 )
 from utils.common_util import CamelCaseUtil
+from utils.log_util import logger
 
 
 class SealCateService:
@@ -73,20 +74,27 @@ class SealCateService:
 
         try:
             current_time = int(datetime.now().timestamp())
-            add_seal_cate = SealCateModel(
-                title=page_object.title,
-                dids=page_object.dids if page_object.dids is not None else '',
-                keep_uid=page_object.keep_uid if page_object.keep_uid is not None else 0,
-                status=page_object.status if page_object.status is not None else 1,
-                remark=page_object.remark if page_object.remark is not None else '',
-                create_time=current_time,
-                update_time=current_time
-            )
-            await SealCateDao.add_seal_cate_dao(query_db, add_seal_cate)
+            
+            add_data = {
+                'title': page_object.title,
+                'dids': page_object.dids if page_object.dids is not None else '',
+                'keep_uid': page_object.keep_uid if page_object.keep_uid is not None else 0,
+                'status': page_object.status if page_object.status is not None else 1,
+                'remark': page_object.remark if page_object.remark is not None else '',
+                'create_time': current_time,
+                'update_time': current_time
+            }
+            
+            logger.info(f'准备插入印章类别数据：{add_data}')
+            
+            await SealCateDao.add_seal_cate_dao(query_db, add_data)
             await query_db.commit()
+            
+            logger.info('印章类别新增成功')
             return CrudResponseModel(is_success=True, message='新增成功')
         except Exception as e:
             await query_db.rollback()
+            logger.error(f'印章类别新增失败：{str(e)}', exc_info=True)
             raise e
 
     @classmethod
@@ -101,7 +109,7 @@ class SealCateService:
         :param page_object: 编辑印章类别对象
         :return: 编辑印章类别校验结果
         """
-        edit_seal_cate = page_object.model_dump(exclude_unset=True)
+        edit_seal_cate = page_object.model_dump(exclude_unset=True, by_alias=False)
         seal_cate_info = await cls.seal_cate_detail_services(query_db, page_object.id)
 
         if seal_cate_info.id:

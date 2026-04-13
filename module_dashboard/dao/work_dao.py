@@ -1,5 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, asc, or_, and_
+from sqlalchemy.orm import aliased
 from sqlalchemy.sql import ColumnElement, func
 from common.vo import PageModel
 from module_admin.entity.do.oa_admin_do import OaAdmin
@@ -63,13 +64,16 @@ class WorkDao:
         """
         获取我接收的汇报列表
         """
+        OaAdminFrom = aliased(OaAdmin)
+        OaAdminTo = aliased(OaAdmin)
+        
         query = (
             select(OaWorkRecord, OaWork, 
-                   OaAdmin.name.label('from_name'),
-                   OaAdmin2.name.label('to_name'))
+                   OaAdminFrom.name.label('from_name'),
+                   OaAdminTo.name.label('to_name'))
             .join(OaWork, OaWorkRecord.work_id == OaWork.id, isouter=True)
-            .join(OaAdmin, OaAdmin.id == OaWorkRecord.from_uid, isouter=True)
-            .join(OaAdmin2, OaAdmin2.id == OaWorkRecord.to_uid, isouter=True)
+            .join(OaAdminFrom, OaAdminFrom.id == OaWorkRecord.from_uid, isouter=True)
+            .join(OaAdminTo, OaAdminTo.id == OaWorkRecord.to_uid, isouter=True)
         )
 
         conditions = []

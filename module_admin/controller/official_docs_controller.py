@@ -41,9 +41,11 @@ async def get_system_official_list(
         request: Request,
         official_page_query: Annotated[OfficialDocsPageQueryModel, Query()],
         query_db: Annotated[AsyncSession, DBSessionDependency()],
+        current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
 ) -> Response:
+    user_id = current_user.user.user_id if current_user.user and current_user.user.user_id else 0
     official_page_query_result = await OfficialDocsService.get_official_docs_list_services(
-        query_db, official_page_query, is_page=True
+        query_db, official_page_query, is_page=True, user_id=user_id
     )
     logger.info('获取成功')
 

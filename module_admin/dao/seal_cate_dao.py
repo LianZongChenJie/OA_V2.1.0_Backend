@@ -87,15 +87,15 @@ class SealCateDao:
         return seal_cate_list
 
     @classmethod
-    async def add_seal_cate_dao(cls, db: AsyncSession, seal_cate: SealCateModel) -> SysSealCate:
+    async def add_seal_cate_dao(cls, db: AsyncSession, seal_cate_data: dict) -> SysSealCate:
         """
         新增印章类别数据库操作
 
         :param db: orm 对象
-        :param seal_cate: 印章类别对象
+        :param seal_cate_data: 印章类别数据字典
         :return:
         """
-        db_seal_cate = SysSealCate(**seal_cate.model_dump())
+        db_seal_cate = SysSealCate(**seal_cate_data)
         db.add(db_seal_cate)
         await db.flush()
 
@@ -110,7 +110,13 @@ class SealCateDao:
         :param seal_cate: 需要更新的印章类别字典
         :return:
         """
-        await db.execute(update(SysSealCate), [seal_cate])
+        seal_cate_id = seal_cate.pop('id', None)
+        if seal_cate_id:
+            await db.execute(
+                update(SysSealCate)
+                .where(SysSealCate.id == seal_cate_id)
+                .values(**seal_cate)
+            )
 
     @classmethod
     async def delete_seal_cate_dao(cls, db: AsyncSession, seal_cate: SealCateModel) -> None:

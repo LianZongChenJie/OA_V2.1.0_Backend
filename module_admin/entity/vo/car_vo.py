@@ -175,13 +175,13 @@ class CarRepairModel(BaseModel):
         """
         验证并转换删除时间字段，支持时间戳和日期字符串
         """
-        if value is None or value == '' or value == 0:
-            return None
+        if value is None or value == '':
+            return 0
         
         if isinstance(value, (int, str)):
             return value
         
-        return value
+        return 0
 
     @field_validator('repair_time', mode='before')
     @classmethod

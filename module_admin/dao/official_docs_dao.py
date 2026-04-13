@@ -131,7 +131,38 @@ class OfficialDocsDao:
         :param is_page: 是否开启分页
         :return: 公文列表信息对象
         """
+        from fastapi import Request
+        from module_admin.entity.vo.user_vo import CurrentUserModel
+        
         query = select(OaOfficialDocs).where(OaOfficialDocs.delete_time == 0)
+
+        # 处理 tab 参数筛选
+        if hasattr(query_object, 'tab') and query_object.tab is not None:
+            user_id = getattr(query_object, '_user_id', 0)
+            
+            if query_object.tab == 1:
+                # 我创建的
+                if user_id:
+                    query = query.where(OaOfficialDocs.admin_id == user_id)
+            elif query_object.tab == 2:
+                # 待我审批
+                if user_id:
+                    query = query.where(
+                        OaOfficialDocs.check_status == 1,
+                        func.find_in_set(str(user_id), OaOfficialDocs.check_uids)
+                    )
+            elif query_object.tab == 3:
+                # 我已审批
+                if user_id:
+                    query = query.where(
+                        func.find_in_set(str(user_id), OaOfficialDocs.check_history_uids)
+                    )
+            elif query_object.tab == 4:
+                # 我抄送的
+                if user_id:
+                    query = query.where(
+                        func.find_in_set(str(user_id), OaOfficialDocs.copy_uids)
+                    )
 
         if query_object.keywords:
             query = query.where(
@@ -197,6 +228,7 @@ class OfficialDocsDao:
         """
         query = select(OaOfficialDocs).where(
             OaOfficialDocs.delete_time == 0,
+            OaOfficialDocs.check_status == 2,
             func.find_in_set(str(user_id), OaOfficialDocs.check_history_uids),
             )
 
