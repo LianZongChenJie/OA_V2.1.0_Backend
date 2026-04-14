@@ -21,6 +21,10 @@ class SealCateModel(BaseModel):
     create_time: int | None = Field(default=None, description='创建时间')
     update_time: int | None = Field(default=None, description='更新时间')
 
+    # 扩展字段，用于列表展示
+    dept_names: list[str] | None = Field(default=None, description='应用部门名称列表')
+    keeper_name: str | None = Field(default=None, description='保管人姓名')
+
     @Xss(field_name='title', message='印章名称不能包含脚本字符')
     @NotBlank(field_name='title', message='印章名称不能为空')
     @Size(field_name='title', min_length=0, max_length=100, message='印章名称长度不能超过 100 个字符')

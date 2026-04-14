@@ -29,28 +29,28 @@ class OperLogModel(BaseModel):
     oper_location: str | None = Field(default=None, description='操作地点')
     oper_param: str | None = Field(default=None, description='请求参数')
     json_result: str | None = Field(default=None, description='返回参数')
-    status: Literal[0, 1, '0', '1'] | None = Field(default=None, description='操作状态（0正常 1异常）')
+    status: Literal[0, 1] | None = Field(default=None, description='操作状态（0正常 1异常）')
     error_msg: str | None = Field(default=None, description='错误消息')
     oper_time: datetime | None = Field(default=None, description='操作时间')
     cost_time: int | None = Field(default=None, description='消耗时间')
 
 
-class LogininforModel(BaseModel):
+class SimpleOperLogModel(BaseModel):
     """
-    登录日志表对应pydantic模型
+    简化版操作日志模型（用于首页展示）
     """
 
     model_config = ConfigDict(alias_generator=to_camel, from_attributes=True)
 
-    info_id: int | None = Field(default=None, description='访问ID')
-    user_name: str | None = Field(default=None, description='用户账号')
-    ipaddr: str | None = Field(default=None, description='登录IP地址')
-    login_location: str | None = Field(default=None, description='登录地点')
-    browser: str | None = Field(default=None, description='浏览器类型')
-    os: str | None = Field(default=None, description='操作系统')
-    status: Literal['0', '1'] | None = Field(default=None, description='登录状态（0成功 1失败）')
-    msg: str | None = Field(default=None, description='提示消息')
-    login_time: datetime | None = Field(default=None, description='访问时间')
+    id: int | None = Field(default=None, description='日志ID')
+    uid: int | None = Field(default=None, description='用户ID')
+    type: str | None = Field(default=None, description='操作类型：login/add/edit/delete等')
+    subject: str | None = Field(default=None, description='模块主题')
+    action: str | None = Field(default=None, description='操作动作')
+    create_time: int | None = Field(default=None, description='创建时间戳')
+    name: str | None = Field(default=None, description='操作人员姓名')
+    content: str | None = Field(default=None, description='操作内容描述')
+    times: str | None = Field(default=None, description='相对时间：如"3小时前"')
 
 
 class OperLogQueryModel(OperLogModel):
@@ -85,26 +85,37 @@ class DeleteOperLogModel(BaseModel):
     oper_ids: str = Field(description='需要删除的日志主键')
 
 
-class LoginLogQueryModel(LogininforModel):
+class LogininforModel(BaseModel):
     """
-    登录日志管理不分页查询模型
+    系统访问记录对应pydantic模型
     """
 
-    order_by_column: str | None = Field(default=None, description='排序的字段名称')
-    is_asc: Literal['ascending', 'descending'] | None = Field(
-        default=None, description='排序方式（ascending升序 descending降序）'
-    )
-    begin_time: str | None = Field(default=None, description='开始时间')
-    end_time: str | None = Field(default=None, description='结束时间')
+    model_config = ConfigDict(alias_generator=to_camel, from_attributes=True)
+
+    info_id: int | None = Field(default=None, description='访问ID')
+    user_name: str | None = Field(default=None, description='用户账号')
+    ipaddr: str | None = Field(default=None, description='登录IP地址')
+    login_location: str | None = Field(default=None, description='登录地点')
+    browser: str | None = Field(default=None, description='浏览器类型')
+    os: str | None = Field(default=None, description='操作系统')
+    status: Literal['0', '1'] | None = Field(default=None, description='登录状态（0成功 1失败）')
+    msg: str | None = Field(default=None, description='提示消息')
+    login_time: datetime | None = Field(default=None, description='访问时间')
 
 
-class LoginLogPageQueryModel(LoginLogQueryModel):
+class LoginLogPageQueryModel(LogininforModel):
     """
     登录日志管理分页查询模型
     """
 
     page_num: int = Field(default=1, description='当前页码')
     page_size: int = Field(default=10, description='每页记录数')
+    order_by_column: str | None = Field(default=None, description='排序的字段名称')
+    is_asc: Literal['ascending', 'descending'] | None = Field(
+        default=None, description='排序方式（ascending升序 descending降序）'
+    )
+    begin_time: str | None = Field(default=None, description='开始时间')
+    end_time: str | None = Field(default=None, description='结束时间')
 
 
 class DeleteLoginLogModel(BaseModel):

@@ -3,10 +3,12 @@ import hashlib
 import json
 import os
 import uuid
+from datetime import datetime
 from typing import Any
 
 from fastapi import Request
 from redis import asyncio as aioredis
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from common.vo import CrudResponseModel, PageModel
@@ -15,6 +17,8 @@ from config.env import LogConfig
 from exceptions.exception import ServiceException
 from middlewares.trace_middleware.ctx import TraceCtx
 from module_admin.dao.log_dao import LoginLogDao, OperationLogDao
+from module_admin.entity.do.log_do import SysOperLog
+from module_admin.entity.do.user_do import SysUser
 from module_admin.entity.vo.log_vo import (
     DeleteLoginLogModel,
     DeleteOperLogModel,
@@ -22,6 +26,7 @@ from module_admin.entity.vo.log_vo import (
     LoginLogPageQueryModel,
     OperLogModel,
     OperLogPageQueryModel,
+    SimpleOperLogModel,
     UnlockUser,
 )
 from module_admin.service.dict_service import DictDataService
@@ -51,78 +56,166 @@ class OperationLogService:
         return operation_log_list_result
 
     @classmethod
-    async def add_operation_log_services(cls, query_db: AsyncSession, page_object: OperLogModel) -> CrudResponseModel:
+    async def get_simple_operation_log_list_services(
+        cls, query_db: AsyncSession, page: int = 1, limit: int = 20
+    ) -> list[dict[str, Any]]:
         """
-        新增操作日志service
+        获取简化版操作日志列表（用于首页展示）
 
         :param query_db: orm对象
-        :param page_object: 新增操作日志对象
-        :return: 新增操作日志校验结果
+        :param page: 页码
+        :param limit: 每页数量
+        :return: 简化版操作日志列表
         """
-        try:
-            await OperationLogDao.add_operation_log_dao(query_db, page_object)
-            await query_db.commit()
-            return CrudResponseModel(is_success=True, message='新增成功')
-        except Exception as e:
-            await query_db.rollback()
-            raise e
+        offset = (page - 1) * limit
+        
+        # 查询操作日志，关联用户表获取用户ID
+        query = (
+            select(SysOperLog.oper_id, SysOperLog.oper_name, SysOperLog.title, 
+                   SysOperLog.business_type, SysOperLog.oper_time, SysUser.user_id)
+            .join(SysUser, SysUser.user_name == SysOperLog.oper_name, isouter=True)
+            .order_by(SysOperLog.oper_time.desc())
+            .offset(offset)
+            .limit(limit)
+        )
+        
+        result = await query_db.execute(query)
+        rows = result.fetchall()
+        
+        log_list = []
+        now = datetime.now()
+        
+        for row in rows:
+            oper_id, oper_name, title, business_type, oper_time, user_id = row
+            
+            # 映射业务类型为操作类型
+            type_map = {
+                1: 'add',      # 新增
+                2: 'edit',     # 修改
+                3: 'delete',   # 删除
+                4: 'grant',    # 授权
+                5: 'export',   # 导出
+                6: 'import',   # 导入
+                7: 'force',    # 强退
+                8: 'genCode',  # 生成代码
+                9: 'clean',    # 清空数据
+            }
+            log_type = type_map.get(business_type, 'other') if business_type else 'other'
+            
+            # 映射业务类型为中文动作
+            action_map = {
+                1: '新增',
+                2: '编辑',
+                3: '删除',
+                4: '授权',
+                5: '导出',
+                6: '导入',
+                7: '强退',
+                8: '生成代码',
+                9: '清空数据',
+            }
+            action = action_map.get(business_type, '操作') if business_type else '操作'
+            
+            # 计算相对时间
+            if oper_time:
+                diff_seconds = (now - oper_time).total_seconds()
+                if diff_seconds < 60:
+                    times = f'{int(diff_seconds)}秒前'
+                elif diff_seconds < 3600:
+                    times = f'{int(diff_seconds / 60)}分钟前'
+                elif diff_seconds < 86400:
+                    times = f'{int(diff_seconds / 3600)}小时前'
+                else:
+                    times = f'{int(diff_seconds / 86400)}天前'
+            else:
+                times = ''
+            
+            # 生成内容描述
+            content = f'{oper_name}{action}了{title}' if oper_name and title else ''
+            
+            log_item = {
+                'id': oper_id,
+                'uid': user_id or 0,
+                'type': log_type,
+                'subject': title or '',
+                'action': action,
+                'create_time': int(oper_time.timestamp()) if oper_time else 0,
+                'name': oper_name or '',
+                'content': content,
+                'times': times,
+            }
+            log_list.append(log_item)
+        
+        return log_list
 
     @classmethod
     async def delete_operation_log_services(
-        cls, query_db: AsyncSession, page_object: DeleteOperLogModel
+        cls, query_db: AsyncSession, operation_log: DeleteOperLogModel
     ) -> CrudResponseModel:
         """
-        删除操作日志信息service
+        删除操作日志信息 service
 
         :param query_db: orm对象
-        :param page_object: 删除操作日志对象
+        :param operation_log: 删除操作日志对象
         :return: 删除操作日志校验结果
         """
-        if page_object.oper_ids:
-            oper_id_list = page_object.oper_ids.split(',')
+        if operation_log.oper_ids:
+            oper_ids = operation_log.oper_ids.split(',')
             try:
-                for oper_id in oper_id_list:
-                    await OperationLogDao.delete_operation_log_dao(query_db, OperLogModel(operId=oper_id))
+                for oper_id in oper_ids:
+                    await OperationLogDao.delete_operation_log_dao(
+                        query_db, OperLogModel(operId=int(oper_id))
+                    )
                 await query_db.commit()
                 return CrudResponseModel(is_success=True, message='删除成功')
             except Exception as e:
                 await query_db.rollback()
                 raise e
         else:
-            raise ServiceException(message='传入操作日志id为空')
+            raise ServiceException(message='传入日志id为空')
 
     @classmethod
     async def clear_operation_log_services(cls, query_db: AsyncSession) -> CrudResponseModel:
         """
-        清除操作日志信息service
+        清空操作日志信息 service
 
         :param query_db: orm对象
-        :return: 清除操作日志校验结果
+        :return: 清空操作日志校验结果
         """
         try:
             await OperationLogDao.clear_operation_log_dao(query_db)
             await query_db.commit()
-            return CrudResponseModel(is_success=True, message='清除成功')
+            return CrudResponseModel(is_success=True, message='清空成功')
         except Exception as e:
             await query_db.rollback()
             raise e
 
     @classmethod
-    async def export_operation_log_list_services(cls, request: Request, operation_log_list: list) -> bytes:
+    async def export_operation_log_list_services(
+        cls, request: Request, operation_log_list: list[dict[str, Any]]
+    ) -> bytes:
         """
-        导出操作日志信息service
+        导出操作日志信息 service
 
         :param request: Request对象
-        :param operation_log_list: 操作日志信息列表
-        :return: 操作日志信息对应excel的二进制数据
+        :param operation_log_list: 操作日志列表信息
+        :return: 操作日志列表excel二进制数据
         """
-        # 创建一个映射字典，将英文键映射到中文键
+        operation_type_list = await DictDataService.query_dict_data_list_from_cache_services(
+            request.app.state.redis, dict_type='sys_oper_type'
+        )
+        operation_type_option = [
+            {'label': item.get('dictLabel'), 'value': item.get('dictValue')} for item in operation_type_list
+        ]
+        operation_type_option_dict = {item.get('value'): item for item in operation_type_option}
+
         mapping_dict = {
             'operId': '日志编号',
             'title': '系统模块',
             'businessType': '操作类型',
             'method': '方法名称',
             'requestMethod': '请求方式',
+            'operatorType': '操作类别',
             'operName': '操作人员',
             'deptName': '部门名称',
             'operUrl': '请求URL',
@@ -131,18 +224,10 @@ class OperationLogService:
             'operParam': '请求参数',
             'jsonResult': '返回参数',
             'status': '操作状态',
-            'error_msg': '错误消息',
+            'errorMsg': '错误消息',
             'operTime': '操作日期',
             'costTime': '消耗时间（毫秒）',
         }
-
-        operation_type_list = await DictDataService.query_dict_data_list_from_cache_services(
-            request.app.state.redis, dict_type='sys_oper_type'
-        )
-        operation_type_option = [
-            {'label': item.get('dictLabel'), 'value': item.get('dictValue')} for item in operation_type_list
-        ]
-        operation_type_option_dict = {item.get('value'): item for item in operation_type_option}
 
         for item in operation_log_list:
             if item.get('status') == 0:
@@ -178,79 +263,75 @@ class LoginLogService:
         return operation_log_list_result
 
     @classmethod
-    async def add_login_log_services(cls, query_db: AsyncSession, page_object: LogininforModel) -> CrudResponseModel:
-        """
-        新增登录日志service
-
-        :param query_db: orm对象
-        :param page_object: 新增登录日志对象
-        :return: 新增登录日志校验结果
-        """
-        try:
-            await LoginLogDao.add_login_log_dao(query_db, page_object)
-            await query_db.commit()
-            return CrudResponseModel(is_success=True, message='新增成功')
-        except Exception as e:
-            await query_db.rollback()
-            raise e
-
-    @classmethod
     async def delete_login_log_services(
-        cls, query_db: AsyncSession, page_object: DeleteLoginLogModel
+        cls, query_db: AsyncSession, login_log: DeleteLoginLogModel
     ) -> CrudResponseModel:
         """
-        删除操作日志信息service
+        删除登录日志信息 service
 
         :param query_db: orm对象
-        :param page_object: 删除操作日志对象
-        :return: 删除操作日志校验结果
+        :param login_log: 删除登录日志对象
+        :return: 删除登录日志校验结果
         """
-        if page_object.info_ids:
-            info_id_list = page_object.info_ids.split(',')
+        if login_log.info_ids:
+            info_ids = login_log.info_ids.split(',')
             try:
-                for info_id in info_id_list:
-                    await LoginLogDao.delete_login_log_dao(query_db, LogininforModel(infoId=info_id))
+                for info_id in info_ids:
+                    await LoginLogDao.delete_login_log_dao(
+                        query_db, LogininforModel(infoId=int(info_id))
+                    )
                 await query_db.commit()
                 return CrudResponseModel(is_success=True, message='删除成功')
             except Exception as e:
                 await query_db.rollback()
                 raise e
         else:
-            raise ServiceException(message='传入登录日志id为空')
+            raise ServiceException(message='传入访问id为空')
 
     @classmethod
     async def clear_login_log_services(cls, query_db: AsyncSession) -> CrudResponseModel:
         """
-        清除操作日志信息service
+        清空登录日志信息 service
 
         :param query_db: orm对象
-        :return: 清除操作日志校验结果
+        :return: 清空登录日志校验结果
         """
         try:
             await LoginLogDao.clear_login_log_dao(query_db)
             await query_db.commit()
-            return CrudResponseModel(is_success=True, message='清除成功')
+            return CrudResponseModel(is_success=True, message='清空成功')
         except Exception as e:
             await query_db.rollback()
             raise e
 
     @classmethod
     async def unlock_user_services(cls, request: Request, unlock_user: UnlockUser) -> CrudResponseModel:
-        locked_user = await request.app.state.redis.get(f'account_lock:{unlock_user.user_name}')
-        if locked_user:
-            await request.app.state.redis.delete(f'account_lock:{unlock_user.user_name}')
-            return CrudResponseModel(is_success=True, message='解锁成功')
-        raise ServiceException(message='该用户未锁定')
-
-    @staticmethod
-    async def export_login_log_list_services(login_log_list: list) -> bytes:
         """
-        导出登录日志信息service
+        解锁用户服务
 
-        :param login_log_list: 登录日志信息列表
-        :return: 登录日志信息对应excel的二进制数据
+        :param request: Request对象
+        :param unlock_user: 解锁用户对象
+        :return: 解锁结果
         """
-        # 创建一个映射字典，将英文键映射到中文键
+        redis_client = request.app.state.redis
+        if not redis_client:
+            raise ServiceException(message='Redis未连接')
+
+        lock_key = f'account_lock:{unlock_user.user_name}'
+        fail_count_key = f'pwd_err_cnt:{unlock_user.user_name}'
+
+        await redis_client.delete(lock_key, fail_count_key)
+
+        return CrudResponseModel(is_success=True, message=f'用户 {unlock_user.user_name} 解锁成功')
+
+    @classmethod
+    async def export_login_log_list_services(cls, login_log_list: list[dict[str, Any]]) -> bytes:
+        """
+        导出登录日志信息 service
+
+        :param login_log_list: 登录日志列表信息
+        :return: 登录日志列表excel二进制数据
+        """
         mapping_dict = {
             'infoId': '访问编号',
             'userName': '用户名称',
@@ -260,7 +341,7 @@ class LoginLogService:
             'os': '操作系统',
             'status': '登录状态',
             'msg': '操作信息',
-            'loginTime': '登录日期',
+            'loginTime': '登录时间',
         }
 
         for item in login_log_list:
@@ -268,6 +349,7 @@ class LoginLogService:
                 item['status'] = '成功'
             else:
                 item['status'] = '失败'
+
         binary_data = ExcelUtil.export_list2excel(login_log_list, mapping_dict)
 
         return binary_data
@@ -279,40 +361,27 @@ class LogQueueService:
     """
 
     @classmethod
-    def _build_event_id(cls, request_id: str, log_type: str, source: str) -> str:
+    async def _xadd_event(cls, redis_client: aioredis.Redis, stream: str, payload: dict, source: str) -> None:
         """
-        生成日志事件唯一标识
+        向 Redis Stream 添加事件
 
-        :param request_id: 请求唯一标识
-        :param log_type: 日志类型
-        :param source: 日志来源
-        :return: 事件唯一标识
-        """
-        if not request_id:
-            return uuid.uuid4().hex
-        base = f'{request_id}:{log_type}:{source}'
-        return hashlib.md5(base.encode('utf-8')).hexdigest()
-
-    @classmethod
-    async def _xadd_event(cls, redis: aioredis.Redis, event_type: str, payload: dict, source: str) -> None:
-        """
-        写入日志事件到Redis Streams
-
-        :param redis: Redis连接对象
-        :param event_type: 事件类型
+        :param redis_client: Redis客户端
+        :param stream: Stream名称
         :param payload: 事件负载
         :param source: 日志来源
         :return: None
         """
-        request_id = TraceCtx.get_request_id()
-        trace_id = TraceCtx.get_trace_id()
-        span_id = TraceCtx.get_span_id()
-        event_id = cls._build_event_id(request_id, event_type, source)
-        await redis.xadd(
-            LogConfig.log_stream_key,
-            {
-                'event_id': event_id,
-                'event_type': event_type,
+        if not redis_client:
+            return
+
+        request_id = payload.pop('requestId', '')
+        trace_id = payload.pop('traceId', '')
+        span_id = payload.pop('spanId', '')
+
+        await redis_client.xadd(
+            name=f'log_stream:{stream}',
+            fields={
+                'source': source,
                 'request_id': request_id,
                 'trace_id': trace_id,
                 'span_id': span_id,
@@ -355,154 +424,92 @@ class LogAggregatorService:
     """
 
     @classmethod
-    async def _ensure_group(cls, redis: aioredis.Redis) -> None:
+    async def consume_stream(cls, redis_client: aioredis.Redis) -> None:
         """
-        初始化消费组
+        消费日志流（统一入口）
 
-        :param redis: Redis连接对象
+        :param redis_client: Redis客户端
         :return: None
         """
+        if not redis_client:
+            logger.warning('Redis客户端未初始化，日志聚合服务停止')
+            return
+
+        logger.info('日志聚合服务启动')
+        
         try:
-            await redis.xgroup_create(
-                name=LogConfig.log_stream_key,
-                groupname=LogConfig.log_stream_group,
-                id='0-0',
-                mkstream=True,
-            )
-        except Exception as exc:
-            if 'BUSYGROUP' not in str(exc):
-                raise
+            while True:
+                try:
+                    # 同时消费操作日志和登录日志
+                    result = await redis_client.xread(
+                        streams={'log_stream:operation': '0', 'log_stream:login': '0'},
+                        count=10,
+                        block=5000
+                    )
+                    
+                    if not result:
+                        continue
+                    
+                    for stream_name, messages in result:
+                        for message_id, fields in messages:
+                            try:
+                                payload = json.loads(fields.get('payload', '{}'))
+                                source = fields.get('source', '')
+                                
+                                if 'operation' in stream_name:
+                                    await cls._process_operation_log(payload)
+                                elif 'login' in stream_name:
+                                    await cls._process_login_log(payload)
+                                
+                                # 删除已处理的消息
+                                await redis_client.xdel(stream_name, message_id)
+                                
+                            except Exception as e:
+                                logger.error(f'处理日志消息失败: {e}')
+                                continue
+                                
+                except asyncio.CancelledError:
+                    logger.info('日志聚合服务被取消')
+                    break
+                except Exception as e:
+                    logger.error(f'消费日志流异常: {e}')
+                    await asyncio.sleep(1)
+                    
+        except asyncio.CancelledError:
+            logger.info('日志聚合服务已停止')
+        except Exception as e:
+            logger.error(f'日志聚合服务异常退出: {e}')
 
     @classmethod
-    async def _acquire_dedup(cls, redis: aioredis.Redis, event_id: str) -> bool:
+    async def _process_operation_log(cls, payload: dict) -> None:
         """
-        获取去重锁
+        处理操作日志
 
-        :param redis: Redis连接对象
-        :param event_id: 事件唯一标识
-        :return: 是否获取成功
-        """
-        if not event_id:
-            return False
-        key = f'{LogConfig.log_stream_dedup_prefix}:{event_id}'
-        return await redis.set(key, '1', nx=True, ex=LogConfig.log_stream_dedup_ttl)
-
-    @classmethod
-    async def _release_dedup(cls, redis: aioredis.Redis, event_id: str) -> None:
-        """
-        释放去重锁
-
-        :param redis: Redis连接对象
-        :param event_id: 事件唯一标识
+        :param payload: 日志数据
         :return: None
         """
-        if not event_id:
-            return
-        await redis.delete(f'{LogConfig.log_stream_dedup_prefix}:{event_id}')
-
-    @classmethod
-    async def _claim_pending(cls, redis: aioredis.Redis, consumer_name: str) -> None:
-        """
-        认领并处理超时未确认的消息
-
-        :param redis: Redis连接对象
-        :param consumer_name: 消费者名称
-        :return: None
-        """
-        if LogConfig.log_stream_claim_idle_ms <= 0:
-            return
-        start_id = '0-0'
-        while True:
-            result = await redis.xautoclaim(
-                name=LogConfig.log_stream_key,
-                groupname=LogConfig.log_stream_group,
-                consumername=consumer_name,
-                min_idle_time=LogConfig.log_stream_claim_idle_ms,
-                start_id=start_id,
-                count=LogConfig.log_stream_claim_batch_size,
-            )
-            if not result:
-                return
-            next_start_id, messages = result[0], result[1]
-            if messages:
-                await cls._process_messages(redis, LogConfig.log_stream_key, messages)
-            if not messages or next_start_id == start_id:
-                return
-            start_id = next_start_id
-
-    @classmethod
-    async def consume_stream(cls, redis: aioredis.Redis) -> None:
-        """
-        消费日志队列
-
-        :param redis: Redis连接对象
-        :return: None
-        """
-        await cls._ensure_group(redis)
-        consumer_name = f'{LogConfig.log_stream_consumer_prefix}-{os.getpid()}-{uuid.uuid4().hex[:6]}'
-        last_claim_time = 0.0
-        while True:
-            try:
-                now = asyncio.get_running_loop().time()
-                if now - last_claim_time >= LogConfig.log_stream_claim_interval_ms / 1000:
-                    await cls._claim_pending(redis, consumer_name)
-                    last_claim_time = now
-                result = await redis.xreadgroup(
-                    groupname=LogConfig.log_stream_group,
-                    consumername=consumer_name,
-                    streams={LogConfig.log_stream_key: '>'},
-                    count=LogConfig.log_stream_batch_size,
-                    block=LogConfig.log_stream_block_ms,
-                )
-                if not result:
-                    continue
-                for stream_name, messages in result:
-                    await cls._process_messages(redis, stream_name, messages)
-            except asyncio.CancelledError:
-                raise
-            except Exception as exc:
-                logger.error(f'日志聚合消费异常: {exc}')
-                await asyncio.sleep(1)
-
-    @classmethod
-    async def _process_messages(cls, redis: aioredis.Redis, stream_name: str, messages: list[tuple[str, dict]]) -> None:
-        """
-        处理消息并落库
-
-        :param redis: Redis连接对象
-        :param stream_name: Stream名称
-        :param messages: 消息列表
-        :return: None
-        """
-        if not messages:
-            return
         async with AsyncSessionLocal() as session:
-            ack_ids: list[str] = []
-            dedup_event_ids: list[str] = []
             try:
-                for message_id, data in messages:
-                    event_type = data.get('event_type')
-                    event_id = data.get('event_id')
-                    payload_raw = data.get('payload') or '{}'
-                    if event_type not in {'login', 'operation'}:
-                        ack_ids.append(message_id)
-                        continue
-                    acquired = await cls._acquire_dedup(redis, event_id)
-                    if not acquired:
-                        ack_ids.append(message_id)
-                        continue
-                    dedup_event_ids.append(event_id)
-                    payload = json.loads(payload_raw)
-                    if event_type == 'login':
-                        await LoginLogDao.add_login_log_dao(session, LogininforModel(**payload))
-                    elif event_type == 'operation':
-                        await OperationLogDao.add_operation_log_dao(session, OperLogModel(**payload))
-                    ack_ids.append(message_id)
-                if ack_ids:
-                    await session.commit()
-                    await redis.xack(stream_name, LogConfig.log_stream_group, *ack_ids)
-            except Exception:
+                operation_log = OperLogModel(**payload)
+                await OperationLogDao.add_operation_log_dao(session, operation_log)
+                await session.commit()
+            except Exception as e:
                 await session.rollback()
-                for event_id in dedup_event_ids:
-                    await cls._release_dedup(redis, event_id)
-                raise
+                logger.error(f'保存操作日志失败: {e}')
+
+    @classmethod
+    async def _process_login_log(cls, payload: dict) -> None:
+        """
+        处理登录日志
+
+        :param payload: 日志数据
+        :return: None
+        """
+        async with AsyncSessionLocal() as session:
+            try:
+                login_log = LogininforModel(**payload)
+                await LoginLogDao.add_login_log_dao(session, login_log)
+                await session.commit()
+            except Exception as e:
+                await session.rollback()
+                logger.error(f'保存登录日志失败: {e}')
