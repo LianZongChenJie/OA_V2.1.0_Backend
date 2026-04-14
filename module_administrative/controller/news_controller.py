@@ -14,6 +14,7 @@ from module_administrative.service.new_service import NewsService
 from module_admin.entity.vo.user_vo import (
     CurrentUserModel
 )
+from utils.camel_converter import ModelConverter
 from utils.response_util import ResponseUtil
 
 administrative_news_controller = APIRouterPro(
@@ -81,7 +82,7 @@ async def get_news_by_id(
     id: int,
 ) -> Response:
     result = await NewsService.get_info_service(query_db, id)
-    return ResponseUtil.success(data=result)
+    return ResponseUtil.success(data=ModelConverter.time_format(ModelConverter.to_dict(result)))
 
 @administrative_news_controller.delete(
     "/delete/{id}",
