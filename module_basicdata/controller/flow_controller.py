@@ -8,9 +8,9 @@ from common.aspect.pre_auth import PreAuthDependency, CurrentUserDependency
 from common.router import APIRouterPro
 from common.vo import PageResponseModel
 from module_basicdata.entity.do.public.flow_do import OaFlow
-from module_basicdata.entity.vo.public.flow_vo import OaFlowBaseModel, OaFlowPageQueryModel
+from module_basicdata.entity.vo.public.flow_vo import OaFlowBaseModel, OaFlowPageQueryModel, OaFlowCheckBaseModel
 from typing import Annotated
-from fastapi import File, Form, Path, Query, Request, Response, UploadFile
+from fastapi import File, Form, Path, Query, Request, Response, UploadFile,Body
 
 from utils.camel_converter import ModelConverter
 from utils.response_util import ResponseUtil
@@ -106,6 +106,25 @@ async def change_status(
 ) -> Response:
     await FlowService.change_status_flow(query_db, oa_flow_base_model)
     logger.info('更新成功')
+    return ResponseUtil.success(data=True)
+
+
+@flow_controller.post(
+    "/check",
+    summary='审批具体操作接口',
+    description='用于审批具体操作',
+    response_model=bool,
+    dependencies=[UserInterfaceAuthDependency('basicdata:flow:check')],
+)
+async def check(
+    request: Request,
+    query_db: Annotated[AsyncSession, DBSessionDependency()],
+    current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
+    check: Annotated[OaFlowCheckBaseModel, Body(..., description="审批参数")],
+) -> Response:
+    user_id = current_user.user.user_id
+    await FlowService.check_flow(query_db, check, user_id)
+    logger.info('审核成功')
     return ResponseUtil.success(data=True)
 
 

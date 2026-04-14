@@ -30,7 +30,7 @@ class DepartmentChangeService:
 
         query_list = await DepartmentChangeDao.get_page_list(query_db, query_object, data_scope_sql, is_page)
         if is_page:
-            return ResponseConverter.convert_page_result(query_list, cls.time_fields)
+            return ResponseConverter.convert_page_result(query_list, cls.time_fields, 'OaDepartmentChange')
         else:
             result_list = []
             if query_list:
@@ -125,7 +125,7 @@ class DepartmentChangeService:
             return CrudResponseModel(is_success=True, message='操作成功！')
         except Exception as e:
             await db.rollback()
-            raise e
+            # raise e
             return CrudResponseModel(is_success=False, message='操作失败！')
 
     @classmethod

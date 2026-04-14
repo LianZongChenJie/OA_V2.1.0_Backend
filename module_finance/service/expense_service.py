@@ -202,3 +202,10 @@ class OaExpenseService:
         if userId not in db_model.check_history_uids.split(','):
             query_object.check_history_uids = ','.join([str(userId), db_model.check_history_uids])
         query_object.check_last_uid = str(userId)
+
+    @classmethod
+    async def get_count(cls, query_db: AsyncSession, user_id: int):
+        """
+        获取首页我的报销开票等数据统计信息
+        """
+        return await ExpenseDao.get_count(query_db, user_id)

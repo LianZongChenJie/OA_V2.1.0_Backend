@@ -180,3 +180,29 @@ class ExpenseDao:
         except Exception as e:
             await db.rollback()
             raise e
+    @classmethod
+    async def get_count(cls, query_db: AsyncSession, user_id: int):
+        """
+        获取首页我的报销开票等数据统计信息
+        """
+        query = select(func.count()).select_from(OaExpense).where(OaExpense.admin_id == user_id, OaExpense.delete_time == 0, OaExpense.check_status == 2)
+        count = await query_db.execute(query)
+        return count.scalar()
+
+    @classmethod
+    async def get_wait_check_count(cls, db: AsyncSession, user_id: int):
+        """
+        获取待审采报销数量
+
+        :param db: orm 对象
+        :param user_id: 用户 ID
+        :return: 待审报销数量
+        """
+        query = select(func.count()).select_from(OaExpense).where(
+            OaExpense.delete_time == 0,
+            OaExpense.check_status == 1,
+            func.find_in_set(str(user_id), OaExpense.check_uids),
+        )
+        result = await db.execute(query)
+        count = result.scalar()
+        return count

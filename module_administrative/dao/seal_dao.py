@@ -3,12 +3,19 @@ from operator import and_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, desc
 from sqlalchemy.sql import ColumnElement, func,or_
+from sqlalchemy.orm import aliased
 from common.vo import PageModel
+from module_admin.entity.do.dept_do import SysDept
+from module_admin.entity.do.user_do import SysUser
+from module_personnel.dao.flow_record_dao import FlowRecordDao
 from utils.page_util import PageUtil
 from module_administrative.entity.vo.seal_vo import OaSealBaseModel, OaSealPageQueryModel
 from module_administrative.entity.do.seal_do import OaSeal
 from typing import Any
 from datetime import datetime
+
+from utils.review_util import ReviewUtil
+
 
 class SealDao:
     @classmethod
@@ -17,7 +24,25 @@ class SealDao:
                             is_page: bool = False) -> PageModel | list[list[dict[str, Any]]]:
 
         # 构建基础查询
-        query = select(OaSeal)
+        # 创建别名
+        user = aliased(SysUser, name='user')
+        admin = aliased(SysUser, name='admin')
+        did_name = aliased(SysDept, name='did_name')
+        last_checker = aliased(SysUser, name='last_checker')
+        query = select(
+            OaSeal,
+            did_name.dept_name.label('did_dept'),
+            admin.nick_name.label('admin_name'),
+            last_checker.nick_name.label('check_last_name')
+        ).join(
+            user, OaSeal.admin_id == user.user_id, isouter=True
+        ).join(
+            did_name, OaSeal.did == did_name.dept_id, isouter=True
+        ).join(
+            admin, OaSeal.admin_id == admin.user_id, isouter=True
+        ).join(
+            last_checker, OaSeal.check_last_uid == last_checker.user_id, isouter=True
+        )
 
         # 构建条件列表
         conditions = []
@@ -35,6 +60,12 @@ class SealDao:
         # 根据不同的查询条件添加特定条件
         if query_object.admin_id:
             conditions.append(OaSeal.admin_id == query_object.admin_id)
+
+        if query_object.seal_cate_id:
+            conditions.append(OaSeal.seal_cate_id == query_object.seal_cate_id)
+
+        if query_object.keyword:
+            conditions.append(OaSeal.title.like(f"%{query_object.keyword}%"))
 
         elif query_object.check_uids:
             conditions.append(func.find_in_set(query_object.check_uids, OaSeal.check_uids) > 0)
@@ -60,6 +91,7 @@ class SealDao:
                 or_conditions.append(
                     func.find_in_set(query_object.check_history_uids, OaSeal.check_history_uids) > 0)
 
+
             if or_conditions:
                 conditions.append(or_(*or_conditions))
 
@@ -75,9 +107,10 @@ class SealDao:
         query = query.order_by(desc(OaSeal.create_time))
 
         # 分页查询
-        page_list: PageModel | list[list[dict[str, Any]]] = await PageUtil.paginate(
+        page_list = await PageUtil.paginate_dict(
             db, query, query_object.page_num, query_object.page_size, is_page
         )
+        await ReviewUtil.enrich_checker_names_for_rows('OaSeal',db, page_list)
         return page_list
 
     @classmethod
@@ -108,11 +141,94 @@ class SealDao:
 
     @classmethod
     async def get_info_by_id(cls, db: AsyncSession, id: int):
-        query = (select(OaSeal)
-        .where(
-            OaSeal.id == id))
-        link_info = await db.scalar(query)
-        return link_info
+        # query = (select(OaSeal)
+        # .where(
+        #     OaSeal.id == id))
+        # link_info = await db.scalar(query)
+        # 创建别名
+        user = aliased(SysUser, name='user')
+        admin = aliased(SysUser, name='admin')
+        did_name = aliased(SysDept, name='did_name')
+        last_checker = aliased(SysUser, name='last_checker')
+        query = select(
+            OaSeal,
+            did_name.dept_name.label('did_dept'),
+            admin.nick_name.label('admin_name'),
+            last_checker.nick_name.label('check_last_name')
+        ).join(
+            user, OaSeal.admin_id == user.user_id, isouter=True
+        ).join(
+            did_name, OaSeal.did == did_name.dept_id, isouter=True
+        ).join(
+            admin, OaSeal.admin_id == admin.user_id, isouter=True
+        ).join(
+            last_checker, OaSeal.check_last_uid == last_checker.user_id, isouter=True
+        ).where(OaSeal.id == id)
+        result = await db.execute(query)
+        row = result.first()
+        if not row:
+            return None
+        seal = row[0]
+        info = {
+            # ========== 基本信息 ==========
+            'id': seal.id,
+            'title': seal.title,
+            'seal_cate_id': seal.seal_cate_id,
+            'content': seal.content,
+            'num': seal.num,
+            'status': seal.status,
+
+            # ========== 用印信息 ==========
+            'did': seal.did,
+            'use_time': seal.use_time,
+            'is_borrow': seal.is_borrow,
+            'start_time': seal.start_time,
+            'end_time': seal.end_time,
+
+            # ========== 附件信息 ==========
+            'file_ids': seal.file_ids,
+
+            # ========== 创建人信息 ==========
+            'admin_id': seal.admin_id,
+
+            # ========== 审核信息 ==========
+            'check_status': seal.check_status,
+            'check_flow_id': seal.check_flow_id,
+            'check_step_sort': seal.check_step_sort,
+            'check_uids': seal.check_uids,
+            'check_last_uid': seal.check_last_uid,
+            'check_history_uids': seal.check_history_uids,
+            'check_copy_uids': seal.check_copy_uids,
+            'check_time': seal.check_time,
+
+            # ========== 时间戳 ==========
+            'create_time': seal.create_time,
+            'update_time': seal.update_time,
+            'delete_time': seal.delete_time,
+
+            # ========== 关联字段（从 JOIN 查询获取）==========
+            'did_name': getattr(row, 'did_dept', None),
+            'admin_name': getattr(row, 'admin_name', None),
+            'check_last_name': getattr(row, 'check_last_name', None),
+            'check_user_names': [],
+            'check_user_names_str': '',
+            'check_history_names': [],
+            'check_history_names_str': '',
+        }
+
+        # 补充审批人名称
+        info = await ReviewUtil.enrich_checker_names(db, info)
+
+        # 查询审批记录
+        records = await FlowRecordDao.get_records_by_action_id(
+            db, seal.id, seal.check_flow_id
+        )
+
+        return {
+            'info': info,
+            'records': records
+        }
+
     @classmethod
     async def del_by_id(cls, db: AsyncSession, id: int):
         result = await db.execute(update(OaSeal).values(delete_time=int(datetime.now().timestamp())).where(OaSeal.id == id))
@@ -168,3 +284,21 @@ class SealDao:
         except Exception as e:
             await db.rollback()
             raise e
+
+    @classmethod
+    async def get_wait_check_count(cls, db: AsyncSession, user_id: int):
+        """
+        获取待审用章数量
+
+        :param db: orm 对象
+        :param user_id: 用户 ID
+        :return: 待审用章数量
+        """
+        query = select(func.count()).select_from(OaSeal).where(
+            OaSeal.delete_time == 0,
+            OaSeal.check_status == 1,
+            func.find_in_set(str(user_id), OaSeal.check_uids),
+        )
+        result = await db.execute(query)
+        count = result.scalar()
+        return count

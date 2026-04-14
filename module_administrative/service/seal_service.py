@@ -17,9 +17,12 @@ from datetime import datetime
 from module_basicdata.dao.public.flow_cate_dao import FlowCateDao
 
 from module_personnel.entity.vo.flow_record_vo import OaFlowRecordBaseModel
+from utils.camel_converter import ResponseConverter
 
 
 class SealService:
+    time_fields = ['create_time', 'update_time', 'delete_time', 'check_time',
+                   'use_time', 'start_time', 'end_time']
     @classmethod
     async def get_page_list_service(cls, query_db: AsyncSession, query_object: OaSealPageQueryModel,
                                     data_scope_sql: ColumnElement, is_page: bool = False) -> PageModel[
@@ -27,9 +30,7 @@ class SealService:
                                                                                              list[dict[str, Any]]:
         query_list = await SealDao.get_page_list(query_db, query_object, data_scope_sql, is_page)
         if is_page:
-            result_list = PageModel[OaSealBaseModel](**{
-                **query_list.model_dump(by_alias=True)
-            })
+            return ResponseConverter.convert_page_result(query_list, cls.time_fields, 'OaSeal')
         else:
             result_list = []
             if query_list:
@@ -71,11 +72,9 @@ class SealService:
     async def get_info_service(cls, query_db: \
             AsyncSession, id: int) -> OaSealBaseModel:
         try:
-            detail = OaSealDetail()
-            info = await SealDao.get_info_by_id(query_db, id)
-            records = await FlowRecordDao.get_records_by_action_id(query_db, info.id, info.check_flow_id)
-            detail.info = info
-            detail.records = records
+            detail = await SealDao.get_info_by_id(query_db, id)
+            detail['info'] = ResponseConverter.convert_to_camel_and_format_time(detail['info'],cls.time_fields)
+            detail['records'] = ResponseConverter.convert_to_camel_and_format_time_list(detail['records'],cls.time_fields)
             if not detail:
                 raise ServiceException(message="未找到该数据")
             return detail

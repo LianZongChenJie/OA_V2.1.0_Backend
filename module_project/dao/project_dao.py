@@ -259,3 +259,17 @@ class ProjectDao:
             .where(OaProject.id == project.id)
             .values(delete_time=update_time, update_time=update_time)
         )
+
+    @classmethod
+    async def get_project_count(cls, db: AsyncSession, user_id:int) -> None:
+        """
+        恢复项目数据库操作（逻辑恢复）
+
+        :param user_id: 用户 ID
+        :param db: orm 对象
+        :return:
+        """
+        query = select(func.count()).select_from(OaProject).where(OaProject.director_uid == user_id, OaProject.delete_time == 0)
+        result = await db.execute(query)
+        count = result.scalar()
+        return count

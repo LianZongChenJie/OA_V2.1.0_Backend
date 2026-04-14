@@ -299,3 +299,21 @@ class OfficialDocsDao:
             .where(OaOfficialDocs.id.in_([docs.id]))
             .values(delete_time=delete_time, update_time=update_time)
         )
+
+    @classmethod
+    async def get_official_count(cls, db: AsyncSession, user_id: int):
+        """
+        获取待审公文数量
+
+        :param db: orm 对象
+        :param user_id: 用户 ID
+        :return: 待审公文数量
+        """
+        query = select(func.count()).select_from(OaOfficialDocs).where(
+            OaOfficialDocs.delete_time == 0,
+            OaOfficialDocs.check_status == 1,
+            func.find_in_set(str(user_id), OaOfficialDocs.check_uids),
+        )
+        result = await db.execute(query)
+        count = result.scalar()
+        return count

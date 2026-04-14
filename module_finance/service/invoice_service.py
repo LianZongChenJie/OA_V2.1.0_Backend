@@ -237,3 +237,13 @@ class InvoiceService:
             await db.rollback()
             raise e
 
+    @classmethod
+    async def income_get_id(cls, db: AsyncSession, user_id: int):
+        try:
+            income = await InvoiceDao.get_invoice_count(db, user_id)
+            return income
+        except Exception as e:
+            await db.rollback()
+            raise e
+
+

@@ -194,3 +194,28 @@ class TicketDao:
         query = select(OaTicketPayment.ticket_id).where(OaTicketPayment.id == id)
         result = await db.execute(query)
         return result.scalar()
+
+    @classmethod
+    async def get_ticket_count(cls, db: AsyncSession, user_id: int):
+        query = select(func.count()).select_from(OaTicket).where(OaTicket.admin_id == user_id, OaTicket.open_status == 1, OaTicket.delete_time == 0)
+        result = await db.execute(query)
+        return result.scalar()
+
+    @classmethod
+    async def get_wait_check_count(cls, db: AsyncSession, user_id: int):
+        """
+        获取待审收票数量
+
+        :param db: orm 对象
+        :param user_id: 用户 ID
+        :return: 待审收票数量
+        """
+        query = select(func.count()).select_from(OaTicket).where(
+            OaTicket.delete_time == 0,
+            OaTicket.check_status == 1,
+            func.find_in_set(str(user_id), OaTicket.check_uids),
+        )
+        result = await db.execute(query)
+        count = result.scalar()
+        return count
+

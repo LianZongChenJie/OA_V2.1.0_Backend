@@ -35,6 +35,16 @@ class OaSealBaseModel(BaseModel):
     check_copy_uids: str | None = Field(None, description='抄送人ID，如:1,2,3')
     check_time: int | None= Field(None, description='审核通过时间')
 
+
+    # 关联字段
+    did_name: Optional[str] = None
+    admin_name: Optional[str] = None
+    check_last_name: Optional[str] = None
+    check_user_names: Optional[list] = None
+    check_user_names_str: Optional[str] = None
+    check_history_names: Optional[list] = None
+    check_history_names_str: Optional[str] = None
+
     @field_serializer('use_time')
     def serialize_use_time(self, value: Optional[int]) -> Optional[str]:
         """序列化使用时间"""
@@ -74,6 +84,7 @@ class OaSealPageQueryModel(OaSealBaseModel):
     """用章申请分页查询VO"""
     page_num: int | None = Field(None, description='页码')
     page_size: int | None = Field(None, description='页大小')
+    keyword: str | None = Field(None, description='关键字')
 
 
 class OaSealDetail(BaseModel):

@@ -56,3 +56,23 @@ class OaFlowAndStepModel(OaFlowBaseModel):
     check_uids : str | None = Field(None, description='审批用户')
     action_id : int | None = Field(None, description='动作ID')
 
+class OaFlowCheckBaseModel(BaseModel):
+    model_config = ConfigDict(alias_generator=to_camel, from_attributes=True)
+
+    id: int | None = Field(None, description='ID')
+    check: int = Field(None, description='审批状态1:通过, 2:拒绝, 3:撤销, 4:反确认')
+    remark : str | None = Field(None, description='审批备注')
+    action_id: int = Field(None, description='审批动作ID')
+    type: str| None = Field(None, description='审批类型')
+    flow_id: int | None = Field(None, description='审批流程ID')
+    check_files: str | None = Field(None, description='审批文件ID')
+    check_name: str | None = Field(None, description='审批人名称')
+
+class OaFlowListBaseModel(BaseModel):
+    model_config = ConfigDict(alias_generator=to_camel, from_attributes=True)
+
+    check_role: int | None = Field(None, description='审批步骤类型 1当前部门负责人， 2上一级部门负责人，3指定岗位，4指定成员，5可回退审核')
+    check_position_id : int | None = Field(None, description='岗位ID')
+    check_types : int | None = Field(None, description='审批类型 1或签，2会签')
+    check_uids : str | None = Field(None, description='审批用户id')
+    flow_name : str | None = Field(None, description='审批流程名称')

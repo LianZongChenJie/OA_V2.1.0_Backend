@@ -2,14 +2,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import ColumnElement
 from sqlalchemy.sql.coercions import cls
 
+from common.aspect.pre_auth import CurrentUserDependency
 from common.constant import CommonConstant
 from common.vo import PageModel, CrudResponseModel
 from exceptions.exception import ServiceException
 from module_admin.dao.dept_dao import DeptDao
+from module_basicdata.dao.public.flow_cate_dao import FlowCateDao
 from module_basicdata.dao.public.flow_dao import OaFlowDao
 from module_basicdata.dao.public.flow_step_dao import OaFlowStepDao
 from module_basicdata.entity.do.public.flow_step_do import OaFlowStep
-from module_basicdata.entity.vo.public.flow_vo import OaFlowBaseModel, OaFlowVOModel
+from module_basicdata.entity.vo.public.flow_vo import OaFlowBaseModel, OaFlowVOModel, OaFlowCheckBaseModel
 from datetime import datetime
 
 class FlowService:
@@ -118,3 +120,59 @@ class FlowService:
         if model and model.title == title:
             return CommonConstant.NOT_UNIQUE
         return CommonConstant.UNIQUE
+
+    @classmethod
+    async def check_flow(cls, query_db: AsyncSession, check: OaFlowCheckBaseModel, user_id : int) -> CrudResponseModel:
+        """
+        审批具体操作
+        :param query_db:
+        :param check:
+        :param user_id:
+        :return:
+        """
+        try:
+           check_name = check.check_name
+           action_id = check.action_id
+           check_action = check.check
+           content = check.remark
+
+           # 1获取批类型信息
+           flow_cate = await FlowCateDao.get_flow_cate_info_by_name(query_db, check_name)
+           if not flow_cate:
+               return CrudResponseModel(is_success=False, message='审批类型不存在')
+
+           subject = flow_cate.get('title')
+           check_table = flow_cate.get('check_table')
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        except Exception as e:
+            await query_db.rollback()
+            raise e

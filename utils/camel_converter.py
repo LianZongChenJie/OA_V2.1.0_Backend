@@ -109,7 +109,7 @@ class ResponseConverter:
     TIME_FIELDS = []
 
     @classmethod
-    def convert_row(cls, row: dict) -> dict:
+    def convert_row(cls, row: dict, table_name: str) -> dict:
         """转换单行数据"""
         result = {}
 
@@ -117,7 +117,7 @@ class ResponseConverter:
             camel_key = to_camel(key)
 
             # 处理 OaDepartmentChange 实体
-            if key == 'OaDepartmentChange' and hasattr(value, '__table__'):
+            if key == table_name and hasattr(value, '__table__'):
                 # 将实体转换为字典
                 entity_dict = {}
                 for col in value.__table__.columns:
@@ -126,16 +126,16 @@ class ResponseConverter:
                     if col.name in cls.TIME_FIELDS and isinstance(col_value, int):
                         col_value = format_timestamp(col_value)
                     entity_dict[to_camel(col.name)] = col_value
-                result['oaDepartmentChange'] = entity_dict
+                result[table_name] = entity_dict
 
             # 处理嵌套字典
             elif isinstance(value, dict):
-                result[camel_key] = cls.convert_row(value)
+                result[camel_key] = cls.convert_row(value, table_name)
 
             # 处理列表
             elif isinstance(value, list):
                 result[camel_key] = [
-                    cls.convert_row(item) if isinstance(item, dict) else item
+                    cls.convert_row(item, table_name) if isinstance(item, dict) else item
                     for item in value
                 ]
 
@@ -149,11 +149,14 @@ class ResponseConverter:
         return result
 
     @classmethod
-    def convert_page_result(cls, page_result, time_fields:list):
+    def convert_page_result(cls, page_result, time_fields:list, table_name:str):
         """转换分页结果"""
         cls.TIME_FIELDS = time_fields
         if hasattr(page_result, 'rows') and page_result.rows:
-            page_result.rows = [cls.convert_row(dict(row)) for row in page_result.rows]
+            page_result.rows = [cls.convert_row(dict(row),table_name) for row in page_result.rows]
+        for row in page_result.rows:
+            row.update(row[table_name])
+            row.pop(table_name)
         return page_result
 
     @classmethod

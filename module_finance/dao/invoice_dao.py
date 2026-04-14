@@ -214,3 +214,27 @@ class InvoiceDao:
             'enter_time': row.enter_time,
             'status': row.status
         }
+    @classmethod
+    async def get_invoice_count(cls, db: AsyncSession, user_id: int):
+        query = select(func.count()).select_from(OaInvoice).where(OaInvoice.admin_id == user_id, OaInvoice.open_status == 1, OaInvoice.delete_time == 0)
+        count = await db.execute(query)
+        return count.scalar()
+
+    @classmethod
+    async def get_wait_check_count(cls, db: AsyncSession, user_id: int):
+        """
+        获取待审开票数量
+
+        :param db: orm 对象
+        :param user_id: 用户 ID
+        :return: 待审开票数量
+        """
+        query = select(func.count()).select_from(OaInvoice).where(
+            OaInvoice.delete_time == 0,
+            OaInvoice.check_status == 1,
+            func.find_in_set(str(user_id), OaInvoice.check_uids),
+        )
+        result = await db.execute(query)
+        count = result.scalar()
+        return count
+

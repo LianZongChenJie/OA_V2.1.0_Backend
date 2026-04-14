@@ -330,3 +330,17 @@ class ProjectTaskDao:
             .where(OaProjectTask.id == task_id)
             .values(delete_time=update_time, update_time=update_time)
         )
+
+    @classmethod
+    async def get_project_task_count(cls, db: AsyncSession, user_id:int, status:int) -> None:
+        """
+        恢复项目数据库操作（逻辑恢复）
+        :param user_id: 用户 ID
+        :param db: orm 对象
+        :param status: 任务状态
+        :return:
+        """
+        query = select(func.count()).select_from(OaProjectTask).where(OaProjectTask.director_uid == user_id, OaProjectTask.delete_time == 0, OaProjectTask.status == status)
+        result = await db.execute(query)
+        count = result.scalar()
+        return count

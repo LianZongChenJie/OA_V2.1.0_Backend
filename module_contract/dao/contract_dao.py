@@ -459,3 +459,36 @@ class ContractDao:
         result = await db.execute(query)
         return result.scalar() is not None
 
+    @classmethod
+    async def get_contract_count(cls, db: AsyncSession, user_id:int):
+        """
+        获取用户合同统计信息
+
+        :param user_id: 
+        :param db: orm 对象
+        :param customer_id: 客户 ID
+        :param exclude_id: 排除的合同 ID（编辑时使用）
+        :return: True 表示已存在，False 表示不存在
+        """
+        query = select(func.count()).select_from(OaContract).where(OaContract.sign_uid == user_id, OaContract.delete_time == 0, OaContract.check_status == 2)
+        result = await db.execute(query)
+        count = result.scalar()
+        return count
+
+    @classmethod
+    async def get_wait_check_count(cls, db: AsyncSession, user_id: int):
+        """
+        获取待审销售合同数量
+
+        :param db: orm 对象
+        :param user_id: 用户 ID
+        :return: 待审公销售合同数量
+        """
+        query = select(func.count()).select_from(OaContract).where(
+            OaContract.delete_time == 0,
+            OaContract.check_status == 1,
+            func.find_in_set(str(user_id), OaContract.check_uids),
+        )
+        result = await db.execute(query)
+        count = result.scalar()
+        return count

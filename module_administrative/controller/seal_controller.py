@@ -34,7 +34,7 @@ async def get_page_list(
     data_scope_sql: Annotated[ColumnElement, DataScopeDependency(OaSeal)],
 ) -> Response:
     result = await SealService.get_page_list_service(query_db,query_object,data_scope_sql,True)
-    return ResponseUtil.success(model_content=result.message)
+    return ResponseUtil.success(model_content=result)
 
 @administrative_seal_controller.post(
     "/add",
@@ -43,7 +43,7 @@ async def get_page_list(
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:seal:add')],
 )
-async def add_change(
+async def add_seal(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
     query_object: Annotated[OaSealBaseModel, Body()],
@@ -79,7 +79,7 @@ async def get_profile(
     id: int,
 ) -> Response:
     result = await SealService.get_info_service(query_db, id)
-    return ResponseUtil.success(model_content=result.model)
+    return ResponseUtil.success(data=result)
 
 @administrative_seal_controller.delete(
     "/delete/{id}",
