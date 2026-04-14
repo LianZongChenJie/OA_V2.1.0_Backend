@@ -73,6 +73,12 @@ class ContractModel(BaseModel):
     start_time_str: str | None = Field(default=None, description='合同开始时间字符串')
     end_time_str: str | None = Field(default=None, description='合同结束时间字符串')
     sign_time_str: str | None = Field(default=None, description='合同签订时间字符串')
+    create_time_str: str | None = Field(default=None, description='创建时间字符串')
+    update_time_str: str | None = Field(default=None, description='更新时间字符串')
+    stop_time_str: str | None = Field(default=None, description='中止时间字符串')
+    void_time_str: str | None = Field(default=None, description='作废时间字符串')
+    archive_time_str: str | None = Field(default=None, description='归档时间字符串')
+    check_time_str: str | None = Field(default=None, description='审核通过时间字符串')
 
     @Xss(field_name='name', message='合同名称不能包含脚本字符')
     @NotBlank(field_name='name', message='合同名称不能为空')

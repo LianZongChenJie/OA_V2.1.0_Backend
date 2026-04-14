@@ -1,11 +1,12 @@
 from datetime import datetime
-from typing import Any
+from typing import Any, Optional
 from decimal import Decimal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, field_serializer
 from pydantic.alias_generators import to_camel
 from pydantic_validation_decorator import NotBlank, Size, Xss
 
+from utils.timeformat import format_timestamp
 
 # ==================== 会议室相关模型 ====================
 
@@ -226,6 +227,9 @@ class MeetingRecordsModel(BaseModel):
     dept_name: str | None = Field(default=None, description='部门名称')
     anchor_name: str | None = Field(default=None, description='主持人姓名')
     recorder_name: str | None = Field(default=None, description='记录人姓名')
+    meeting_date_str: str | None = Field(default=None, description='会议时间字符串')
+    create_time_str: str | None = Field(default=None, description='创建时间字符串')
+    update_time_str: str | None = Field(default=None, description='更新时间字符串')
 
     @field_validator('meeting_date', mode='before')
     @classmethod

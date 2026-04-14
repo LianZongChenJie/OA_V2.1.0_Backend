@@ -18,6 +18,7 @@ from module_admin.entity.vo.log_vo import (
     LoginLogPageQueryModel,
     OperLogModel,
     OperLogPageQueryModel,
+    SimpleOperLogModel,
     UnlockUser,
 )
 from module_admin.service.log_service import LoginLogService, OperationLogService
@@ -28,6 +29,32 @@ from utils.response_util import ResponseUtil
 log_controller = APIRouterPro(
     prefix='/monitor', order_num=11, tags=['系统管理-日志管理'], dependencies=[PreAuthDependency()]
 )
+
+
+@log_controller.get(
+    '/operlog/simple/list',
+    summary='获取简化版操作日志列表接口',
+    description='用于首页展示简化版操作日志列表',
+    response_model=None,
+    dependencies=[PreAuthDependency()],
+)
+async def get_simple_operation_log_list(
+    request: Request,
+    page: Annotated[int, Query(description='页码', ge=1)] = 1,
+    limit: Annotated[int, Query(description='每页数量', ge=1, le=100)] = 20,
+    query_db: Annotated[AsyncSession, DBSessionDependency()] = None,
+) -> Response:
+    """
+    获取简化版操作日志列表（用于首页展示）
+    返回格式与PHP旧版一致
+    """
+    try:
+        log_list = await OperationLogService.get_simple_operation_log_list_services(query_db, page, limit)
+        logger.info('获取简化版操作日志列表成功')
+        return ResponseUtil.success(data=log_list)
+    except Exception as e:
+        logger.error(f'获取简化版操作日志列表失败：{str(e)}')
+        return ResponseUtil.error(msg=str(e))
 
 
 @log_controller.get(

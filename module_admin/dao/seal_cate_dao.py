@@ -5,7 +5,9 @@ from sqlalchemy import and_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from common.vo import PageModel
+from module_admin.entity.do.dept_do import SysDept
 from module_admin.entity.do.seal_cate_do import SysSealCate
+from module_admin.entity.do.user_do import SysUser
 from module_admin.entity.vo.seal_cate_vo import SealCateModel, SealCatePageQueryModel
 from utils.page_util import PageUtil
 
@@ -16,7 +18,7 @@ class SealCateDao:
     """
 
     @classmethod
-    async def get_seal_cate_detail_by_id(cls, db: AsyncSession, seal_cate_id: int) -> SysSealCate | None:
+    async def get_seal_cate_detail_by_id(cls, db: AsyncSession, seal_cate_id: int) -> dict[str, Any] | None:
         """
         根据印章类别 id 获取印章类别详细信息
 
@@ -30,7 +32,37 @@ class SealCateDao:
             .first()
         )
 
-        return seal_cate_info
+        if not seal_cate_info:
+            return None
+
+        result = {
+            'seal_cate_info': seal_cate_info,
+            'dept_names': [],
+            'keeper_name': None,
+        }
+
+        # 查询应用部门名称
+        if seal_cate_info.dids:
+            dept_ids = [int(d.strip()) for d in seal_cate_info.dids.split(',') if d.strip() and d.strip().isdigit()]
+            if dept_ids:
+                depts = (
+                    await db.execute(
+                        select(SysDept.dept_name).where(SysDept.dept_id.in_(dept_ids)).order_by(SysDept.dept_id)
+                    )
+                ).scalars().all()
+                result['dept_names'] = list(depts)
+
+        # 查询保管人姓名
+        if seal_cate_info.keep_uid and seal_cate_info.keep_uid > 0:
+            user = (
+                await db.execute(
+                    select(SysUser.nick_name, SysUser.user_name).where(SysUser.user_id == seal_cate_info.keep_uid)
+                )
+            ).first()
+            if user:
+                result['keeper_name'] = user.nick_name or user.user_name
+
+        return result
 
     @classmethod
     async def get_seal_cate_detail_by_info(cls, db: AsyncSession, seal_cate: SealCateModel) -> SysSealCate | None:
@@ -84,7 +116,102 @@ class SealCateDao:
             db, query, query_object.page_num, query_object.page_size, is_page
         )
 
+        # 处理列表数据，添加扩展字段
+        if isinstance(seal_cate_list, PageModel):
+            processed_rows = []
+            for row in seal_cate_list.rows:
+                item = await cls._process_seal_cate_row(db, row)
+                processed_rows.append(item)
+            seal_cate_list.rows = processed_rows
+        elif isinstance(seal_cate_list, list):
+            processed_list = []
+            for row in seal_cate_list:
+                item = await cls._process_seal_cate_row(db, row)
+                processed_list.append(item)
+            seal_cate_list = processed_list
+
         return seal_cate_list
+
+    @classmethod
+    async def _process_seal_cate_row(cls, db: AsyncSession, row: Any) -> dict[str, Any]:
+        """
+        处理印章类别行数据，添加扩展字段
+
+        :param db: orm 对象
+        :param row: 印章类别行数据（可能是字典或对象）
+        :return: 处理后的字典数据
+        """
+        # 判断是字典还是对象
+        if isinstance(row, dict):
+            row_id = row.get('id')
+            row_dids = row.get('dids')
+            row_keep_uid = row.get('keepUid') or row.get('keep_uid')
+            result = {
+                'id': row_id,
+                'title': row.get('title'),
+                'dids': row_dids,
+                'keepUid': row_keep_uid,
+                'keep_uid': row_keep_uid,
+                'status': row.get('status'),
+                'remark': row.get('remark'),
+                'createTime': row.get('createTime') or row.get('create_time'),
+                'updateTime': row.get('updateTime') or row.get('update_time'),
+                'create_time': row.get('createTime') or row.get('create_time'),
+                'update_time': row.get('updateTime') or row.get('update_time'),
+                'deptNames': [],
+                'dept_names': [],
+                'keeperName': None,
+                'keeper_name': None,
+            }
+        else:
+            # ORM 对象
+            row_id = row.id
+            row_dids = row.dids
+            row_keep_uid = row.keep_uid
+            result = {
+                'id': row_id,
+                'title': row.title,
+                'dids': row_dids,
+                'keepUid': row_keep_uid,
+                'keep_uid': row_keep_uid,
+                'status': row.status,
+                'remark': row.remark,
+                'createTime': row.create_time,
+                'updateTime': row.update_time,
+                'create_time': row.create_time,
+                'update_time': row.update_time,
+                'deptNames': [],
+                'dept_names': [],
+                'keeperName': None,
+                'keeper_name': None,
+            }
+
+        # 查询应用部门名称
+        if row_dids:
+            dept_ids = [int(d.strip()) for d in str(row_dids).split(',') if d.strip() and d.strip().isdigit()]
+            if dept_ids:
+                depts = (
+                    await db.execute(
+                        select(SysDept.dept_name).where(SysDept.dept_id.in_(dept_ids)).order_by(SysDept.dept_id)
+                    )
+                ).scalars().all()
+                dept_names_list = list(depts)
+                result['dept_names'] = dept_names_list
+                result['deptNames'] = dept_names_list
+
+        # 查询保管人姓名
+        if row_keep_uid and int(row_keep_uid) > 0:
+            user = (
+                await db.execute(
+                    select(SysUser.nick_name, SysUser.user_name).where(SysUser.user_id == int(row_keep_uid))
+                )
+            ).first()
+            if user:
+                keeper_name = user.nick_name or user.user_name
+                result['keeper_name'] = keeper_name
+                result['keeperName'] = keeper_name
+
+        return result
 
     @classmethod
     async def add_seal_cate_dao(cls, db: AsyncSession, seal_cate_data: dict) -> SysSealCate:
