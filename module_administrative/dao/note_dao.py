@@ -67,7 +67,8 @@ class NoteDao:
         query = (select(OaNote)
         .where(
             OaNote.id == id))
-        info = await db.scalar(query)
+        result = await db.execute(query)
+        info = result.scalar()
         return info
     @classmethod
     async def del_by_id(cls, db: AsyncSession, id: int):

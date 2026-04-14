@@ -14,6 +14,7 @@ from module_administrative.service.note_service import NoteService
 from module_admin.entity.vo.user_vo import (
     CurrentUserModel
 )
+from utils.camel_converter import ModelConverter
 from utils.response_util import ResponseUtil
 
 administrative_note_controller = APIRouterPro(
@@ -34,7 +35,7 @@ async def get_page_list(
     data_scope_sql: Annotated[ColumnElement, DataScopeDependency(OaNote)],
 ) -> Response:
     result = await NoteService.get_page_list_service(query_db,query_object,data_scope_sql,True)
-    return ResponseUtil.success(model_content = result.message)
+    return ResponseUtil.success(model_content = result)
 
 @administrative_note_controller.post(
     "/add",
@@ -65,7 +66,7 @@ async def update_note(
     query_db: Annotated[AsyncSession, DBSessionDependency()],
     model: Annotated[OaNoteBaseModel, Body()],
 )->Response:
-    result = await NoteService().update_service(query_db, model)
+    result = await NoteService.update_service(query_db, model)
     return ResponseUtil.success(msg=result.message)
 
 @administrative_note_controller.get(
@@ -81,7 +82,7 @@ async def get_note_by_id(
     id: int,
 ) -> Response:
     result = await NoteService.get_info_service(query_db, id)
-    return ResponseUtil.success(model_content=result.model)
+    return ResponseUtil.success(data=ModelConverter.time_format(ModelConverter.to_dict(result)))
 
 @administrative_note_controller.delete(
     "/delete/{id}",
