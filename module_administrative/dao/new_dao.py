@@ -2,6 +2,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, desc
 from sqlalchemy.sql import ColumnElement, func
 from common.vo import PageModel
+from module_admin.entity.do.user_do import SysUser
 from utils.page_util import PageUtil
 from module_administrative.entity.vo.new_vo import OaNewsBaseModel, OaNewsQueryPageModel
 from module_administrative.entity.do.news_do import OaNews
@@ -15,7 +16,9 @@ class NewsDao:
                             is_page: bool = False) -> PageModel | list[list[dict[str, Any]]]:
 
         # 构建基础查询
-        query = select(OaNews)
+        query = select(OaNews,
+                       SysUser.nick_name.label('admin_name')).join(
+                        SysUser, OaNews.admin_id == SysUser.user_id, isouter=True)
 
         # 构建条件列表
         conditions = []
@@ -35,7 +38,7 @@ class NewsDao:
         query = query.order_by(desc(OaNews.create_time))
 
         # 分页查询
-        page_list: PageModel | list[list[dict[str, Any]]] = await PageUtil.paginate(
+        page_list = await PageUtil.paginate_dict(
             db, query, query_object.page_num, query_object.page_size, is_page
         )
         return page_list
@@ -65,10 +68,12 @@ class NewsDao:
 
     @classmethod
     async def get_info_by_id(cls, db: AsyncSession, id: int):
-        query = (select(OaNews)
-        .where(
-            OaNews.id == id))
-        info = await db.scalar(query)
+        query = (select(OaNews,
+                       SysUser.nick_name.label('admin_name'))
+        .join(SysUser, OaNews.admin_id == SysUser.user_id, isouter=True)
+        .where(OaNews.id == id))
+        result = await db.execute(query)
+        info = result.mappings().first()
         return info
     @classmethod
     async def del_by_id(cls, db: AsyncSession, id: int):

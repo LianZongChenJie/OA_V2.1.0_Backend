@@ -8,6 +8,8 @@ from module_administrative.entity.vo.new_vo import OaNewsBaseModel, OaNewsQueryP
 from common.vo import PageModel, CrudResponseModel
 from datetime import datetime
 
+from utils.camel_converter import ResponseConverter
+
 
 class NewsService:
     @classmethod
@@ -17,9 +19,7 @@ class NewsService:
                                                                                              list[dict[str, Any]]:
         query_list = await NewsDao.get_page_list(query_db, query_object, data_scope_sql, is_page)
         if is_page:
-            result_list = PageModel[OaNewsBaseModel](**{
-                **query_list.model_dump(by_alias=True)
-            })
+            return ResponseConverter.convert_page_result(query_list, ['create_time', 'update_time'], 'OaNews')
         else:
             result_list = []
             if query_list:
@@ -56,12 +56,16 @@ class NewsService:
 
     @classmethod
     async def get_info_service(cls, query_db: \
-            AsyncSession, id: int) -> OaNewsBaseModel:
+            AsyncSession, id: int) -> dict:
         try:
             info = await NewsDao.get_info_by_id(query_db, id)
             if not info:
                 raise ServiceException(message="未找到该公告")
-            return info
+            result = ResponseConverter.convert_row(dict(info), 'OaNews')
+            result.update(result['OaNews'])
+            result.pop('OaNews')
+            result = ResponseConverter.convert_to_camel_and_format_time(result, ['createTime', 'updateTime'])
+            return result
         except Exception as e:
             await query_db.rollback()
             raise e

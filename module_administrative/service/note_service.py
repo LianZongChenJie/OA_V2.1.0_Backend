@@ -9,8 +9,12 @@ from module_administrative.entity.vo.note_vo import OaNoteBaseModel, \
 from common.vo import PageModel, CrudResponseModel
 from datetime import datetime
 
+from utils.camel_converter import ResponseConverter
+
 
 class NoteService:
+    time_fields = ['create_time', 'update_time', 'delete_time', 'check_time',
+                   'start_time', 'end_time']
     @classmethod
     async def get_page_list_service(cls, query_db: AsyncSession, query_object: OaNoteQueryPageModel,
                                     data_scope_sql: ColumnElement, is_page: bool = False) -> PageModel[
@@ -18,9 +22,7 @@ class NoteService:
                                                                                              list[dict[str, Any]]:
         query_list = await NoteDao.get_page_list(query_db, query_object, data_scope_sql, is_page)
         if is_page:
-            result_list = PageModel[OaNoteBaseModel](**{
-                **query_list.model_dump(by_alias=True)
-            })
+            return ResponseConverter.convert_page_result(query_list, cls.time_fields, 'OaNote')
         else:
             result_list = []
             if query_list:
@@ -58,12 +60,17 @@ class NoteService:
 
     @classmethod
     async def get_info_service(cls, query_db: \
-            AsyncSession, id: int) -> OaNoteBaseModel:
+            AsyncSession, id: int) -> dict:
         try:
             info = await NoteDao.get_info_by_id(query_db, id)
             if not info:
                 raise ServiceException(message="未找到该公告")
-            return info
+            result =  ResponseConverter.convert_row(dict(info), 'OaNote')
+            result.update(result['OaNote'])
+            result.pop('OaNote')
+
+            result = ResponseConverter.convert_to_camel_and_format_time(result, ['createTime', 'updateTime', 'deleteTime','startTime','endTime'])
+            return result
         except Exception as e:
             await query_db.rollback()
             raise e

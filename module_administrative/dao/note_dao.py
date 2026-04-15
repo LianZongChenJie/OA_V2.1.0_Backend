@@ -2,11 +2,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, desc
 from sqlalchemy.sql import ColumnElement, func
 from common.vo import PageModel
+from module_admin.entity.do.note_cate_do import SysNoteCate
+from module_admin.entity.do.user_do import SysUser
 from utils.page_util import PageUtil
 from module_administrative.entity.vo.note_vo import OaNoteQueryPageModel, OaNoteBaseModel
 from module_administrative.entity.do.note_do import OaNote
 from typing import Any
 from datetime import datetime
+
+from utils.review_util import ReviewUtil
+
 
 class NoteDao:
     @classmethod
@@ -15,7 +20,10 @@ class NoteDao:
                             is_page: bool = False) -> PageModel | list[list[dict[str, Any]]]:
 
         # 构建基础查询
-        query = select(OaNote)
+        query = select(OaNote,
+                        SysUser.nick_name.label('admin_name'),
+                        SysNoteCate.title.label('cate_name')
+                        ).join(SysUser, OaNote.admin_id == SysUser.user_id, isouter=True).join(SysNoteCate, OaNote.cate_id == SysNoteCate.id, isouter=True)
 
         # 构建条件列表
         conditions = []
@@ -34,7 +42,7 @@ class NoteDao:
         query = query.order_by(desc(OaNote.create_time))
 
         # 分页查询
-        page_list: PageModel | list[list[dict[str, Any]]] = await PageUtil.paginate(
+        page_list = await PageUtil.paginate_dict(
             db, query, query_object.page_num, query_object.page_size, is_page
         )
         return page_list
@@ -64,11 +72,15 @@ class NoteDao:
 
     @classmethod
     async def get_info_by_id(cls, db: AsyncSession, id: int):
-        query = (select(OaNote)
-        .where(
-            OaNote.id == id))
+        query = (select(OaNote,
+                       SysUser.nick_name.label('admin_name'),
+                       SysNoteCate.title.label('cate_name')
+                       ).join(SysUser, OaNote.admin_id == SysUser.user_id, isouter=True).
+                 join(SysNoteCate, OaNote.cate_id == SysNoteCate.id, isouter=True)
+                .where(
+                    OaNote.id == id))
         result = await db.execute(query)
-        info = result.scalar()
+        info = result.mappings().first()
         return info
     @classmethod
     async def del_by_id(cls, db: AsyncSession, id: int):

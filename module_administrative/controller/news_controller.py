@@ -82,7 +82,7 @@ async def get_news_by_id(
     id: int,
 ) -> Response:
     result = await NewsService.get_info_service(query_db, id)
-    return ResponseUtil.success(data=ModelConverter.time_format(ModelConverter.to_dict(result)))
+    return ResponseUtil.success(data=result)
 
 @administrative_news_controller.delete(
     "/delete/{id}",

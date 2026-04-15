@@ -82,7 +82,7 @@ async def get_note_by_id(
     id: int,
 ) -> Response:
     result = await NoteService.get_info_service(query_db, id)
-    return ResponseUtil.success(data=ModelConverter.time_format(ModelConverter.to_dict(result)))
+    return ResponseUtil.success(data=result)
 
 @administrative_note_controller.delete(
     "/delete/{id}",
