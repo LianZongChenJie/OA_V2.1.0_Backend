@@ -18,6 +18,7 @@ from module_basicdata.dao.public.flow_cate_dao import FlowCateDao
 
 from module_personnel.entity.vo.flow_record_vo import OaFlowRecordBaseModel
 from utils.camel_converter import ResponseConverter
+from utils.timeformat import int_time
 
 
 class SealService:
@@ -45,6 +46,12 @@ class SealService:
         try:
             model.create_time = int(datetime.now().timestamp())
             model.status = 1
+            if model.use_time:
+                model.use_time = int_time(model.use_time)
+            if model.start_time:
+                model.start_time = int_time(model.start_time)
+            if model.end_time:
+                model.end_time = int_time(model.end_time)
             change = await SealDao.add(query_db, model)
             # await cls.add_record(query_db, change, model)
             await query_db.commit()
@@ -58,6 +65,12 @@ class SealService:
     async def update_service(cls, query_db: AsyncSession, model: OaSealBaseModel) -> CrudResponseModel:
         try:
             model.update_time = int(datetime.now().timestamp())
+            if model.use_time:
+                model.use_time = int_time(model.use_time)
+            if model.start_time:
+                model.start_time = int_time(model.start_time)
+            if model.end_time:
+                model.end_time = int_time(model.end_time)
             change = await SealDao.update(query_db, model)
             # await cls.add_record(query_db, change, model)
             await query_db.commit()
@@ -73,10 +86,12 @@ class SealService:
             AsyncSession, id: int) -> OaSealBaseModel:
         try:
             detail = await SealDao.get_info_by_id(query_db, id)
-            detail['info'] = ResponseConverter.convert_to_camel_and_format_time(detail['info'],cls.time_fields)
-            detail['records'] = ResponseConverter.convert_to_camel_and_format_time_list(detail['records'],cls.time_fields)
             if not detail:
                 raise ServiceException(message="未找到该数据")
+
+            detail['info'] = ResponseConverter.convert_to_camel_and_format_time(detail['info'],cls.time_fields)
+            detail['records'] = ResponseConverter.convert_to_camel_and_format_time_list(detail['records'],cls.time_fields)
+
             return detail
         except Exception as e:
             await query_db.rollback()

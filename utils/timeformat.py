@@ -38,6 +38,11 @@ def now_timestamp() -> int:
 
 def int_time(str_time: str, format_str: str = "%Y-%m-%d %H:%M:%S") -> int:
     try:
+        if len(str_time) != 19:
+            """
+            时间格式不为 2026-04-15 01:22:33形式时更改时间格式
+            """
+            format_str = "%Y-%m-%d"
         dt = datetime.strptime(str_time, format_str)
         return int(dt.timestamp())
     except Exception as e:

@@ -132,7 +132,11 @@ class SealDao:
         result = await db.execute(
             update(OaSeal)
             .values(
-                **model.model_dump(exclude={"id", "update_time"}, exclude_none=True), update_time=model.update_time
+                **model.model_dump(exclude={"id", "update_time", 'use_time', 'start_time', 'end_time'}, exclude_none=True)
+                , update_time=model.update_time
+                , use_time=model.use_time
+                ,start_time=model.start_time
+                ,end_time=model.end_time
             )
             .where(OaSeal.id == model.id)
         )
