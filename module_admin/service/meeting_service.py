@@ -191,6 +191,149 @@ class MeetingOrderService:
         获取预定列表信息 service
         """
         order_list_result = await MeetingOrderDao.get_meeting_order_list(query_db, query_object, is_page)
+        
+        if isinstance(order_list_result, PageModel):
+            formatted_rows = []
+            for row in order_list_result.rows:
+                if isinstance(row, (list, tuple)) and len(row) >= 1:
+                    order_obj = row[0]
+                    extra_fields = list(row[1:]) if len(row) > 1 else []
+                    
+                    order_dict = CamelCaseUtil.transform_result(order_obj)
+                    
+                    if isinstance(order_dict, dict):
+                        # 格式化时间字段并拼接会议时间
+                        start_date = order_dict.get('startDate')
+                        end_date = order_dict.get('endDate')
+                        
+                        # 格式化开始时间
+                        if start_date and isinstance(start_date, (int, float)) and start_date > 0:
+                            try:
+                                if start_date > 1e12:
+                                    start_seconds = start_date / 1000
+                                else:
+                                    start_seconds = start_date
+                                start_time_str = datetime.fromtimestamp(start_seconds).strftime('%Y-%m-%d %H:%M:%S')
+                                order_dict['startDate'] = start_time_str
+                                
+                                # 拼接会议时间字符串
+                                if end_date and isinstance(end_date, (int, float)) and end_date > 0:
+                                    if end_date > 1e12:
+                                        end_seconds = end_date / 1000
+                                    else:
+                                        end_seconds = end_date
+                                    end_time_str = datetime.fromtimestamp(end_seconds).strftime('%Y-%m-%d %H:%M:%S')
+                                    order_dict['endDate'] = end_time_str
+                                    order_dict['meetingTimeStr'] = f"{start_time_str} ~ {end_time_str}"
+                                else:
+                                    order_dict['meetingTimeStr'] = start_time_str
+                            except Exception as e:
+                                logger.error(f"会议时间格式化失败: {e}")
+                                order_dict['startDate'] = ''
+                                order_dict['endDate'] = ''
+                                order_dict['meetingTimeStr'] = ''
+                        else:
+                            order_dict['startDate'] = ''
+                            order_dict['endDate'] = ''
+                            order_dict['meetingTimeStr'] = ''
+                        
+                        # 格式化其他时间字段
+                        time_fields = ['createTime', 'updateTime', 'checkTime']
+                        for field in time_fields:
+                            time_value = order_dict.get(field)
+                            if time_value and isinstance(time_value, (int, float)) and time_value > 0:
+                                try:
+                                    if time_value > 1e12:
+                                        time_seconds = time_value / 1000
+                                    else:
+                                        time_seconds = time_value
+                                    order_dict[field] = datetime.fromtimestamp(time_seconds).strftime('%Y-%m-%d %H:%M:%S')
+                                except Exception as e:
+                                    logger.error(f"时间字段 {field} 格式化失败: {time_value}, 错误: {e}")
+                                    order_dict[field] = ''
+                            else:
+                                order_dict[field] = ''
+                        
+                        # 确保申请人名称返回（admin_name）
+                        if not order_dict.get('adminName'):
+                            order_dict['adminName'] = extra_fields[1] if len(extra_fields) > 1 else None
+                    
+                    formatted_row = [order_dict] + extra_fields
+                    formatted_rows.append(formatted_row)
+            
+            order_list_result.rows = formatted_rows
+            return order_list_result
+        elif isinstance(order_list_result, list):
+            formatted_list = []
+            for row in order_list_result:
+                if isinstance(row, (list, tuple)) and len(row) >= 1:
+                    order_obj = row[0]
+                    extra_fields = list(row[1:]) if len(row) > 1 else []
+                    
+                    order_dict = CamelCaseUtil.transform_result(order_obj)
+                    
+                    if isinstance(order_dict, dict):
+                        # 格式化时间字段并拼接会议时间
+                        start_date = order_dict.get('startDate')
+                        end_date = order_dict.get('endDate')
+                        
+                        # 格式化开始时间
+                        if start_date and isinstance(start_date, (int, float)) and start_date > 0:
+                            try:
+                                if start_date > 1e12:
+                                    start_seconds = start_date / 1000
+                                else:
+                                    start_seconds = start_date
+                                start_time_str = datetime.fromtimestamp(start_seconds).strftime('%Y-%m-%d %H:%M:%S')
+                                order_dict['startDate'] = start_time_str
+                                
+                                # 拼接会议时间字符串
+                                if end_date and isinstance(end_date, (int, float)) and end_date > 0:
+                                    if end_date > 1e12:
+                                        end_seconds = end_date / 1000
+                                    else:
+                                        end_seconds = end_date
+                                    end_time_str = datetime.fromtimestamp(end_seconds).strftime('%Y-%m-%d %H:%M:%S')
+                                    order_dict['endDate'] = end_time_str
+                                    order_dict['meetingTimeStr'] = f"{start_time_str} ~ {end_time_str}"
+                                else:
+                                    order_dict['meetingTimeStr'] = start_time_str
+                            except Exception as e:
+                                logger.error(f"会议时间格式化失败: {e}")
+                                order_dict['startDate'] = ''
+                                order_dict['endDate'] = ''
+                                order_dict['meetingTimeStr'] = ''
+                        else:
+                            order_dict['startDate'] = ''
+                            order_dict['endDate'] = ''
+                            order_dict['meetingTimeStr'] = ''
+                        
+                        # 格式化其他时间字段
+                        time_fields = ['createTime', 'updateTime', 'checkTime']
+                        for field in time_fields:
+                            time_value = order_dict.get(field)
+                            if time_value and isinstance(time_value, (int, float)) and time_value > 0:
+                                try:
+                                    if time_value > 1e12:
+                                        time_seconds = time_value / 1000
+                                    else:
+                                        time_seconds = time_value
+                                    order_dict[field] = datetime.fromtimestamp(time_seconds).strftime('%Y-%m-%d %H:%M:%S')
+                                except Exception as e:
+                                    logger.error(f"时间字段 {field} 格式化失败: {time_value}, 错误: {e}")
+                                    order_dict[field] = ''
+                            else:
+                                order_dict[field] = ''
+                        
+                        # 确保申请人名称返回（admin_name）
+                        if not order_dict.get('adminName'):
+                            order_dict['adminName'] = extra_fields[1] if len(extra_fields) > 1 else None
+                    
+                    formatted_row = [order_dict] + extra_fields
+                    formatted_list.append(formatted_row)
+            
+            return formatted_list
+        
         return CamelCaseUtil.transform_result(order_list_result)
 
     @classmethod

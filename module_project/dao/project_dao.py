@@ -6,6 +6,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from common.vo import PageModel
 from module_project.entity.do.project_do import OaProject
+from module_project.entity.do.project_task_do import OaProjectTask
+from module_project.entity.do.project_step_do import OaProjectStep
 from module_project.entity.vo.project_vo import ProjectModel, ProjectPageQueryModel
 from utils.page_util import PageUtil
 
@@ -64,6 +66,13 @@ class ProjectDao:
                 director_info = director_result['user_basic_info']
                 result['director_name'] = director_info.nick_name or director_info.user_name
 
+        # 查询部门名称
+        if project_info.did and project_info.did > 0:
+            from module_admin.dao.dept_dao import DeptDao
+            dept_info = await DeptDao.get_dept_by_id(db, project_info.did)
+            if dept_info:
+                result['dept_name'] = dept_info.dept_name
+
         # 设置状态名称
         status_map = {
             0: '未设置',
@@ -76,33 +85,6 @@ class ProjectDao:
             result['status_name'] = status_map.get(project_info.status, '未知')
 
         return result
-
-    @classmethod
-    async def get_project_detail_by_info(cls, db: AsyncSession, project: ProjectModel) -> OaProject | None:
-        """
-        根据项目参数获取信息
-
-        :param db: orm 对象
-        :param project: 项目参数对象
-        :return: 项目信息对象
-        """
-        query_conditions = [OaProject.delete_time == 0]
-
-        if project.id is not None:
-            query_conditions.append(OaProject.id == project.id)
-        if project.name:
-            query_conditions.append(OaProject.name == project.name)
-
-        if query_conditions:
-            project_info = (
-                (await db.execute(select(OaProject).where(and_(*query_conditions))))
-                .scalars()
-                .first()
-            )
-        else:
-            project_info = None
-
-        return project_info
 
     @classmethod
     async def get_project_list(
@@ -197,7 +179,292 @@ class ProjectDao:
             db, query, query_object.page_num, query_object.page_size, is_page
         )
 
+        # 为每个项目添加扩展字段
+        if isinstance(project_list, PageModel) and hasattr(project_list, 'rows'):
+            enhanced_rows = []
+            for project in project_list.rows:
+                try:
+                    enhanced_project = await cls._enrich_project_data(db, project)
+                    enhanced_rows.append(enhanced_project)
+                except Exception as e:
+                    # 如果出错，记录日志并返回基础数据
+                    from utils.log_util import logger
+                    logger.error(f" enrich project data error: {str(e)}, project_id: {project.id}")
+                    enhanced_project = cls._get_basic_project_data(project)
+                    enhanced_rows.append(enhanced_project)
+            project_list.rows = enhanced_rows
+        elif isinstance(project_list, list):
+            enhanced_list = []
+            for project in project_list:
+                try:
+                    enhanced_project = await cls._enrich_project_data(db, project)
+                    enhanced_list.append(enhanced_project)
+                except Exception as e:
+                    from utils.log_util import logger
+                    logger.error(f" enrich project data error: {str(e)}, project_id: {project.id}")
+                    enhanced_project = cls._get_basic_project_data(project)
+                    enhanced_list.append(enhanced_project)
+            project_list = enhanced_list
+
         return project_list
+
+    @classmethod
+    async def _enrich_project_data(cls, db: AsyncSession, project: OaProject) -> dict[str, Any]:
+        """
+        为项目数据添加扩展字段
+
+        :param db: orm 对象
+        :param project: 项目对象
+        :return: 增强后的项目数据字典
+        """
+        from datetime import datetime as dt
+        
+        # 从 ORM 对象获取字典，保留所有原始字段值
+        project_dict = {}
+        for column in OaProject.__table__.columns:
+            value = getattr(project, column.name)
+            project_dict[column.name] = value
+
+        # 添加 title 字段（与 name 相同）
+        project_dict['title'] = project.name or ''
+
+        # 查询分类名称
+        if project.cate_id and project.cate_id > 0:
+            from module_basicdata.dao.project.project_cate_dao import ProjectCateDao
+            cate_info = await ProjectCateDao.get_info_by_id(db, project.cate_id)
+            if cate_info:
+                project_dict['cate'] = cate_info.title
+                project_dict['cate_title'] = cate_info.title
+            else:
+                project_dict['cate'] = ''
+                project_dict['cate_title'] = ''
+        else:
+            project_dict['cate'] = ''
+            project_dict['cate_title'] = ''
+
+        # 查询创建人姓名
+        if project.admin_id and project.admin_id > 0:
+            from module_admin.dao.user_dao import UserDao
+            admin_result = await UserDao.get_user_by_id(db, project.admin_id)
+            if admin_result and admin_result.get('user_basic_info'):
+                admin_info = admin_result['user_basic_info']
+                project_dict['admin_name'] = admin_info.nick_name or admin_info.user_name
+            else:
+                project_dict['admin_name'] = ''
+        else:
+            project_dict['admin_name'] = ''
+
+        # 查询项目负责人姓名
+        if project.director_uid and project.director_uid > 0:
+            from module_admin.dao.user_dao import UserDao
+            director_result = await UserDao.get_user_by_id(db, project.director_uid)
+            if director_result and director_result.get('user_basic_info'):
+                director_info = director_result['user_basic_info']
+                project_dict['director_name'] = director_info.nick_name or director_info.user_name
+            else:
+                project_dict['director_name'] = ''
+        else:
+            project_dict['director_name'] = ''
+
+        # 查询部门名称
+        if project.did and project.did > 0:
+            from module_admin.dao.dept_dao import DeptDao
+            dept_info = await DeptDao.get_dept_by_id(db, project.did)
+            if dept_info:
+                project_dict['department'] = dept_info.dept_name
+                project_dict['dept_name'] = dept_info.dept_name
+            else:
+                project_dict['department'] = ''
+                project_dict['dept_name'] = ''
+        else:
+            project_dict['department'] = ''
+            project_dict['dept_name'] = ''
+
+        # 设置状态名称
+        status_map = {
+            0: '未设置',
+            1: '未开始',
+            2: '进行中',
+            3: '已完成',
+            4: '已关闭'
+        }
+        project_dict['status_name'] = status_map.get(project.status if project.status is not None else 0, '未知')
+
+        # 计算时间范围字符串
+        if project.start_time and project.end_time:
+            from utils.time_format_util import timestamp_to_datetime
+            start_str = timestamp_to_datetime(project.start_time, '%Y-%m-%d')
+            end_str = timestamp_to_datetime(project.end_time, '%Y-%m-%d')
+            project_dict['range_time'] = f"{start_str} 至 {end_str}"
+        else:
+            project_dict['range_time'] = ''
+
+        # 计算延迟天数
+        current_timestamp = int(dt.now().timestamp())
+        if project.end_time and project.status is not None and project.status < 3:
+            if current_timestamp > project.end_time:
+                delay_days = (current_timestamp - project.end_time) // 86400
+                project_dict['delay'] = delay_days
+            else:
+                project_dict['delay'] = 0
+        else:
+            project_dict['delay'] = 0
+
+        # 统计任务数量
+        task_stats = await cls._get_task_statistics(db, project.id)
+        project_dict.update(task_stats)
+
+        # 获取当前阶段信息
+        step_info = await cls._get_current_step_info(db, project.id)
+        project_dict.update(step_info)
+
+        return project_dict
+
+    @classmethod
+    def _get_basic_project_data(cls, project: OaProject) -> dict[str, Any]:
+        """
+        获取项目基础数据（不带关联查询）
+
+        :param project: 项目对象
+        :return: 基础项目数据字典
+        """
+        project_dict = project.__dict__.copy()
+        project_dict.pop('_sa_instance_state', None)
+        
+        # 设置默认值
+        project_dict['title'] = project.name or ''
+        project_dict['cate'] = ''
+        project_dict['cate_title'] = ''
+        project_dict['admin_name'] = ''
+        project_dict['director_name'] = ''
+        project_dict['department'] = ''
+        project_dict['dept_name'] = ''
+        
+        status_map = {
+            0: '未设置',
+            1: '未开始',
+            2: '进行中',
+            3: '已完成',
+            4: '已关闭'
+        }
+        project_dict['status_name'] = status_map.get(project.status if project.status is not None else 0, '未知')
+        project_dict['range_time'] = ''
+        project_dict['delay'] = 0
+        project_dict['tasks_total'] = 0
+        project_dict['tasks_finish'] = 0
+        project_dict['tasks_unfinish'] = 0
+        project_dict['tasks_pensent'] = "0％"
+        project_dict['step_director'] = ''
+        project_dict['step'] = ''
+        
+        return project_dict
+
+    @classmethod
+    async def _get_task_statistics(cls, db: AsyncSession, project_id: int) -> dict[str, Any]:
+        """
+        获取项目任务统计信息
+
+        :param db: orm 对象
+        :param project_id: 项目 ID
+        :return: 任务统计信息
+        """
+        # 任务总数
+        total_query = select(func.count()).select_from(OaProjectTask).where(
+            OaProjectTask.project_id == project_id,
+            OaProjectTask.delete_time == 0
+        )
+        tasks_total = (await db.execute(total_query)).scalar() or 0
+
+        # 已完成任务数（status > 2 表示已完成）
+        finish_query = select(func.count()).select_from(OaProjectTask).where(
+            OaProjectTask.project_id == project_id,
+            OaProjectTask.status > 2,
+            OaProjectTask.delete_time == 0
+        )
+        tasks_finish = (await db.execute(finish_query)).scalar() or 0
+
+        # 未完成任务数
+        tasks_unfinish = tasks_total - tasks_finish
+
+        # 任务完成百分比
+        if tasks_total > 0:
+            percentage = int((tasks_finish / tasks_total) * 100)
+            tasks_pensent = f"{percentage}％"
+        else:
+            tasks_pensent = "0％"
+
+        return {
+            'tasks_total': tasks_total,
+            'tasks_finish': tasks_finish,
+            'tasks_unfinish': tasks_unfinish,
+            'tasks_pensent': tasks_pensent
+        }
+
+    @classmethod
+    async def _get_current_step_info(cls, db: AsyncSession, project_id: int) -> dict[str, Any]:
+        """
+        获取当前阶段信息
+
+        :param db: orm 对象
+        :param project_id: 项目 ID
+        :return: 当前阶段信息
+        """
+        # 查询当前阶段
+        step_query = select(OaProjectStep).where(
+            OaProjectStep.project_id == project_id,
+            OaProjectStep.is_current == 1,
+            OaProjectStep.delete_time == 0
+        )
+        current_step = (await db.execute(step_query)).scalars().first()
+
+        if current_step:
+            # 获取阶段负责人姓名
+            step_director = ''
+            if current_step.director_uid and current_step.director_uid > 0:
+                from module_admin.dao.user_dao import UserDao
+                director_result = await UserDao.get_user_by_id(db, current_step.director_uid)
+                if director_result and director_result.get('user_basic_info'):
+                    step_director = director_result['user_basic_info'].nick_name or director_result['user_basic_info'].user_name
+
+            # 构建阶段信息字符串：阶段名称『负责人姓名』
+            step_info = f"{current_step.title}『{step_director}』" if step_director else current_step.title
+
+            return {
+                'step_director': step_director,
+                'step': step_info
+            }
+        else:
+            return {
+                'step_director': '',
+                'step': ''
+            }
+
+    @classmethod
+    async def get_project_detail_by_info(cls, db: AsyncSession, project: ProjectModel) -> OaProject | None:
+        """
+        根据项目参数获取信息
+
+        :param db: orm 对象
+        :param project: 项目参数对象
+        :return: 项目信息对象
+        """
+        query_conditions = [OaProject.delete_time == 0]
+
+        if project.id is not None:
+            query_conditions.append(OaProject.id == project.id)
+        if project.name:
+            query_conditions.append(OaProject.name == project.name)
+
+        if query_conditions:
+            project_info = (
+                (await db.execute(select(OaProject).where(and_(*query_conditions))))
+                .scalars()
+                .first()
+            )
+        else:
+            project_info = None
+
+        return project_info
 
     @classmethod
     async def add_project_dao(cls, db: AsyncSession, project: dict | ProjectModel) -> OaProject:

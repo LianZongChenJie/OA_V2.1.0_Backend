@@ -5,15 +5,15 @@ from module_basicdata.entity.do.public.flow_step_do import OaFlowStep
 
 class OaFlowStepDao:
     @classmethod
-    async def add(cls, db : AsyncSession, data:OaFlowStep):
-        db_module = OaFlowStep(**data.model_dump())
+    async def add(cls, db: AsyncSession, data: dict):
+        db_module = OaFlowStep(**data)
         db.add(db_module)
         await db.commit()
         await db.refresh(db_module)
         return db_module
 
     @classmethod
-    async def get_info_by_flow_id(cls, db : AsyncSession, id:int):
+    async def get_info_by_flow_id(cls, db: AsyncSession, id: int):
         query_flow_step_info = (
             (
                 await db.execute(

@@ -20,6 +20,7 @@ from module_contract.entity.vo.contract_vo import (
 )
 from module_admin.entity.vo.user_vo import CurrentUserModel
 from module_contract.service.contract_service import ContractService
+from utils.camel_converter import ModelConverter
 from utils.log_util import logger
 from utils.response_util import ResponseUtil
 
@@ -236,5 +237,8 @@ async def query_detail_system_contract(
     detail_contract_result = await ContractService.contract_detail_services(query_db, id)
     logger.info(f'获取 id 为{id}的信息成功')
 
-    return ResponseUtil.success(data=detail_contract_result)
+    contract_dict = detail_contract_result.model_dump(by_alias=True)
+    formatted_dict = ModelConverter.time_format(contract_dict)
+
+    return ResponseUtil.success(data=formatted_dict)
 
