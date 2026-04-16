@@ -587,3 +587,22 @@ class UserDao:
             .first()
         )
         return dept_basic_info
+
+    @classmethod
+    async def get_user_by_post_id(cls, db: AsyncSession, post_id: int) -> list[int]:
+        query = select(SysUser.user_id).join(SysUserPost, SysUserPost.user_id == SysUser.user_id).where(SysUserPost.post_id == post_id)
+        result = await db.execute(query)
+        return result.scalars().all()
+
+    @classmethod
+    async def get_user_name_by_user_id(cls, db: AsyncSession, user_ids: list[int]):
+        """
+        根据用户岗位关联获取用户岗位关联详细信息
+
+        :param db: orm对象
+        :param user_ids: 用户岗位关联对象
+        :return: 用户岗位关联信息
+        """
+        query = select(SysUser.user_name).where(SysUser.user_id.in_(user_ids))
+        result = await db.execute(query)
+        return result.scalars().all()

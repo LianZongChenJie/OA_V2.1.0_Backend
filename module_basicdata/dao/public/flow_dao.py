@@ -84,3 +84,15 @@ class OaFlowDao:
         )
 
         return query_info
+
+    @classmethod
+    async def get_flow_info_by_cate_id(cls, db: AsyncSession, cate_id: int) -> OaFlow | None:
+        """
+        通过cate_id获取flow信息
+        :param db:
+        :param cate_id:
+        :return:
+        """
+        query = select(OaFlow).where(OaFlow.cate_id == cate_id, OaFlow.status == '1', OaFlow.delete_time == 0)
+        result = await db.execute(query)
+        return result.scalars().first()

@@ -61,7 +61,7 @@ class OaFlowCheckBaseModel(BaseModel):
 
     id: int | None = Field(None, description='ID')
     check: int = Field(None, description='审批状态1:通过, 2:拒绝, 3:撤销, 4:反确认')
-    remark : str | None = Field(None, description='审批备注')
+    content : str | None = Field(None, description='审批备注')
     action_id: int = Field(None, description='审批动作ID')
     type: str| None = Field(None, description='审批类型')
     flow_id: int | None = Field(None, description='审批流程ID')

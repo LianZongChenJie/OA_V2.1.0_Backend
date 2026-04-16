@@ -7,6 +7,7 @@ from sqlalchemy.util import immutabledict
 from module_admin.entity.do.dept_do import SysDept
 from module_admin.entity.do.user_do import SysUser
 from module_admin.entity.vo.dept_vo import DeptModel
+from sqlalchemy.orm import aliased
 
 
 class DeptDao:
@@ -330,3 +331,25 @@ class DeptDao:
         ).scalar()
 
         return dept_names
+    @classmethod
+    async def get_dept_manages(cls, db: AsyncSession, user_id: int, is_parent=False) -> list[str]:
+        """
+
+        :param db:
+        :param user_id:
+        :param is_parent: 是否parent   默认false
+        :return:
+        """
+        query = ''
+        if is_parent:
+            query = select(SysDept.leader_id).join(SysUser.dept_id == SysDept.dept_id, isouter=True).join(SysDept)
+        else:
+            user = aliased(SysUser)
+            dept = aliased(SysDept)
+            parent = aliased(SysDept)
+            query = select(dept.leader_id).join(user, user.dept_id == dept.dept_id, isouter=True).join(parent.dept_id == dept.parent_id,isouter=True).where(SysUser.user_desc == user_id)
+        result = await db.execute(query)
+        return result.scalars().first()
+
+
+

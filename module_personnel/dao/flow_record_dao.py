@@ -1,5 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select,desc
+from sqlalchemy import select,desc,func
 from module_personnel.entity.vo.flow_record_vo import OaFlowRecordBaseModel
 from module_personnel.entity.do.flow_record_do import OaFlowRecord
 
@@ -22,3 +22,17 @@ class FlowRecordDao:
         query = select(OaFlowRecord).filter(OaFlowRecord.action_id == action_id,OaFlowRecord.flow_id == flow_id).order_by(desc(OaFlowRecord.check_time))
         records = (await db.execute(query)).scalars().all()
         return records
+
+    @classmethod
+    async def get_count_by_action_id_flow_id_step_id(cls, db: AsyncSession, action_id: int, flow_id: int, step_id: int) -> int:
+        """
+        获取同意步骤审批记录数量
+        :param db:
+        :param action_id:
+        :param flow_id:
+        :param step_id:
+        :return:
+        """
+        query = select(func.count()).select_from(OaFlowRecord).where(OaFlowRecord.action_id == action_id,OaFlowRecord.flow_id == flow_id, OaFlowRecord.step_id == step_id)
+        result = await db.execute(query)
+        return result.scalars()
