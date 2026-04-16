@@ -101,6 +101,20 @@ class ModelConverter:
         components = snake_str.split('_')
         return components[0] + ''.join(x.capitalize() for x in components[1:])
 
+    @classmethod
+    def convert_to_camel_case(cls, data):
+        """递归转换所有字典的键为驼峰命名"""
+        if isinstance(data, dict):
+            new_dict = {}
+            for key, value in data.items():
+                new_key = cls._to_camel(key)
+                new_dict[new_key] = cls.convert_to_camel_case(value)
+            return new_dict
+        elif isinstance(data, list):
+            return [cls.convert_to_camel_case(item) for item in data]
+        else:
+            return data
+
 
 class ResponseConverter:
     """响应数据转换器"""
@@ -222,3 +236,4 @@ class ResponseConverter:
                 result.append(map)
 
         return result
+

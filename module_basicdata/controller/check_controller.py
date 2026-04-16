@@ -48,7 +48,6 @@ async def get_flow(
     query_db: Annotated[AsyncSession, DBSessionDependency()]
     ) -> Response:
     flow_result = await CheckService.get_flow(query_db, check_name)
-    logger.info(flow_result.message)
     return ResponseUtil.success(data=flow_result)
 
 

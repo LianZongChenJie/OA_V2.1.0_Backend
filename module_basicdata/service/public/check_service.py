@@ -17,6 +17,7 @@ from datetime import datetime
 from module_personnel.dao.file_dao import FileDAO
 from module_personnel.dao.flow_record_dao import FlowRecordDao
 from module_personnel.entity.do.flow_record_do import OaFlowRecord
+from utils.camel_converter import ModelConverter
 from utils.timeformat import format_timestamp
 
 
@@ -32,7 +33,7 @@ class CheckService:
             "check_uids": check_uids,
             "action_id": action_id
         }
-        sql = 'update %s set(check_step_sort = :check_step_sort,check_status=:check_status,check_history_uids=:check_history_uids,check_uids=:check_uids) where id = :action_id' % check_table
+        sql = 'update %s set(check_step_sort = :check_step_sort,check_status=:check_status,check_history_uids=:check_history_uids,check_uids=:check_uids) where id = :action_id' % 'oa_'+ check_table
         # 更新表审核信息
         result = await CheckDao.execute_update_sql(db, sql, update_dict)
         return result
@@ -42,7 +43,7 @@ class CheckService:
         """
         获取审核表详情
         """
-        sql = 'select * from %s where id=:id' % check_table
+        sql = 'select * from %s where id=:id' % 'oa_'+ check_table
         result = await CheckDao.execute_row_sql(db, sql, {'id':action_id})
         return result
 
@@ -293,33 +294,30 @@ class CheckService:
         """
         data = {}
         flow = await OaFlowDao.get_flow_detail(db, flow_id)
+        flow_list = []
         if flow:
             if flow.flow_list:
-                flow_list = json.loads(flow.flow_list)
-                for flow_step in flow_list:
+                step_list = json.loads(flow.flow_list)
+                for flow_step in step_list:
                     flow_step['check_position']= ''
-                    if flow_step['check_role'] == 1:
-                        check_uids = await DeptDao.get_dept_manages(db, user_id)
-                    if flow_step['check_role'] == 2:
-                        check_uids = await DeptDao.get_dept_manages(db, user_id, True)
-                    if flow_step['check_role'] == 3:
-                        check_position = PostDao.get_post_by_id(db, flow_step['check_position_id'])
-                        check_user_ids = await UserDao.get_user_by_post_id(db, flow_step['check_position_id'])
-                        check_uids = ''
-                        for uid in check_user_ids:
-                            if check_uids != '':
-                                check_uids = check_uids + ',' + uid
-                            else:
-                                check_uids = uid
-                    check_user_names = UserDao.get_user_name_by_user_id(db, check_uids.split(','))
-
-                else:
-                    return []
-            # 抄送人信息
-            data['copy_uids'] = flow.copy_uids
-            data['copy_user_names'] = UserDao.get_user_name_by_user_id(db, flow.copy_uids.split(','))
-        data['flow_list'] = flow.flow_list
-        return data
+                    if flow_step['check_role'] == '1':
+                        flow_step['check_uids'] = await DeptDao.get_dept_manages(db, user_id)
+                    if flow_step['check_role'] == '2':
+                        flow_step['check_uids'] = await DeptDao.get_dept_manages(db, user_id, True)
+                    if flow_step['check_role'] == '3':
+                        flow_step['check_position'] = (await PostDao.get_post_by_id(db, flow_step['check_position_id'])).post_name
+                        flow_step['check_uids'] = await UserDao.get_user_by_post_id(db, flow_step['check_position_id'])
+                        if flow_step['check_uids']:
+                            flow_step['check_uids'] = ','.join(str(uid) for uid in flow_step['check_uids'])
+                    flow_step['check_user_names'] = await UserDao.get_user_name_by_user_id(db, flow_step['check_uids'].split(','))
+                    flow_list.append(flow_step)
+        else:
+            return []
+        # 抄送人信息
+        data['copy_uids'] = flow.copy_uids
+        data['copy_user_names'] = await UserDao.get_user_name_by_user_id(db, flow.copy_uids.split(','))
+        data['flow_list'] = flow_list
+        return ModelConverter.convert_to_camel_case(data)
 
     @classmethod
     async def submit_check(cls, db: AsyncSession, query_model: OaFlowCheckBaseModel, user_id: int):
@@ -410,7 +408,7 @@ class CheckService:
                     "check_copy_uids": query_model.check_copy_uids,
                     "action_id": query_model.action_id
                 }
-                sql = 'update %s set(check_flow_id = :check_flow_id,check_step_sort=:check_step_sort,check_status=:check_status,check_uids=:check_uids, check_copy_uids=:check_copy_uids) where id = :action_id' % query_model.check_table
+                sql = 'update %s set(check_flow_id = :check_flow_id,check_step_sort=:check_step_sort,check_status=:check_status,check_uids=:check_uids, check_copy_uids=:check_copy_uids) where id = :action_id' % 'oa_'+ query_model.check_table
                 # 更新表审核信息
                 await CheckDao.execute_update_sql(db, sql, update_dict)
 
@@ -441,7 +439,7 @@ class CheckService:
                     "check_copy_uids": query_model.check_copy_uids,
                     "action_id": query_model.action_id
                 }
-                sql = 'update %s set(check_flow_id = :check_flow_id,check_step_sort=:check_step_sort,check_status=:check_status,check_uids=:check_uids, check_copy_uids=:check_copy_uids) where id = :action_id' % query_model.check_table
+                sql = 'update %s set(check_flow_id = :check_flow_id,check_step_sort=:check_step_sort,check_status=:check_status,check_uids=:check_uids, check_copy_uids=:check_copy_uids) where id = :action_id' % 'oa_'+ query_model.check_table
                 await CheckDao.execute_update_sql(db, sql, update_dict)
                 # 发送消息通知
                 # todo
