@@ -1,6 +1,7 @@
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic.alias_generators import to_camel
 
 
 class PurchaseBaseModel(BaseModel):
@@ -8,7 +9,7 @@ class PurchaseBaseModel(BaseModel):
     采购合同基础模型
     """
 
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(alias_generator=to_camel, from_attributes=True, populate_by_name=True)
 
     id: int | None = Field(default=None, description='ID')
     pid: int = Field(default=0, description='父协议 id')
@@ -55,6 +56,41 @@ class PurchaseBaseModel(BaseModel):
     check_history_uids: str = Field(default='', description='历史审批人 ID')
     check_copy_uids: str = Field(default='', description='抄送人 ID')
     check_time: int = Field(default=0, description='审核通过时间')
+
+    @field_validator('types', mode='before')
+    @classmethod
+    def validate_types(cls, value: Any) -> int:
+        """验证并转换 types 字段"""
+        if value is None:
+            return 1
+        if isinstance(value, int):
+            return value
+        if isinstance(value, str):
+            try:
+                return int(value)
+            except (ValueError, TypeError):
+                return 1
+        return 1
+
+    @field_validator('start_time', 'end_time', 'sign_time', mode='before')
+    @classmethod
+    def validate_time_fields(cls, value: Any) -> int:
+        """验证并转换时间字段"""
+        if value is None or value == '' or value == 0:
+            return 0
+        
+        if isinstance(value, int):
+            return value
+        
+        if isinstance(value, str):
+            from datetime import datetime
+            try:
+                dt = datetime.strptime(value, '%Y-%m-%d')
+                return int(dt.timestamp())
+            except (ValueError, TypeError):
+                return 0
+        
+        return 0
 
 
 class AddPurchaseModel(PurchaseBaseModel):
@@ -108,18 +144,16 @@ class PurchaseModel(PurchaseBaseModel):
     采购合同返回模型
     """
 
-    # 扩展字段，用于返回关联数据
-    cate_title: str | None = Field(default=None, description='分类名称')
-    supplier_name: str | None = Field(default=None, description='供应商名称')
-    admin_name: str | None = Field(default=None, description='创建人姓名')
-    prepared_name: str | None = Field(default=None, description='制定人姓名')
-    sign_name: str | None = Field(default=None, description='签订人姓名')
-    keeper_name: str | None = Field(default=None, description='保管人姓名')
-    share_names: list[str] = Field(default_factory=list, description='共享人员姓名列表')
-    check_status_name: str | None = Field(default=None, description='审核状态名称')
+    cateName: str | None = Field(default=None, description='分类名称')
+    adminName: str | None = Field(default=None, description='创建人姓名')
+    preparedName: str | None = Field(default=None, description='制定人姓名')
+    deptName: str | None = Field(default=None, description='部门名称')
+    signName: str | None = Field(default=None, description='签订人姓名')
+    keeperName: str | None = Field(default=None, description='保管人姓名')
 
-    # 时间格式化字段
-    start_time_str: str | None = Field(default=None, description='开始时间字符串')
-    end_time_str: str | None = Field(default=None, description='结束时间字符串')
-    sign_time_str: str | None = Field(default=None, description='签订时间字符串')
+    startTimeStr: str | None = Field(default=None, description='开始时间字符串')
+    endTimeStr: str | None = Field(default=None, description='结束时间字符串')
+    signTimeStr: str | None = Field(default=None, description='签订时间字符串')
+    createTimeStr: str | None = Field(default=None, description='创建时间字符串')
+    updateTimeStr: str | None = Field(default=None, description='更新时间字符串')
 
