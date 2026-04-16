@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from common.vo import PageModel
 from module_contract.entity.do.contract_do import OaContract
 from module_contract.entity.vo.contract_vo import ContractModel, ContractPageQueryModel
+from utils.log_util import logger
 from utils.page_util import PageUtil
 
 
@@ -45,10 +46,27 @@ class ContractDao:
 
         # 查询分类名称
         if contract_info.cate_id and contract_info.cate_id > 0:
-            from module_basicdata.dao.project.project_cate_dao import ProjectCateDao
-            cate_info = await ProjectCateDao.get_info_by_id(db, contract_info.cate_id)
-            if cate_info:
-                result['cate_title'] = cate_info.title
+            from module_admin.dao.contract_cate_dao import ContractCateDao
+            try:
+                cate_info = await ContractCateDao.get_contract_cate_detail_by_id(db, contract_info.cate_id)
+                if cate_info:
+                    result['cate_title'] = cate_info.title
+                else:
+                    logger.warning(f'详情接口 - 未找到合同分类 ID: {contract_info.cate_id}')
+            except Exception as e:
+                logger.error(f'详情接口 - 查询合同分类名称失败: {e}, cate_id: {contract_info.cate_id}')
+
+        # 查询签约主体名称
+        if contract_info.subject_id:
+            from module_basicdata.dao.public.enterprise_dao import EnterpriseDao
+            try:
+                subject_id_int = int(contract_info.subject_id)
+                if subject_id_int > 0:
+                    subject_info = await EnterpriseDao.get_enterprise_info(db, subject_id_int)
+                    if subject_info:
+                        result['subject_title'] = subject_info.title
+            except (ValueError, TypeError):
+                pass
 
         # 查询创建人姓名
         if contract_info.admin_id and contract_info.admin_id > 0:
@@ -143,7 +161,7 @@ class ContractDao:
         :return: 合同列表信息对象
         """
         from utils.timeformat import format_date
-        
+
         # 基础条件：未删除
         conditions = [OaContract.delete_time == 0]
 
@@ -287,6 +305,10 @@ class ContractDao:
         # 从字典中获取数据（驼峰命名）
         row_id = row.get('id')
         cate_id = row.get('cateId')
+        subject_id = row.get('subjectId')
+        prepared_uid = row.get('preparedUid')
+        admin_id = row.get('adminId')
+        did = row.get('did')
         sign_uid = row.get('signUid')
         keeper_uid = row.get('keeperUid')
         start_time = row.get('startTime')
@@ -304,6 +326,10 @@ class ContractDao:
 
         # 初始化扩展字段
         result['cateName'] = None
+        result['subjectName'] = None
+        result['adminName'] = None
+        result['preparedName'] = None
+        result['deptName'] = None
         result['signName'] = None
         result['keeperName'] = None
         result['startTimeStr'] = None
@@ -318,10 +344,50 @@ class ContractDao:
 
         # 查询分类名称
         if cate_id and int(cate_id) > 0:
-            from module_basicdata.dao.project.project_cate_dao import ProjectCateDao
-            cate_info = await ProjectCateDao.get_info_by_id(db, int(cate_id))
-            if cate_info:
-                result['cateName'] = cate_info.title
+            from module_admin.dao.contract_cate_dao import ContractCateDao
+            try:
+                cate_info = await ContractCateDao.get_contract_cate_detail_by_id(db, int(cate_id))
+                if cate_info:
+                    result['cateName'] = cate_info.title
+                else:
+                    logger.warning(f'列表接口 - 未找到合同分类 ID: {cate_id}')
+            except Exception as e:
+                logger.error(f'列表接口 - 查询合同分类名称失败: {e}, cate_id: {cate_id}')
+
+        # 查询签约主体名称
+        if subject_id:
+            from module_basicdata.dao.public.enterprise_dao import EnterpriseDao
+            try:
+                subject_id_int = int(subject_id)
+                if subject_id_int > 0:
+                    subject_info = await EnterpriseDao.get_enterprise_info(db, subject_id_int)
+                    if subject_info:
+                        result['subjectName'] = subject_info.title
+            except (ValueError, TypeError):
+                pass
+
+        # 查询创建人姓名
+        if admin_id and int(admin_id) > 0:
+            from module_admin.dao.user_dao import UserDao
+            admin_result = await UserDao.get_user_by_id(db, int(admin_id))
+            if admin_result and admin_result.get('user_basic_info'):
+                admin_info = admin_result['user_basic_info']
+                result['adminName'] = admin_info.nick_name or admin_info.user_name
+
+        # 查询合同制定人姓名
+        if prepared_uid and int(prepared_uid) > 0:
+            from module_admin.dao.user_dao import UserDao
+            prepared_result = await UserDao.get_user_by_id(db, int(prepared_uid))
+            if prepared_result and prepared_result.get('user_basic_info'):
+                prepared_info = prepared_result['user_basic_info']
+                result['preparedName'] = prepared_info.nick_name or prepared_info.user_name
+
+        # 查询所属部门名称
+        if did and int(did) > 0:
+            from module_admin.dao.dept_dao import DeptDao
+            dept_info = await DeptDao.get_dept_detail_by_id(db, int(did))
+            if dept_info:
+                result['deptName'] = dept_info.dept_name
 
         # 查询签订人姓名
         if sign_uid and int(sign_uid) > 0:
@@ -387,17 +453,17 @@ class ContractDao:
         :return:
         """
         from pydantic import BaseModel
-        
+
         # 如果是 Pydantic 模型，转换为字典
         if isinstance(contract, BaseModel):
             contract_data = contract.model_dump()
         else:
             contract_data = contract
-            
+
         # 只提取 OaContract 模型中存在的字段，排除扩展字段
         valid_fields = {c.name for c in OaContract.__table__.columns}
         filtered_data = {
-            k: v for k, v in contract_data.items() 
+            k: v for k, v in contract_data.items()
             if k in valid_fields
         }
         db_contract = OaContract(**filtered_data)
@@ -456,8 +522,6 @@ class ContractDao:
         if exclude_id is not None:
             query = query.where(OaContract.id != exclude_id)
 
-        result = await db.execute(query)
-        return result.scalar() is not None
 
     @classmethod
     async def get_contract_count(cls, db: AsyncSession, user_id:int):

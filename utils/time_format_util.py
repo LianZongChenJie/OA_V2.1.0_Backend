@@ -5,6 +5,27 @@ from typing import Any
 from dateutil.parser import parse
 
 
+def timestamp_to_datetime(timestamp: int, fmt: str = '%Y-%m-%d %H:%M:%S') -> str:
+    """
+    将时间戳转换为格式化字符串
+    
+    :param timestamp: Unix时间戳（秒或毫秒）
+    :param fmt: 格式化格式，默认为'%Y-%m-%d %H:%M:%S'
+    :return: 格式化后的时间字符串
+    """
+    if not timestamp:
+        return ''
+    
+    # 如果时间戳是毫秒级，转换为秒
+    if timestamp > 1e10:
+        timestamp = timestamp / 1000
+    
+    try:
+        return datetime.fromtimestamp(timestamp).strftime(fmt)
+    except Exception:
+        return ''
+
+
 def object_format_datetime(obj: Any) -> Any:
     """
     :param obj: 输入一个对象

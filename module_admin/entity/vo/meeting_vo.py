@@ -123,6 +123,7 @@ class MeetingOrderModel(BaseModel):
     room_name: str | None = Field(default=None, description='会议室名称')
     admin_name: str | None = Field(default=None, description='预定人姓名')
     dept_name: str | None = Field(default=None, description='部门名称')
+    meeting_time_str: str | None = Field(default=None, description='会议时间字符串')
 
     @field_validator('start_date', 'end_date', mode='before')
     @classmethod

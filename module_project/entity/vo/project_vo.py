@@ -1,8 +1,57 @@
-from typing import Literal
+from typing import Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_serializer
 from pydantic.alias_generators import to_camel
 from pydantic_validation_decorator import NotBlank, Size, Xss
+
+from utils.timeformat import format_timestamp
+
+
+class ProjectStepModel(BaseModel):
+    """
+    项目阶段模型
+    """
+
+    model_config = ConfigDict(alias_generator=to_camel, from_attributes=True, populate_by_name=True)
+
+    id: int | None = Field(default=None, description='阶段ID')
+    project_id: int | None = Field(default=None, description='关联项目ID')
+    title: str | None = Field(default=None, alias='name', description='阶段名称')
+    director_uid: int | None = Field(default=None, description='阶段负责人ID')
+    uids: str | None = Field(default=None, alias='memberUids', description='阶段成员ID')
+    sort: int | None = Field(default=None, description='排序ID')
+    is_current: int | None = Field(default=None, description='是否是当前阶段')
+    start_time: int | None = Field(default=None, description='开始时间')
+    end_time: int | None = Field(default=None, description='结束时间')
+    remark: str | None = Field(default=None, description='阶段说明')
+    create_time: int | None = Field(default=None, description='创建时间')
+    update_time: int | None = Field(default=None, description='修改时间')
+    delete_time: int | None = Field(default=None, description='删除时间')
+
+    director_name: str | None = Field(default=None, description='阶段负责人姓名')
+    member_names: list[str] | None = Field(default=None, description='阶段成员姓名列表')
+    start_time_str: str | None = Field(default=None, description='开始时间字符串')
+    end_time_str: str | None = Field(default=None, description='结束时间字符串')
+
+    @field_serializer('start_time')
+    def serialize_start_time(self, value: Optional[int]) -> Optional[str]:
+        """序列化开始时间"""
+        return format_timestamp(value)
+
+    @field_serializer('end_time')
+    def serialize_end_time(self, value: Optional[int]) -> Optional[str]:
+        """序列化结束时间"""
+        return format_timestamp(value)
+
+    @field_serializer('create_time')
+    def serialize_create_time(self, value: Optional[int]) -> Optional[str]:
+        """序列化创建时间"""
+        return format_timestamp(value)
+
+    @field_serializer('update_time')
+    def serialize_update_time(self, value: Optional[int]) -> Optional[str]:
+        """序列化更新时间"""
+        return format_timestamp(value)
 
 
 class ProjectModel(BaseModel):
@@ -40,6 +89,29 @@ class ProjectModel(BaseModel):
     status_name: str | None = Field(default=None, description='状态名称')
     start_time_str: str | None = Field(default=None, description='开始时间字符串')
     end_time_str: str | None = Field(default=None, description='结束时间字符串')
+
+    # 项目阶段列表
+    stages: list[ProjectStepModel] | None = Field(default=None, description='项目阶段列表')
+
+    @field_serializer('start_time')
+    def serialize_start_time(self, value: Optional[int]) -> Optional[str]:
+        """序列化开始时间"""
+        return format_timestamp(value)
+
+    @field_serializer('end_time')
+    def serialize_end_time(self, value: Optional[int]) -> Optional[str]:
+        """序列化结束时间"""
+        return format_timestamp(value)
+
+    @field_serializer('create_time')
+    def serialize_create_time(self, value: Optional[int]) -> Optional[str]:
+        """序列化创建时间"""
+        return format_timestamp(value)
+
+    @field_serializer('update_time')
+    def serialize_update_time(self, value: Optional[int]) -> Optional[str]:
+        """序列化更新时间"""
+        return format_timestamp(value)
 
     @Xss(field_name='name', message='项目名称不能包含脚本字符')
     @NotBlank(field_name='name', message='项目名称不能为空')

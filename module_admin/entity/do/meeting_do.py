@@ -51,6 +51,7 @@ class OaMeetingOrder(Base):
     check_time = Column(BigInteger, nullable=False, server_default='0', comment='审核通过时间')
     create_time = Column(BigInteger, nullable=False, server_default='0', comment='申请时间')
     update_time = Column(BigInteger, nullable=False, server_default='0', comment='更新信息时间')
+    delete_time = Column(BigInteger, nullable=False, server_default='0', comment='删除时间')
 
 
 class OaMeetingRecords(Base):
