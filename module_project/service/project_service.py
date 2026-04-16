@@ -56,7 +56,83 @@ class ProjectService:
                 query_db, query_object, current_user_id, auth_dids, son_dids, is_admin, is_project_admin, is_page
             )
 
+        # 格式化时间字段并转换为驼峰命名
+        if isinstance(project_list_result, PageModel) and hasattr(project_list_result, 'rows'):
+            formatted_rows = []
+            for row in project_list_result.rows:
+                if isinstance(row, dict):
+                    # 格式化时间字段
+                    formatted_row = cls._format_time_fields(row)
+                    # 转换为驼峰命名
+                    camel_row = CamelCaseUtil.transform_result(formatted_row)
+                    formatted_rows.append(camel_row)
+                else:
+                    formatted_rows.append(row)
+            project_list_result.rows = formatted_rows
+        elif isinstance(project_list_result, list):
+            formatted_list = []
+            for item in project_list_result:
+                if isinstance(item, dict):
+                    # 格式化时间字段
+                    formatted_item = cls._format_time_fields(item)
+                    # 转换为驼峰命名
+                    camel_item = CamelCaseUtil.transform_result(formatted_item)
+                    formatted_list.append(camel_item)
+                else:
+                    formatted_list.append(item)
+            project_list_result = formatted_list
+
         return project_list_result
+
+    @classmethod
+    def _format_time_fields(cls, data: dict) -> dict:
+        """
+        格式化字典中的时间字段
+
+        :param data: 原始字典
+        :return: 格式化后的字典
+        """
+        formatted = data.copy()
+        
+        # 需要格式化的时间字段列表
+        time_fields = ['start_time', 'end_time', 'create_time', 'update_time', 'delete_time']
+        
+        for field in time_fields:
+            if field in formatted:
+                value = formatted[field]
+                # 如果值为 None、0 或空，设置为空字符串
+                if value is None or value == 0:
+                    formatted[field] = ''
+                else:
+                    # 格式化时间戳为日期时间字符串
+                    formatted[field] = timestamp_to_datetime(value, '%Y-%m-%d %H:%M:%S')
+        
+        return formatted
+
+    @classmethod
+    def _clean_none_values(cls, data: dict) -> dict:
+        """
+        清理字典中的 None 值，替换为默认值
+
+        :param data: 原始字典
+        :return: 清理后的字典
+        """
+        cleaned = {}
+        for key, value in data.items():
+            if value is None:
+                # 根据字段类型设置默认值
+                if key in ['start_time', 'end_time', 'create_time', 'update_time', 'delete_time']:
+                    cleaned[key] = 0  # 时间字段默认为 0，序列化器会转换为空字符串
+                elif key in ['tasks_total', 'tasks_finish', 'tasks_unfinish', 'delay']:
+                    cleaned[key] = 0  # 数字字段默认为 0
+                elif key in ['status_name', 'admin_name', 'director_name', 'department', 'dept_name', 
+                            'cate', 'cate_title', 'range_time', 'step_director', 'step', 'tasks_pensent']:
+                    cleaned[key] = ''  # 字符串字段默认为空字符串
+                else:
+                    cleaned[key] = None  # 其他字段保持 None
+            else:
+                cleaned[key] = value
+        return cleaned
 
     @classmethod
     async def check_project_name_unique_services(
