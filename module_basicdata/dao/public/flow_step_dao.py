@@ -1,6 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, desc
+from sqlalchemy import select, desc, update
 from module_basicdata.entity.do.public.flow_step_do import OaFlowStep
+from datetime import datetime
 
 
 class OaFlowStepDao:
@@ -11,6 +12,18 @@ class OaFlowStepDao:
         await db.commit()
         await db.refresh(db_module)
         return db_module
+
+    @classmethod
+    async def add_flow_step(cls, db : AsyncSession, step:list):
+        try:
+            for info in step:
+                db_module = OaFlowStep(**info)
+                db.add(db_module)
+            await db.commit()
+            return True
+        except Exception as e:
+            print("error: ",e)
+            return False
 
     @classmethod
     async def get_info_by_flow_id(cls, db: AsyncSession, id: int):
@@ -38,5 +51,21 @@ class OaFlowStepDao:
         query = select(OaFlowStep).where(OaFlowStep.action_id==action_id, OaFlowStep.flow_id == flow_id, OaFlowStep.sort == sort)
         result = await db.execute(query)
         return result.scalars().first()
+
+    @classmethod
+    async def delete_flow_step(cls, db : AsyncSession, flow_id:int, action_id : int):
+        """
+        删除审核步骤
+        :param db:
+        :param flow_id:
+        :param action_id:
+        :return:
+        """
+        query = update(OaFlowStep).values(OaFlowStep.delete_time == datetime.now().timestamp()).where(OaFlowStep.flow_id == flow_id, OaFlowStep.action_id == action_id)
+        result = await db.execute(query)
+        for item in result.scalars():
+            item.delete_time = 1
+            db.add(item)
+        await db.commit()
 
 

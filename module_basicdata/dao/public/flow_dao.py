@@ -8,7 +8,7 @@ from module_basicdata.entity.do.public.flow_do import OaFlow
 from module_basicdata.entity.do.public.flow_module_do import FlowModule
 from module_basicdata.entity.vo.public.flow_vo import OaFlowPageQueryModel, OaFlowBaseModel
 from typing import Any
-from sqlalchemy import select, update, desc, asc
+from sqlalchemy import select, update, desc, asc, or_, func
 
 from utils.page_util import PageUtil
 
@@ -96,3 +96,16 @@ class OaFlowDao:
         query = select(OaFlow).where(OaFlow.cate_id == cate_id, OaFlow.status == '1', OaFlow.delete_time == 0)
         result = await db.execute(query)
         return result.scalars().first()
+
+    @classmethod
+    async def get_flow_by_cate_id_dept_id(cls, db: AsyncSession, cate_id: int, dept_id: int) -> list[OaFlow] | None:
+        """
+        根据cate_id和dept_id获取flow信息
+        :param db:
+        :param cate_id:
+        :param dept_id:
+        :return:
+        """
+        query = select(OaFlow).where(OaFlow.cate_id == cate_id, OaFlow.status == '1', OaFlow.delete_time == 0, or_(OaFlow.department_ids == '', func.find_in_set(dept_id, OaFlow.department_ids)))
+        result = await db.execute(query)
+        return result.scalars().all()
