@@ -76,7 +76,6 @@ async def get_flow_check_user(
     dependencies=[UserInterfaceAuthDependency('basicdata:flow:submitCheck')],
 )
 async def submit(
-    id: Annotated[int, Path()],
     query_db: Annotated[AsyncSession, DBSessionDependency()],
     query_model: Annotated[OaFlowCheckBaseModel, Body()],
     current_user: Annotated[CurrentUserModel, CurrentUserDependency()]

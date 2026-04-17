@@ -10,6 +10,7 @@ from module_basicdata.dao.public.flow_cate_dao import FlowCateDao
 from module_basicdata.dao.public.flow_dao import OaFlowDao
 from module_basicdata.dao.public.flow_step_dao import OaFlowStepDao
 from module_basicdata.entity.do.public.flow_step_do import OaFlowStep
+from module_basicdata.entity.vo.public.flow_step_vo import OaFlowStepBaseModel
 from module_basicdata.entity.vo.public.flow_vo import OaFlowCheckBaseModel
 from common.vo import CrudResponseModel
 from datetime import datetime
@@ -17,6 +18,7 @@ from datetime import datetime
 from module_personnel.dao.file_dao import FileDAO
 from module_personnel.dao.flow_record_dao import FlowRecordDao
 from module_personnel.entity.do.flow_record_do import OaFlowRecord
+from module_personnel.entity.vo.flow_record_vo import OaFlowRecordBaseModel
 from utils.camel_converter import ModelConverter
 from utils.timeformat import format_timestamp
 
@@ -330,69 +332,67 @@ class CheckService:
         """
         flow_cate = await FlowCateDao.get_flow_cate_info_by_name(db, query_model.check_name)
         flow_data = await OaFlowDao.get_flow_info_by_cate_id(db, flow_cate.id)
+        flow_cate = flow_cate.to_dict()
+        flow_data = flow_data.to_dict()
 
         # 删除原来地审核流程和记录
-        await OaFlowStepDao.delete_flow_step(db, flow_data.id, query_model.action_id)
-        await FlowRecordDao.delete_flow_info(db, flow_data.id, query_model.action_id)
-
+        await OaFlowStepDao.delete_flow_step(db, flow_data['id'], query_model.action_id)
+        await FlowRecordDao.delete_flow_info(db, flow_data['id'], query_model.action_id)
         # 新增审核记录
-        record = OaFlowRecord(
-            action_id=query_model.action_id,
-            check_table=flow_cate.check_table,
-            step_id=0,
-            check_uid=user_id,
-            flow_id=flow_data.id,
-            check_time=datetime.now().timestamp(),
-            check_status=0,
-            content=query_model.content
-        )
+        record = OaFlowRecordBaseModel()
+        record.action_id = query_model.action_id,
+        record.check_table = flow_cate['check_table'],
+        record.step_id = 0,
+        record.check_uid = user_id,
+        record.flow_id = flow_data['id'],
+        record.check_time = datetime.now().timestamp(),
+        record.check_status = 0,
+        record.check_files = query_model.check_files,
+        record.content = query_model.content
         await FlowRecordDao.add(db, record)
 
         # 修改各个表中的审核信息，添加审核步骤信息
-        # 指定审批
+        # 固定审批
         if query_model.check_uids is None:
             step = []
             sort = 0
             flow_name = ''
             check_position_id = 0
             check_uids = ''
-            flow_cate = await FlowCateDao.get_flow_cate_info(db, query_model.flow_id)
-            flow_steps = json.loads(flow_cate.flow_list)
+            flow_steps = json.loads(flow_data['flow_list'])
             for flow_step in flow_steps:
-                if flow_step['check_role'] == 1:
+                if flow_step['check_role'] == '1':
                     check_uids = await DeptDao.get_dept_manages(db, user_id)
                     flow_name = '当前部门负责人'
                     check_position_id = 0
-                if flow_step['check_role'] == 2:
+                if flow_step['check_role'] == '2':
                     check_uids = await DeptDao.get_dept_manages(db, user_id, True)
                     flow_name = '上级部门负责人'
                     check_position_id = 0
-                if flow_step['check_role'] == 3:
+                if flow_step['check_role'] == '3':
                     check_position = await PostDao.get_post_by_id(db, flow_step['check_position_id'])
                     check_uids = await UserDao.get_user_by_post_id(db, flow_step['check_position_id'])
                     flow_name = check_position.post_name
                     check_position_id = check_position.post_id
-                if flow_step['check_role'] == 4:
+                if flow_step['check_role'] == '4':
                     flow_name = '指定成员'
                     check_position_id = 0
                     check_uids = query_model.check_uids
-                if flow_step['check_role'] == 5:
+                if flow_step['check_role'] == '5':
                     flow_name = '指定成员'
                     check_position_id = 0
                     check_uids = query_model.check_uids
                     check_type = 1
-                step.append(
-                    {
-                        'action_id': query_model.action_id,
-                        'flow_id': flow_data.id,
-                        'flow_name': flow_name,
-                        'check_position_id': check_position_id,
-                        'check_role':flow_step.check_role,
-                        'check_uids': check_uids,
-                        'create_time': datetime.now().timestamp(),
-                        'sort': sort
-                    }
-                )
+                st = OaFlowStepBaseModel()
+                st.action_id = query_model.action_id
+                st.flow_id = flow_data['id']
+                st.flow_name = flow_name
+                st.check_position_id = check_position_id
+                st.check_role = int(flow_step['check_role'])
+                st.check_uids = ','.join(str(uid) for uid in check_uids)
+                st.create_time = int(datetime.now().timestamp())
+                st.sort = sort
+                step.append(st)
                 sort += 1
             if step is None:
                 return CrudResponseModel(is_success=False, message='审批流程设置有问题，无法提交审批申请，请联系HR或者管理员重新设置审批流程')
@@ -401,14 +401,14 @@ class CheckService:
             if result:
                 await FlowRecordDao.add(db, record)
                 update_dict = {
-                    'check_flow_id': query_model.check_flow_id,
+                    'check_flow_id': query_model.flow_id,
                     "check_step_sort": 0,
                     "check_status": 1,
-                    "check_uids": step[0]['check_uids'],
-                    "check_copy_uids": query_model.check_copy_uids,
+                    "check_uids": ','.join(str(uid) for uid in step[0].check_uids),
+                    "check_copy_uids": query_model.check_copy_uids if query_model.check_copy_uids else '',
                     "action_id": query_model.action_id
                 }
-                sql = 'update %s set(check_flow_id = :check_flow_id,check_step_sort=:check_step_sort,check_status=:check_status,check_uids=:check_uids, check_copy_uids=:check_copy_uids) where id = :action_id' % 'oa_'+ query_model.check_table
+                sql = 'update %s set check_flow_id = :check_flow_id,check_step_sort=:check_step_sort,check_status=:check_status,check_uids=:check_uids, check_copy_uids=:check_copy_uids where id = :action_id' % ('oa_'+ query_model.check_name)
                 # 更新表审核信息
                 await CheckDao.execute_update_sql(db, sql, update_dict)
 
@@ -421,7 +421,7 @@ class CheckService:
         if query_model.check_uids is not None:
             step = {
                 'action_id': query_model.action_id,
-                'flow_id': flow_data.id,
+                'flow_id': flow_data['id'],
                 'flow_name': '自由审批',
                 'check_uids': query_model.check_uids,
                 'create_time': datetime.now().timestamp()
@@ -435,11 +435,11 @@ class CheckService:
                     'check_flow_id': query_model.check_flow_id,
                     "check_step_sort": 0,
                     "check_status": 1,
-                    "check_uids": step[0]['check_uids'],
+                    "check_uids": ','.join(str(uid) for uid in step['check_uids']),
                     "check_copy_uids": query_model.check_copy_uids,
                     "action_id": query_model.action_id
                 }
-                sql = 'update %s set(check_flow_id = :check_flow_id,check_step_sort=:check_step_sort,check_status=:check_status,check_uids=:check_uids, check_copy_uids=:check_copy_uids) where id = :action_id' % 'oa_'+ query_model.check_table
+                sql = 'update %s set check_flow_id = :check_flow_id,check_step_sort=:check_step_sort,check_status=:check_status,check_uids=:check_uids, check_copy_uids=:check_copy_uids where id = :action_id' % ('oa_'+ query_model.check_name)
                 await CheckDao.execute_update_sql(db, sql, update_dict)
                 # 发送消息通知
                 # todo

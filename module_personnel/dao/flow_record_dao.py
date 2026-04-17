@@ -5,6 +5,7 @@ from module_admin.entity.do.user_do import SysUser
 from module_personnel.entity.vo.flow_record_vo import OaFlowRecordBaseModel
 from module_personnel.entity.do.flow_record_do import OaFlowRecord
 from typing import Any
+from datetime import datetime
 
 
 
@@ -44,7 +45,7 @@ class FlowRecordDao:
         """
         删除流程记录
         """
-        query = update(OaFlowRecord).where(OaFlowRecord.flow_id == flow_id, OaFlowRecord.action_id == action_id, OaFlowRecord.step_id == action_id)
+        query = update(OaFlowRecord).values(delete_time = int(datetime.now().timestamp())).where(OaFlowRecord.flow_id == flow_id, OaFlowRecord.action_id == action_id)
         await db.execute(query)
         await db.commit()
 

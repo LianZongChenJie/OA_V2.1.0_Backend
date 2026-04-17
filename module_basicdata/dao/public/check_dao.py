@@ -44,4 +44,5 @@ class CheckDao:
             await db.commit()
             return True
         except Exception as e:
+            raise e
             return False

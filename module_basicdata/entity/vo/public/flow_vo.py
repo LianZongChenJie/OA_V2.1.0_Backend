@@ -67,6 +67,8 @@ class OaFlowCheckBaseModel(BaseModel):
     flow_id: int | None = Field(None, description='审批流程ID')
     check_files: str | None = Field(None, description='审批文件ID')
     check_name: str | None = Field(None, description='审批人名称')
+    check_uids : str | None = Field(None, description='审批人ID')
+    check_copy_uids: str | None = Field(None, description='抄送人ID')
 
 class OaFlowListBaseModel(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel, from_attributes=True)
