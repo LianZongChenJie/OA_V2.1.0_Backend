@@ -39,11 +39,91 @@ class CustomerContactService:
         :param is_page: 是否开启分页
         :return: 联系人列表信息对象
         """
+        from utils.time_format_util import timestamp_to_datetime
+        
         contact_list_result = await CustomerContactDao.get_customer_contact_list(
             query_db, query_object, user_id, where_conditions, where_or_conditions, is_page
         )
 
-        return CamelCaseUtil.transform_result(contact_list_result)
+        # 处理列表数据，添加时间格式化和客户名称
+        if isinstance(contact_list_result, PageModel) and hasattr(contact_list_result, 'rows'):
+            enhanced_rows = []
+            for item in contact_list_result.rows:
+                if isinstance(item, dict):
+                    contact_dict = item.copy()
+                else:
+                    contact_dict = CamelCaseUtil.transform_result(item)
+                
+                # 格式化时间字段
+                create_time = contact_dict.get('createTime') or contact_dict.get('create_time')
+                if create_time and int(create_time) > 0:
+                    contact_dict['createTimeStr'] = timestamp_to_datetime(int(create_time), '%Y-%m-%d %H:%M:%S')
+                
+                update_time = contact_dict.get('updateTime') or contact_dict.get('update_time')
+                if update_time and int(update_time) > 0:
+                    contact_dict['updateTimeStr'] = timestamp_to_datetime(int(update_time), '%Y-%m-%d %H:%M:%S')
+                
+                # 查询客户名称（如果 DAO 层没有返回）
+                customer_name = contact_dict.get('customerName') or contact_dict.get('customer_name')
+                if not customer_name:
+                    cid = contact_dict.get('cid')
+                    if cid and int(cid) > 0:
+                        try:
+                            from module_admin.entity.do.customer_do import OaCustomer
+                            from sqlalchemy import select
+                            customer_query = select(OaCustomer).where(OaCustomer.id == cid)
+                            customer_info = (await query_db.execute(customer_query)).scalars().first()
+                            if customer_info:
+                                contact_dict['customerName'] = customer_info.name
+                        except Exception as e:
+                            from utils.log_util import logger
+                            logger.error(f'查询客户名称失败: {e}')
+                elif 'customer_name' in contact_dict:
+                    # 如果存在 customer_name，转换为 customerName
+                    contact_dict['customerName'] = contact_dict.pop('customer_name')
+                
+                enhanced_rows.append(contact_dict)
+            contact_list_result.rows = enhanced_rows
+        elif isinstance(contact_list_result, list):
+            enhanced_list = []
+            for item in contact_list_result:
+                if isinstance(item, dict):
+                    contact_dict = item.copy()
+                else:
+                    contact_dict = CamelCaseUtil.transform_result(item)
+                
+                # 格式化时间字段
+                create_time = contact_dict.get('createTime') or contact_dict.get('create_time')
+                if create_time and int(create_time) > 0:
+                    contact_dict['createTimeStr'] = timestamp_to_datetime(int(create_time), '%Y-%m-%d %H:%M:%S')
+                
+                update_time = contact_dict.get('updateTime') or contact_dict.get('update_time')
+                if update_time and int(update_time) > 0:
+                    contact_dict['updateTimeStr'] = timestamp_to_datetime(int(update_time), '%Y-%m-%d %H:%M:%S')
+                
+                # 查询客户名称（如果 DAO 层没有返回）
+                customer_name = contact_dict.get('customerName') or contact_dict.get('customer_name')
+                if not customer_name:
+                    cid = contact_dict.get('cid')
+                    if cid and int(cid) > 0:
+                        try:
+                            from module_admin.entity.do.customer_do import OaCustomer
+                            from sqlalchemy import select
+                            customer_query = select(OaCustomer).where(OaCustomer.id == cid)
+                            customer_info = (await query_db.execute(customer_query)).scalars().first()
+                            if customer_info:
+                                contact_dict['customerName'] = customer_info.name
+                        except Exception as e:
+                            from utils.log_util import logger
+                            logger.error(f'查询客户名称失败: {e}')
+                elif 'customer_name' in contact_dict:
+                    # 如果存在 customer_name，转换为 customerName
+                    contact_dict['customerName'] = contact_dict.pop('customer_name')
+                
+                enhanced_list.append(contact_dict)
+            contact_list_result = enhanced_list
+
+        return contact_list_result
 
     @classmethod
     async def check_contact_name_unique_services(

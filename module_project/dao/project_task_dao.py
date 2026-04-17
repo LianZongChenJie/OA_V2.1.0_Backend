@@ -10,6 +10,7 @@ from module_project.entity.do.project_task_do import OaProjectTask
 from module_project.entity.vo.project_task_vo import ProjectTaskModel, ProjectTaskPageQueryModel
 from utils.page_util import PageUtil
 from utils.timeformat import format_date
+from utils.log_util import logger
 
 
 class ProjectTaskDao:
@@ -40,15 +41,23 @@ class ProjectTaskDao:
             'dept_name': None,
             'priority_name': None,
             'status_name': None,
+            'work_name': None,
             'end_time_str': None,
+            'create_time_str': None,
+            'update_time_str': None,
+            'over_time_str': None,
         }
 
         # 查询项目名称
         if task_info.project_id and task_info.project_id > 0:
-            from module_project.dao.project_dao import ProjectDao
-            project_info = await ProjectDao.get_project_detail_by_id(db, task_info.project_id)
-            if project_info:
-                result['project_name'] = project_info.get('name')
+            try:
+                from module_project.entity.do.project_do import OaProject
+                project_query = select(OaProject).where(OaProject.id == int(task_info.project_id))
+                project_info = (await db.execute(project_query)).scalars().first()
+                if project_info:
+                    result['project_name'] = project_info.name
+            except Exception as e:
+                logger.error(f'查询项目名称失败: {e}')
 
         # 查询创建人姓名
         if task_info.admin_id and task_info.admin_id > 0:
@@ -94,9 +103,31 @@ class ProjectTaskDao:
         if task_info.status is not None:
             result['status_name'] = status_map.get(task_info.status, '未知')
 
+        # 查询工作类型名称
+        if task_info.work_id and int(task_info.work_id) > 0:
+            try:
+                from module_basicdata.entity.do.project.work_cate_do import OaWorkCate
+                work_query = select(OaWorkCate).where(OaWorkCate.id == int(task_info.work_id))
+                work_info = (await db.execute(work_query)).scalars().first()
+                if work_info:
+                    result['work_name'] = work_info.title
+            except Exception as e:
+                logger.error(f'查询工作类型失败: {e}')
+
         # 格式化时间
-        if task_info.end_time:
-            result['end_time_str'] = format_date(task_info.end_time, '%Y-%m-%d')
+        from utils.time_format_util import timestamp_to_datetime
+        
+        if task_info.end_time and int(task_info.end_time) > 0:
+            result['end_time_str'] = timestamp_to_datetime(int(task_info.end_time), '%Y-%m-%d')
+        
+        if task_info.create_time and int(task_info.create_time) > 0:
+            result['create_time_str'] = timestamp_to_datetime(int(task_info.create_time), '%Y-%m-%d %H:%M:%S')
+        
+        if task_info.update_time and int(task_info.update_time) > 0:
+            result['update_time_str'] = timestamp_to_datetime(int(task_info.update_time), '%Y-%m-%d %H:%M:%S')
+        
+        if task_info.over_time and int(task_info.over_time) > 0:
+            result['over_time_str'] = timestamp_to_datetime(int(task_info.over_time), '%Y-%m-%d %H:%M:%S')
 
         return result
 
@@ -205,8 +236,9 @@ class ProjectTaskDao:
             )
 
         # 负责人筛选
-        if query_object.director_uid_filter:
-            conditions.append(OaProjectTask.director_uid.in_(query_object.director_uid_filter))
+        director_uid_list = query_object.get_director_uid_list()
+        if director_uid_list:
+            conditions.append(OaProjectTask.director_uid.in_(director_uid_list))
 
         # 根据 tab 参数设置查询条件
         current_time = int(datetime.now().timestamp())

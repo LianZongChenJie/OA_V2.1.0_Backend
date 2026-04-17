@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, Field, ConfigDict, field_validator
 from pydantic.alias_generators import to_camel
 from pydantic_validation_decorator import NotBlank, Size, Xss
 
@@ -41,6 +41,7 @@ class ProjectTaskModel(BaseModel):
     dept_name: str | None = Field(default=None, description='部门名称')
     priority_name: str | None = Field(default=None, description='优先级名称')
     status_name: str | None = Field(default=None, description='状态名称')
+    work_name: str | None = Field(default=None, description='工作类型名称')
     end_time_str: str | None = Field(default=None, description='结束时间字符串')
 
     @Xss(field_name='title', message='任务主题不能包含脚本字符')
@@ -64,15 +65,50 @@ class ProjectTaskPageQueryModel(ProjectTaskModel):
     项目任务分页查询模型
     """
 
+    model_config = ConfigDict(alias_generator=to_camel)
+
     page_num: int = Field(default=1, description='当前页码')
     page_size: int = Field(default=10, description='每页记录数')
     keywords: str | None = Field(default=None, description='搜索关键词')
     tab: int | None = Field(default=0, description='标签页：0 全部，1 进行中，2 即将逾期，3 已逾期')
-    status_filter: int | None = Field(default=None, description='状态筛选')
-    priority_filter: int | None = Field(default=None, description='优先级筛选')
-    work_id_filter: int | None = Field(default=None, description='工作类型筛选')
-    project_id_filter: int | None = Field(default=None, description='项目筛选')
-    director_uid_filter: list[int] | None = Field(default=None, description='负责人筛选')
+    
+    # 支持两种命名方式：status_filter 和 statusName
+    status_filter: int | None = Field(default=None, alias='statusName', description='状态筛选')
+    priority_filter: int | None = Field(default=None, alias='priorityName', description='优先级筛选')
+    work_id_filter: int | None = Field(default=None, alias='workId', description='工作类型筛选')
+    project_id_filter: int | None = Field(default=None, alias='projectId', description='项目筛选')
+    director_uid_filter: str | None = Field(default=None, alias='directorUid', description='负责人筛选（支持多个，逗号分隔）')
+
+    @field_validator('director_uid_filter', mode='before')
+    @classmethod
+    def validate_director_uid_filter(cls, v):
+        """处理 directorUid 参数，支持单个值、数组或逗号分隔的字符串"""
+        if v is None:
+            return None
+        
+        # 如果已经是列表，转换为逗号分隔的字符串
+        if isinstance(v, list):
+            values = [str(int(x)) for x in v if x is not None and str(x).strip()]
+            return ','.join(values) if values else None
+        
+        # 如果是单个值，直接返回字符串
+        if isinstance(v, (int, str)):
+            v_str = str(v).strip()
+            return v_str if v_str else None
+        
+        return None
+    
+    def get_director_uid_list(self) -> list[int] | None:
+        """获取负责人 ID 列表"""
+        if not self.director_uid_filter:
+            return None
+        
+        try:
+            # 支持逗号分隔
+            uid_list = [int(uid.strip()) for uid in self.director_uid_filter.split(',') if uid.strip()]
+            return uid_list if uid_list else None
+        except (ValueError, AttributeError):
+            return None
 
 
 class AddProjectTaskModel(ProjectTaskModel):

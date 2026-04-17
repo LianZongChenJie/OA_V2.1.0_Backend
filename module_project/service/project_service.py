@@ -170,10 +170,26 @@ class ProjectService:
 
             current_time = int(datetime.now().timestamp())
 
-            # 只提取数据库表存在的字段
+            start_time = page_object.start_time if page_object.start_time is not None else 0
+            end_time = page_object.end_time if page_object.end_time is not None else 0
+            
+            if isinstance(start_time, str):
+                from datetime import datetime as dt
+                try:
+                    start_time = int(dt.strptime(start_time, '%Y-%m-%d %H:%M:%S').timestamp())
+                except (ValueError, TypeError):
+                    start_time = 0
+            
+            if isinstance(end_time, str):
+                from datetime import datetime as dt
+                try:
+                    end_time = int(dt.strptime(end_time, '%Y-%m-%d %H:%M:%S').timestamp())
+                except (ValueError, TypeError):
+                    end_time = 0
+
             project_data = {
+                'name': page_object.name if page_object.name is not None else '',
                 'code': page_object.code if page_object.code is not None else '',
-                'name': page_object.name,
                 'amount': page_object.amount if page_object.amount is not None else 0.00,
                 'cate_id': page_object.cate_id if page_object.cate_id is not None else 0,
                 'customer_id': page_object.customer_id if page_object.customer_id is not None else 0,
@@ -181,9 +197,9 @@ class ProjectService:
                 'admin_id': page_object.admin_id,
                 'director_uid': page_object.director_uid if page_object.director_uid is not None else 0,
                 'did': page_object.did if page_object.did is not None else 0,
-                'start_time': page_object.start_time if page_object.start_time is not None else 0,
-                'end_time': page_object.end_time if page_object.end_time is not None else 0,
-                'status': page_object.status if page_object.status is not None else 2,  # 默认为进行中
+                'start_time': start_time,
+                'end_time': end_time,
+                'status': page_object.status if page_object.status is not None else 2,
                 'content': page_object.content if page_object.content is not None else '',
                 'create_time': current_time,
                 'update_time': current_time,
@@ -229,6 +245,20 @@ class ProjectService:
 
                 if 'contract_id' in edit_project and edit_project['contract_id'] is None:
                     edit_project['contract_id'] = 0
+
+                if 'start_time' in edit_project and isinstance(edit_project['start_time'], str):
+                    from datetime import datetime as dt
+                    try:
+                        edit_project['start_time'] = int(dt.strptime(edit_project['start_time'], '%Y-%m-%d %H:%M:%S').timestamp())
+                    except (ValueError, TypeError):
+                        edit_project['start_time'] = 0
+                
+                if 'end_time' in edit_project and isinstance(edit_project['end_time'], str):
+                    from datetime import datetime as dt
+                    try:
+                        edit_project['end_time'] = int(dt.strptime(edit_project['end_time'], '%Y-%m-%d %H:%M:%S').timestamp())
+                    except (ValueError, TypeError):
+                        edit_project['end_time'] = 0
 
                 project_info = await cls.project_detail_services(query_db, page_object.id)
 

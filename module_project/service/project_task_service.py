@@ -162,11 +162,15 @@ class ProjectTaskService:
                         task_dict['dept_name'] = detail_info.get('dept_name')
                         task_dict['priority_name'] = detail_info.get('priority_name')
                         task_dict['status_name'] = detail_info.get('status_name')
+                        task_dict['work_name'] = detail_info.get('work_name')
                         task_dict['end_time_str'] = detail_info.get('end_time_str')
+                        task_dict['create_time_str'] = detail_info.get('create_time_str')
+                        task_dict['update_time_str'] = detail_info.get('update_time_str')
+                        task_dict['over_time_str'] = detail_info.get('over_time_str')
 
                 task_list.append(task_dict)
 
-            task_list_result.rows = task_list
+            task_list_result.rows = CamelCaseUtil.transform_result(task_list)
         else:
             task_list = []
             for item in task_list_result:
@@ -195,11 +199,15 @@ class ProjectTaskService:
                         task_dict['dept_name'] = detail_info.get('dept_name')
                         task_dict['priority_name'] = detail_info.get('priority_name')
                         task_dict['status_name'] = detail_info.get('status_name')
+                        task_dict['work_name'] = detail_info.get('work_name')
                         task_dict['end_time_str'] = detail_info.get('end_time_str')
+                        task_dict['create_time_str'] = detail_info.get('create_time_str')
+                        task_dict['update_time_str'] = detail_info.get('update_time_str')
+                        task_dict['over_time_str'] = detail_info.get('over_time_str')
 
                 task_list.append(task_dict)
 
-            task_list_result = task_list
+            task_list_result = CamelCaseUtil.transform_result(task_list)
 
         return task_list_result
 

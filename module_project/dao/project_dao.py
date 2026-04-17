@@ -116,6 +116,10 @@ class ProjectDao:
         if query_object.cate_id_filter is not None:
             conditions.append(OaProject.cate_id == query_object.cate_id_filter)
 
+        # 客户筛选（支持多选）
+        if query_object.customer_id_filter:
+            conditions.append(OaProject.customer_id.in_(query_object.customer_id_filter))
+
         # 关键词搜索
         if query_object.keywords:
             conditions.append(

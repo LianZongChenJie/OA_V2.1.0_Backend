@@ -165,6 +165,7 @@ class ProjectPageQueryModel(ProjectModel):
     tab: int | None = Field(default=0, description='标签页：0 全部，1 进行中，2 即将到期，3 已逾期')
     status_filter: int | None = Field(default=None, description='状态筛选')
     cate_id_filter: int | None = Field(default=None, description='分类筛选')
+    customer_id_filter: list[int] | None = Field(default=None, alias='customerId', description='客户ID筛选（支持多选）')
     director_uid_filter: list[int] | None = Field(default=None, description='负责人筛选')
 
 
