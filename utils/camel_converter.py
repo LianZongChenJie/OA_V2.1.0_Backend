@@ -66,9 +66,9 @@ class ModelConverter:
     @staticmethod
     def time_format(item_dict: Dict) -> Dict:
         """时间格式化"""
-        for key, value in item_dict.items():
-            if key.endswith('Time') and value is not None and isinstance(value, int):
-                item_dict[key] = format_timestamp(value)
+        for key, value in item_dict.items():  # 遍历字典所有键值对
+            if key.endswith('Time') and value is not None and isinstance(value, int):  # 判断键以Time结尾且值为整数类型
+                item_dict[key] = format_timestamp(value)  # 将时间戳转换为格式化字符串
         return item_dict
 
     @staticmethod
@@ -101,17 +101,47 @@ class ModelConverter:
         components = snake_str.split('_')
         return components[0] + ''.join(x.capitalize() for x in components[1:])
 
+    @staticmethod
+    def _format_time(value):
+        """格式化时间戳"""
+        if value is None or value == 0:
+            return None
+        if not isinstance(value, (int, float)):
+            return value
+        if value < 1000000000:  # 小于2001年，不是合理的时间戳
+            return value
+        try:
+            from datetime import datetime
+            return datetime.fromtimestamp(value).strftime("%Y-%m-%d %H:%M:%S")
+        except:
+            return value
+
     @classmethod
-    def convert_to_camel_case(cls, data):
-        """递归转换所有字典的键为驼峰命名"""
+    def convert_to_camel_case(cls, data, exclude=None):
+        """递归转换所有字典的键为驼峰命名，并将时间格式化"""
         if isinstance(data, dict):
             new_dict = {}
             for key, value in data.items():
+                # 转换键名
                 new_key = cls._to_camel(key)
-                new_dict[new_key] = cls.convert_to_camel_case(value)
+
+                # 递归处理值
+                converted_value = cls.convert_to_camel_case(value, exclude)
+
+                # 格式化时间字段（字段名包含 time 或 date）
+                if 'time' in key or 'date' in key:
+                    if isinstance(converted_value, (int, float)):
+                        converted_value = cls._format_time(converted_value)
+                    elif isinstance(converted_value, list):
+                        converted_value = [
+                            cls._format_time(v) if isinstance(v, (int, float)) else v
+                            for v in converted_value
+                        ]
+
+                new_dict[new_key] = converted_value
             return new_dict
         elif isinstance(data, list):
-            return [cls.convert_to_camel_case(item) for item in data]
+            return [cls.convert_to_camel_case(item, exclude) for item in data]
         else:
             return data
 

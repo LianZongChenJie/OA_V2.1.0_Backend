@@ -618,4 +618,4 @@ class UserDao:
         """
         query = select(SysUser.user_name, SysUser.user_id, SysUser.avatar).where(SysUser.user_id.in_(user_ids))
         result = await db.execute(query)
-        return result.scalars().all()
+        return result.mappings().all()

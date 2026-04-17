@@ -47,6 +47,13 @@ class OaFlowStepDao:
         return result.scalars().first()
 
     @classmethod
+    async def get_step_by_action_id_flow_id_list(cls, db: AsyncSession, action_id: int, flow_id: int):
+        query = select(OaFlowStep).where(OaFlowStep.flow_id == flow_id, OaFlowStep.action_id == action_id, OaFlowStep.delete_time == 0).order_by(
+            desc(OaFlowStep.create_time))
+        result = await db.execute(query)
+        return result.scalars().all()
+
+    @classmethod
     async def get_step_by_action_id_flow_id_sort(cls, db: AsyncSession, action_id:int, flow_id:int, sort: int):
         query = select(OaFlowStep).where(OaFlowStep.action_id==action_id, OaFlowStep.flow_id == flow_id, OaFlowStep.sort == sort)
         result = await db.execute(query)

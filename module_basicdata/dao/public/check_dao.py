@@ -1,4 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import text
 
 
 class CheckDao:
@@ -11,6 +12,7 @@ class CheckDao:
         :param params:
         :return: 返回单调数据
         """
+        sql = text(sql)
         result = await db.execute(sql, params)
         return result.mappings().first()
 
@@ -23,6 +25,7 @@ class CheckDao:
         :param params:
         :return: list数据
         """
+        sql = text(sql)
         result = await db.execute(sql, params)
         return result.mappings().all()
 
@@ -36,6 +39,7 @@ class CheckDao:
         :return: bool数据
         """
         try:
+            sql = text(sql)
             await db.execute(sql, params)
             await db.commit()
             return True

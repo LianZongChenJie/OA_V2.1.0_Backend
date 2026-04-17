@@ -43,7 +43,7 @@ class CheckService:
         """
         获取审核表详情
         """
-        sql = 'select * from %s where id=:id' % 'oa_'+ check_table
+        sql = 'select * from %s where id=:id' % ('oa_'+ check_table)
         result = await CheckDao.execute_row_sql(db, sql, {'id':action_id})
         return result
 
@@ -462,20 +462,22 @@ class CheckService:
         flow_cate = await FlowCateDao.get_flow_cate_info_by_name(db, check_table)
         if action_id == 0:
             flow_list = await OaFlowDao.get_flow_by_cate_id_dept_id(db, flow_cate.id, dept_id)
-            flow_list = [obj.to_dict() for obj in flow_list]
+            flow_list = [dict(obj) for obj in flow_list]
             for flow in flow_list:
                 flow['is_copy'] = flow_cate.is_copy
             return flow_list
         else:
             check_table = flow_cate.check_table
             detail = await cls.get_check_table_detail(db, check_table, action_id)
+            detail = dict(detail)
 
             # 创建人
             is_creater = 0
             if detail['admin_id'] == user_id:
                 is_creater = 1
             detail['is_creater'] = is_creater
-            detail['admin_name'] = UserDao.get_user_name_by_user_id(db, detail['admin_id'])
+            detail['admin_name'] = await UserDao.get_user_name_by_user_id(db, [detail['admin_id']])
+
 
             # 当前审批人
             is_checker= 0
@@ -490,8 +492,10 @@ class CheckService:
 
             # 审批记录
             records = await FlowRecordDao.get_flow_record_by_action_table(db, action_id, check_table)
+            records_dict = []
             for rec in records:
-                rec['check_time_str'] = format_timestamp(rec['check_time_str'])
+                rec = dict(rec)['OaFlowRecord'].to_dict()
+                rec['check_time_str'] = format_timestamp(rec['check_time'])
                 rec['check_status_str'] = '提交'
                 if rec['check_status'] == 1:
                     rec['check_status_str'] = '通过'
@@ -501,34 +505,43 @@ class CheckService:
                     rec['check_status_str'] = '撤销'
                 elif rec['check_status'] == 4:
                     rec['check_status_str'] = '反确认'
-                if rec['check_file'] is not None:
-                    rec['check_file_str'] = await FileDAO.get_file_by_ids(rec['check_file'], db)
-            detail['records'] = records
+                if rec['check_files'] is not None:
+                    rec['check_files_str'] = await FileDAO.get_file_by_ids(rec['check_files'], db)
+                records_dict.append(rec)
+            detail['records'] = records_dict
             if detail['check_status'] == 0 or detail['check_status'] == 4:
                 # 如果审核状态为0或4，则需要获取审核步骤信息
                 flow_list = await OaFlowDao.get_flow_by_cate_id_dept_id(db, flow_cate.id, dept_id)
-                flow_list = [obj.to_dict() for obj in flow_list]
-                detail['flow'] = flow_list
+                flows = []
+                for flow in flow_list:
+                    flow = flow.to_dict()
+                    flows.append(flow)
+                detail['flow'] = flows
             else:
                 # 当前审核人
                 detail['check_unames'] = await UserDao.get_user_name_by_user_id(db, detail['check_uids'].split(','))
                 # 抄送人
                 detail['copy_name'] = await UserDao.get_user_name_by_user_id(db, detail['check_copy_uids'].split(','))
                 # 审核节点步骤
-                nodes = FlowRecordDao.get_records_by_action_id_flow_id(db, flow_id, action_id)
+                nodes = await OaFlowStepDao.get_step_by_action_id_flow_id_list(db, action_id, flow_id)
+                node_list = []
                 for node in nodes:
-                    check_user_info = await UserDao.get_user_name_id_avatar_by_user_id(db, node['check_uids'].split(','))
+                    node = node['OaFlowRecord'].to_dict()
+                    node_list.append(node)
+                for node in node_list:
+                    check_user_info = await UserDao.get_user_name_id_avatar_by_user_id(db, [node['check_uid']])
+                    check_user_info = [dict(obj) for obj in check_user_info]
                     for user_info in check_user_info:
                         user_info['check_time'] = 0
                         user_info['content'] = ''
                         user_info['check_status'] = 0
                         steps = await FlowRecordDao.get_flow_record_by_check_uid_step_id(db, user_info['user_id'], flow_id)
                         if steps is not None:
-                            checked = steps[0]
+                            checked = steps[0]['OaFlowRecord'].to_dict()
                             user_info['check_time'] = format_timestamp(checked['check_time'])
                             user_info['content'] = checked['content']
                             user_info['check_status'] = checked['check_status']
-                        node['check_user_info'].append(user_info)
+                    node['check_user_info'] = check_user_info
                     if node['check_position_id'] is not None:
                         node['check_position_name'] = await UserDao.get_user_by_post_id(db, node['check_position_id'])
                     else:
@@ -538,10 +551,10 @@ class CheckService:
                         if check['step_id'] ==node.id:
                             check_list.append(check)
                     node['check_list'] = check_list
-                detail['nodes'] = nodes
+                detail['nodes'] = node_list
                 # 当前审核节点
                 step = await OaFlowStepDao.get_step_by_action_id_flow_id_sort(db,action_id, flow_id, detail['check_step_sort'])
                 detail['step'] = step
-            return [detail]
+            return ModelConverter.convert_to_camel_case(detail)
 
 
