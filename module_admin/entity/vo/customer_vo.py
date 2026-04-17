@@ -68,10 +68,13 @@ class CustomerModel(BaseModel):
     update_time: int | None = Field(default=None, description='修改时间')
     delete_time: int | None = Field(default=None, description='删除时间')
     
-    # 新增客户时传入的联系人信息
+    # 新增客户时传入的联系人信息（主要用于新增/编辑接口的输入）
     contact_info: Optional[CustomerContactInfoModel] = Field(default=None, description='客户联系人信息')
+    
+    # 客户联系人列表（用于详情接口返回）
+    contact_list: list[dict] | None = Field(default=None, description='客户联系人列表')
 
-    # 扩展字段，用于列表展示
+    # 扩展字段，用于列表和详情展示
     belong_name: str | None = Field(default=None, description='所属人姓名')
     belong_department: str | None = Field(default=None, description='所属部门')
     industry: str | None = Field(default=None, description='所属行业')

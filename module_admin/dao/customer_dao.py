@@ -26,6 +26,8 @@ class CustomerDao:
         :param customer_id: 客户 id
         :return: 客户详细信息对象
         """
+        from module_admin.entity.do.customer_contact_do import OaCustomerContact
+        
         query = select(OaCustomer).where(OaCustomer.id == customer_id)
         customer_info = (await db.execute(query)).scalars().first()
 
@@ -44,8 +46,151 @@ class CustomerDao:
             'contact_name': None,
             'contact_mobile': None,
             'contact_email': None,
-            'share_names': [],
+            'share_names': '',
+            'contact_list': [],
         }
+
+        try:
+            contact_query = (
+                select(OaCustomerContact)
+                .where(
+                    and_(
+                        OaCustomerContact.cid == customer_id,
+                        OaCustomerContact.delete_time == 0
+                    )
+                )
+                .order_by(OaCustomerContact.is_default.desc(), OaCustomerContact.id.asc())
+            )
+            contact_rows = (await db.execute(contact_query)).scalars().all()
+            
+            contact_list = []
+            first_contact = None
+            for contact in contact_rows:
+                contact_dict = {
+                    'id': contact.id,
+                    'cid': contact.cid,
+                    'isDefault': contact.is_default,
+                    'name': contact.name or '',
+                    'sex': contact.sex if contact.sex is not None else 0,
+                    'mobile': contact.mobile or '',
+                    'qq': contact.qq or '',
+                    'wechat': contact.wechat or '',
+                    'email': contact.email or '',
+                    'nickname': contact.nickname or '',
+                    'department': contact.department or '',
+                    'position': contact.position or '',
+                    'birthday': contact.birthday or '',
+                    'address': contact.address or '',
+                    'family': contact.family or '',
+                    'adminId': contact.admin_id,
+                    'createTime': contact.create_time,
+                    'updateTime': contact.update_time,
+                    'deleteTime': contact.delete_time,
+                }
+                contact_list.append(contact_dict)
+                
+                if contact.is_default == 1 and first_contact is None:
+                    first_contact = contact
+            
+            result['contact_list'] = contact_list
+            
+            if first_contact:
+                result['contact_name'] = first_contact.name
+                result['contact_mobile'] = first_contact.mobile
+                result['contact_email'] = first_contact.email
+            elif contact_list:
+                first = contact_list[0]
+                result['contact_name'] = first.get('name')
+                result['contact_mobile'] = first.get('mobile')
+                result['contact_email'] = first.get('email')
+        except Exception as e:
+            logger.error(f'查询联系人信息失败: {e}')
+
+        try:
+            belong_uid = customer_info.belong_uid
+            if belong_uid and int(belong_uid) > 0:
+                from module_admin.dao.user_dao import UserDao
+                user_result = await UserDao.get_user_by_id(db, int(belong_uid))
+                if user_result and user_result.get('user_basic_info'):
+                    user_info = user_result['user_basic_info']
+                    result['belong_name'] = user_info.nick_name or user_info.user_name or ''
+        except Exception as e:
+            logger.error(f'查询所属人失败: {e}')
+
+        try:
+            belong_did = customer_info.belong_did
+            if belong_did and int(belong_did) > 0:
+                from module_admin.dao.dept_dao import DeptDao
+                dept_info = await DeptDao.get_dept_detail_by_id(db, int(belong_did))
+                if dept_info:
+                    result['belong_department'] = dept_info.dept_name or ''
+        except Exception as e:
+            logger.error(f'查询所属部门失败: {e}')
+
+        try:
+            grade_id = customer_info.grade_id
+            if grade_id and int(grade_id) > 0:
+                from module_basicdata.dao.custom.customer_gradle_dao import CustomerGradleDao
+                grade_info = await CustomerGradleDao.get_info_by_id(db, int(grade_id))
+                if grade_info:
+                    result['grade'] = grade_info.title or ''
+        except Exception as e:
+            logger.error(f'查询客户等级失败: {e}')
+
+        try:
+            source_id = customer_info.source_id
+            if source_id and int(source_id) > 0:
+                from module_basicdata.dao.custom.customer_source_dao import CustomerSourceDao
+                source_info = await CustomerSourceDao.get_info_by_id(db, int(source_id))
+                if source_info:
+                    result['source'] = source_info.title or ''
+        except Exception as e:
+            logger.error(f'查询客户来源失败: {e}')
+
+        try:
+            industry_id = customer_info.industry_id
+            if industry_id and int(industry_id) > 0:
+                from module_basicdata.dao.custom.industry_dao import IndustryDao
+                industry_info = await IndustryDao.get_industry_info(db, int(industry_id))
+                if industry_info:
+                    result['industry'] = industry_info.title or ''
+        except Exception as e:
+            logger.error(f'查询行业失败: {e}')
+
+        try:
+            customer_status = customer_info.customer_status
+            if customer_status is not None:
+                status_map = {0: '未设置', 1: '潜在客户', 2: '意向客户', 3: '正式客户', 4: '流失客户'}
+                result['customer_status_name'] = status_map.get(int(customer_status), '未知')
+            else:
+                result['customer_status_name'] = '未设置'
+        except Exception as e:
+            logger.error(f'处理客户状态失败: {e}')
+
+        try:
+            intent_status = customer_info.intent_status
+            if intent_status is not None:
+                intent_map = {0: '未设置', 1: '高意向', 2: '中意向', 3: '低意向', 4: '无意向', 10: '未知'}
+                result['intent_status_name'] = intent_map.get(int(intent_status), '未知')
+            else:
+                result['intent_status_name'] = '未设置'
+        except Exception as e:
+            logger.error(f'处理意向状态失败: {e}')
+
+        try:
+            share_ids = customer_info.share_ids
+            if share_ids:
+                from module_admin.dao.user_dao import UserDao
+                share_id_list = [int(sid.strip()) for sid in share_ids.split(',') if sid.strip()]
+                share_names = []
+                for sid in share_id_list:
+                    user_result = await UserDao.get_user_by_id(db, sid)
+                    if user_result and user_result.get('user_basic_info'):
+                        user_info = user_result['user_basic_info']
+                        share_names.append(user_info.nick_name or user_info.user_name or '')
+                result['share_names'] = ','.join(share_names) if share_names else ''
+        except Exception as e:
+            logger.error(f'查询共享人员失败: {e}')
 
         return result
 
@@ -298,19 +443,15 @@ class CustomerDao:
         return result
 
     @classmethod
-    async def add_customer_dao(cls, db: AsyncSession, customer: CustomerModel) -> OaCustomer:
+    async def add_customer_dao(cls, db: AsyncSession, customer_data: dict) -> OaCustomer:
         """
         新增客户数据库操作
 
         :param db: orm 对象
-        :param customer: 客户对象
+        :param customer_data: 客户数据字典
         :return:
         """
-        docs_dict = {
-            k: v for k, v in customer.model_dump().items()
-            if v is not None
-        }
-        db_customer = OaCustomer(**docs_dict)
+        db_customer = OaCustomer(**customer_data)
         db.add(db_customer)
         await db.flush()
 
