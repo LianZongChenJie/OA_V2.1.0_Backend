@@ -215,12 +215,10 @@ class ProjectService:
         :return: 编辑项目校验结果
         """
         if page_object.id:
-            # 校验项目名称是否唯一（排除自身）
             if not await cls.check_project_name_unique_services(query_db, page_object):
                 raise ServiceException(message=f'修改项目失败，项目名称已存在')
 
             try:
-                # 只提取数据库表存在的字段，排除不需要更新的字段
                 valid_fields = {c.name for c in OaProject.__table__.columns}
                 exclude_fields = {'id', 'create_time', 'delete_time', 'admin_id'}
 
@@ -229,13 +227,15 @@ class ProjectService:
                     if k in valid_fields and k not in exclude_fields
                 }
 
+                if 'contract_id' in edit_project and edit_project['contract_id'] is None:
+                    edit_project['contract_id'] = 0
+
                 project_info = await cls.project_detail_services(query_db, page_object.id)
 
                 if project_info and project_info.id:
                     edit_project['update_time'] = int(datetime.now().timestamp())
                     await ProjectDao.edit_project_dao(query_db, page_object.id, edit_project)
 
-                    # 处理项目阶段
                     if hasattr(page_object, 'stages') and page_object.stages is not None:
                         current_time = int(datetime.now().timestamp())
                         await cls._update_project_stages(query_db, page_object.id, page_object.stages, current_time)
@@ -350,6 +350,23 @@ class ProjectService:
         """
         for index, stage_data in enumerate(stages):
             if isinstance(stage_data, dict):
+                start_time = stage_data.get('startTime', 0)
+                end_time = stage_data.get('endTime', 0)
+                
+                if isinstance(start_time, str):
+                    from datetime import datetime as dt
+                    try:
+                        start_time = int(dt.strptime(start_time, '%Y-%m-%d %H:%M:%S').timestamp())
+                    except (ValueError, TypeError):
+                        start_time = 0
+                
+                if isinstance(end_time, str):
+                    from datetime import datetime as dt
+                    try:
+                        end_time = int(dt.strptime(end_time, '%Y-%m-%d %H:%M:%S').timestamp())
+                    except (ValueError, TypeError):
+                        end_time = 0
+                
                 step_data = {
                     'project_id': project_id,
                     'title': stage_data.get('name') or stage_data.get('title', ''),
@@ -357,8 +374,8 @@ class ProjectService:
                     'uids': stage_data.get('memberUids') or stage_data.get('uids', ''),
                     'sort': stage_data.get('sort', index + 1),
                     'is_current': 1 if index == 0 else 0,
-                    'start_time': stage_data.get('startTime', 0),
-                    'end_time': stage_data.get('endTime', 0),
+                    'start_time': start_time,
+                    'end_time': end_time,
                     'remark': stage_data.get('remark', ''),
                     'create_time': current_time,
                     'update_time': current_time,
@@ -366,6 +383,23 @@ class ProjectService:
                 }
             elif hasattr(stage_data, 'model_dump'):
                 data_dict = stage_data.model_dump(by_alias=False)
+                start_time = data_dict.get('start_time', 0)
+                end_time = data_dict.get('end_time', 0)
+                
+                if isinstance(start_time, str):
+                    from datetime import datetime as dt
+                    try:
+                        start_time = int(dt.strptime(start_time, '%Y-%m-%d %H:%M:%S').timestamp())
+                    except (ValueError, TypeError):
+                        start_time = 0
+                
+                if isinstance(end_time, str):
+                    from datetime import datetime as dt
+                    try:
+                        end_time = int(dt.strptime(end_time, '%Y-%m-%d %H:%M:%S').timestamp())
+                    except (ValueError, TypeError):
+                        end_time = 0
+                
                 step_data = {
                     'project_id': project_id,
                     'title': data_dict.get('title') or data_dict.get('name', ''),
@@ -373,14 +407,31 @@ class ProjectService:
                     'uids': data_dict.get('uids') or data_dict.get('member_uids', ''),
                     'sort': data_dict.get('sort', index + 1),
                     'is_current': 1 if index == 0 else 0,
-                    'start_time': data_dict.get('start_time', 0),
-                    'end_time': data_dict.get('end_time', 0),
+                    'start_time': start_time,
+                    'end_time': end_time,
                     'remark': data_dict.get('remark', ''),
                     'create_time': current_time,
                     'update_time': current_time,
                     'delete_time': 0,
                 }
             else:
+                start_time = getattr(stage_data, 'start_time', 0) or getattr(stage_data, 'startTime', 0)
+                end_time = getattr(stage_data, 'end_time', 0) or getattr(stage_data, 'endTime', 0)
+                
+                if isinstance(start_time, str):
+                    from datetime import datetime as dt
+                    try:
+                        start_time = int(dt.strptime(start_time, '%Y-%m-%d %H:%M:%S').timestamp())
+                    except (ValueError, TypeError):
+                        start_time = 0
+                
+                if isinstance(end_time, str):
+                    from datetime import datetime as dt
+                    try:
+                        end_time = int(dt.strptime(end_time, '%Y-%m-%d %H:%M:%S').timestamp())
+                    except (ValueError, TypeError):
+                        end_time = 0
+                
                 step_data = {
                     'project_id': project_id,
                     'title': getattr(stage_data, 'title', '') or getattr(stage_data, 'name', ''),
@@ -388,8 +439,8 @@ class ProjectService:
                     'uids': getattr(stage_data, 'uids', '') or getattr(stage_data, 'memberUids', '') or getattr(stage_data, 'member_uids', ''),
                     'sort': getattr(stage_data, 'sort', index + 1),
                     'is_current': 1 if index == 0 else 0,
-                    'start_time': getattr(stage_data, 'start_time', 0) or getattr(stage_data, 'startTime', 0),
-                    'end_time': getattr(stage_data, 'end_time', 0) or getattr(stage_data, 'endTime', 0),
+                    'start_time': start_time,
+                    'end_time': end_time,
                     'remark': getattr(stage_data, 'remark', ''),
                     'create_time': current_time,
                     'update_time': current_time,
@@ -409,67 +460,113 @@ class ProjectService:
         :param current_time: 当前时间戳
         :return:
         """
-        # 先获取现有阶段
         existing_steps = await ProjectStepDao.get_steps_by_project_id(query_db, project_id)
         existing_step_ids = {step.id for step in existing_steps}
 
-        # 收集提交的阶段ID
         submitted_step_ids = set()
 
         for index, stage_data in enumerate(stages):
             if isinstance(stage_data, dict):
                 step_id = stage_data.get('id')
+                start_time = stage_data.get('startTime', 0)
+                end_time = stage_data.get('endTime', 0)
+                
+                if isinstance(start_time, str):
+                    from datetime import datetime as dt
+                    try:
+                        start_time = int(dt.strptime(start_time, '%Y-%m-%d %H:%M:%S').timestamp())
+                    except (ValueError, TypeError):
+                        start_time = 0
+                
+                if isinstance(end_time, str):
+                    from datetime import datetime as dt
+                    try:
+                        end_time = int(dt.strptime(end_time, '%Y-%m-%d %H:%M:%S').timestamp())
+                    except (ValueError, TypeError):
+                        end_time = 0
+                
                 step_data_dict = {
                     'title': stage_data.get('name') or stage_data.get('title', ''),
                     'director_uid': stage_data.get('directorUid', 0),
                     'uids': stage_data.get('memberUids') or stage_data.get('uids', ''),
                     'sort': stage_data.get('sort', index + 1),
                     'is_current': 1 if index == 0 else 0,
-                    'start_time': stage_data.get('startTime', 0),
-                    'end_time': stage_data.get('endTime', 0),
+                    'start_time': start_time,
+                    'end_time': end_time,
                     'remark': stage_data.get('remark', ''),
                     'update_time': current_time,
                 }
             elif hasattr(stage_data, 'model_dump'):
                 step_id = getattr(stage_data, 'id', None)
                 data_dict = stage_data.model_dump(by_alias=False)
+                start_time = data_dict.get('start_time', 0)
+                end_time = data_dict.get('end_time', 0)
+                
+                if isinstance(start_time, str):
+                    from datetime import datetime as dt
+                    try:
+                        start_time = int(dt.strptime(start_time, '%Y-%m-%d %H:%M:%S').timestamp())
+                    except (ValueError, TypeError):
+                        start_time = 0
+                
+                if isinstance(end_time, str):
+                    from datetime import datetime as dt
+                    try:
+                        end_time = int(dt.strptime(end_time, '%Y-%m-%d %H:%M:%S').timestamp())
+                    except (ValueError, TypeError):
+                        end_time = 0
+                
                 step_data_dict = {
                     'title': data_dict.get('title') or data_dict.get('name', ''),
                     'director_uid': data_dict.get('director_uid', 0),
                     'uids': data_dict.get('uids') or data_dict.get('member_uids', ''),
                     'sort': data_dict.get('sort', index + 1),
                     'is_current': 1 if index == 0 else 0,
-                    'start_time': data_dict.get('start_time', 0),
-                    'end_time': data_dict.get('end_time', 0),
+                    'start_time': start_time,
+                    'end_time': end_time,
                     'remark': data_dict.get('remark', ''),
                     'update_time': current_time,
                 }
             else:
                 step_id = getattr(stage_data, 'id', None)
+                start_time = getattr(stage_data, 'start_time', 0) or getattr(stage_data, 'startTime', 0)
+                end_time = getattr(stage_data, 'end_time', 0) or getattr(stage_data, 'endTime', 0)
+                
+                if isinstance(start_time, str):
+                    from datetime import datetime as dt
+                    try:
+                        start_time = int(dt.strptime(start_time, '%Y-%m-%d %H:%M:%S').timestamp())
+                    except (ValueError, TypeError):
+                        start_time = 0
+                
+                if isinstance(end_time, str):
+                    from datetime import datetime as dt
+                    try:
+                        end_time = int(dt.strptime(end_time, '%Y-%m-%d %H:%M:%S').timestamp())
+                    except (ValueError, TypeError):
+                        end_time = 0
+                
                 step_data_dict = {
                     'title': getattr(stage_data, 'title', '') or getattr(stage_data, 'name', ''),
                     'director_uid': getattr(stage_data, 'director_uid', 0) or getattr(stage_data, 'directorUid', 0),
                     'uids': getattr(stage_data, 'uids', '') or getattr(stage_data, 'memberUids', '') or getattr(stage_data, 'member_uids', ''),
                     'sort': getattr(stage_data, 'sort', index + 1),
                     'is_current': 1 if index == 0 else 0,
-                    'start_time': getattr(stage_data, 'start_time', 0) or getattr(stage_data, 'startTime', 0),
-                    'end_time': getattr(stage_data, 'end_time', 0) or getattr(stage_data, 'endTime', 0),
+                    'start_time': start_time,
+                    'end_time': end_time,
                     'remark': getattr(stage_data, 'remark', ''),
                     'update_time': current_time,
                 }
 
             if step_id and step_id in existing_step_ids:
-                # 更新现有阶段
                 await ProjectStepDao.update_step(query_db, step_id, step_data_dict)
                 submitted_step_ids.add(step_id)
             else:
-                # 新增阶段
                 step_data_dict['project_id'] = project_id
                 step_data_dict['create_time'] = current_time
                 step_data_dict['delete_time'] = 0
                 await ProjectStepDao.add_step(query_db, step_data_dict)
 
-        # 删除不在提交列表中的阶段
         deleted_step_ids = existing_step_ids - submitted_step_ids
         for step_id in deleted_step_ids:
             await ProjectStepDao.delete_step(query_db, step_id)

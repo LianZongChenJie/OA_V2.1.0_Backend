@@ -16,6 +16,7 @@ from module_contract.entity.vo.purchase_vo import (
     PurchaseModel,
     PurchasePageQueryModel,
 )
+from utils.log_util import logger
 
 
 class PurchaseService:
@@ -118,26 +119,42 @@ class PurchaseService:
         """
         if page_object.id:
             try:
-                # 检查采购合同是否存在
                 existing_purchase = await PurchaseDao.get_by_id(query_db, page_object.id)
                 if not existing_purchase:
                     raise ServiceException(message='采购合同不存在')
 
-                # 验重：检查合同名称是否与其他记录重复
                 if not await cls.check_purchase_name_unique_services(query_db, page_object):
                     raise ServiceException(message='合同名称已存在')
 
-                # 设置更新时间
                 current_time = int(datetime.now().timestamp())
                 
-                # 转换为字典并更新
-                purchase_data = page_object.model_dump(exclude={"create_time", "update_time"}, exclude_none=True)
-                purchase_data['update_time'] = current_time
+                valid_fields = {c.name for c in OaPurchase.__table__.columns}
+                exclude_fields = {'id', 'create_time', 'delete_time', 'admin_id'}
                 
-                await PurchaseDao.update(query_db, purchase_data)
+                purchase_data = {
+                    k: v for k, v in page_object.model_dump(exclude_unset=True, by_alias=False).items()
+                    if k in valid_fields and k not in exclude_fields
+                }
+                
+                logger.info(f'采购合同编辑 - ID: {page_object.id}')
+                logger.info(f'采购合同编辑 - 原始数据: {page_object.model_dump(exclude_unset=True, by_alias=False)}')
+                logger.info(f'采购合同编辑 - 过滤后数据: {purchase_data}')
+                
+                if not purchase_data:
+                    raise ServiceException(message='没有可更新的字段')
+                
+                purchase_data['update_time'] = current_time
+                purchase_data['id'] = page_object.id
+                
+                result = await PurchaseDao.update(query_db, purchase_data)
+                await query_db.commit()
+                
+                logger.info(f'采购合同编辑 - 更新结果: {result}, 已提交事务')
+                
                 return CrudResponseModel(is_success=True, message='修改成功')
             except Exception as e:
                 await query_db.rollback()
+                logger.error(f'采购合同编辑失败: {str(e)}', exc_info=True)
                 raise e
         else:
             raise ServiceException(message='传入采购合同 id 为空')

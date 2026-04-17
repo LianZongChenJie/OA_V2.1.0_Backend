@@ -84,7 +84,7 @@ class CustomerService:
                     'source', 'customer_status_name', 'intent_status_name',
                     'follow_time_str', 'next_time_str', 'contact_name', 'contact_mobile',
                     'contact_email', 'share_names', 'create_time', 'update_time',
-                    'delete_time', 'discard_time'
+                    'delete_time', 'discard_time', 'contact_info'
                 }
             )
 
@@ -95,7 +95,42 @@ class CustomerService:
             customer_data['delete_time'] = 0
             customer_data['discard_time'] = 0
 
-            await CustomerDao.add_customer_dao(query_db, CustomerModel(**customer_data))
+            # 新增客户
+            new_customer = await CustomerDao.add_customer_dao(query_db, CustomerModel(**customer_data))
+            
+            # 如果有联系人信息，创建默认联系人
+            if page_object.contact_info and page_object.contact_info.name:
+                from module_admin.entity.do.customer_contact_do import OaCustomerContact
+                
+                contact_data = {
+                    'cid': new_customer.id,
+                    'is_default': 1,
+                    'name': page_object.contact_info.name,
+                    'sex': page_object.contact_info.sex if page_object.contact_info.sex is not None else 0,
+                    'mobile': page_object.contact_info.mobile or '',
+                    'qq': page_object.contact_info.qq or '',
+                    'wechat': page_object.contact_info.wechat or '',
+                    'email': page_object.contact_info.email or '',
+                    'nickname': page_object.contact_info.nickname or '',
+                    'department': page_object.contact_info.department or '',
+                    'position': page_object.contact_info.position or '',
+                    'birthday': page_object.contact_info.birthday or '',
+                    'address': page_object.contact_info.address or '',
+                    'family': '',
+                    'admin_id': user_id,
+                    'create_time': current_time,
+                    'update_time': current_time,
+                    'delete_time': 0,
+                }
+                
+                db_contact = OaCustomerContact(**contact_data)
+                query_db.add(db_contact)
+                await query_db.flush()
+                
+                # 更新客户的第一联系人ID
+                customer_data['contact_first'] = db_contact.id
+                await CustomerDao.edit_customer_dao(query_db, new_customer.id, {'contact_first': db_contact.id})
+            
             await query_db.commit()
             return CrudResponseModel(is_success=True, message='操作成功')
         except Exception as e:
