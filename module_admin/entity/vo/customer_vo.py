@@ -1,8 +1,28 @@
-from typing import Literal
+from typing import Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from pydantic.alias_generators import to_camel
 from pydantic_validation_decorator import NotBlank, Size, Xss
+
+
+class CustomerContactInfoModel(BaseModel):
+    """
+    客户联系人信息模型（用于新增客户时传入）
+    """
+    
+    model_config = ConfigDict(alias_generator=to_camel, from_attributes=True)
+    
+    name: str | None = Field(default=None, description='姓名')
+    sex: int = Field(default=0, description='用户性别:0未知,1男,2女')
+    mobile: str | None = Field(default=None, description='手机号码')
+    qq: str | None = Field(default=None, description='QQ号')
+    wechat: str | None = Field(default=None, description='微信号')
+    email: str | None = Field(default=None, description='邮件地址')
+    nickname: str | None = Field(default=None, description='称谓')
+    department: str | None = Field(default=None, description='部门')
+    position: str | None = Field(default=None, description='职位')
+    birthday: str | None = Field(default=None, description='生日')
+    address: str | None = Field(default=None, description='家庭住址')
 
 
 class CustomerModel(BaseModel):
@@ -47,6 +67,9 @@ class CustomerModel(BaseModel):
     create_time: int | None = Field(default=None, description='添加时间')
     update_time: int | None = Field(default=None, description='修改时间')
     delete_time: int | None = Field(default=None, description='删除时间')
+    
+    # 新增客户时传入的联系人信息
+    contact_info: Optional[CustomerContactInfoModel] = Field(default=None, description='客户联系人信息')
 
     # 扩展字段，用于列表展示
     belong_name: str | None = Field(default=None, description='所属人姓名')
@@ -56,10 +79,14 @@ class CustomerModel(BaseModel):
     source: str | None = Field(default=None, description='客户来源')
     customer_status_name: str | None = Field(default=None, description='客户状态名称')
     intent_status_name: str | None = Field(default=None, description='意向状态名称')
-    follow_time_str: str | None = Field(default=None, description='最新跟进时间字符串')
+    follow_time_str: str | None = Field(default=None, description='最近跟进时间字符串')
     next_time_str: str | None = Field(default=None, description='下次跟进时间字符串')
+    create_time_str: str | None = Field(default=None, description='创建时间字符串')
+    belong_time_str: str | None = Field(default=None, description='获取时间字符串')
+    distribute_time_str: str | None = Field(default=None, description='最新分配时间字符串')
+    update_time_str: str | None = Field(default=None, description='修改时间字符串')
     contact_name: str | None = Field(default=None, description='联系人姓名')
-    contact_mobile: str | None = Field(default=None, description='联系人手机')
+    contact_mobile: str | None = Field(default=None, description='联系电话')
     contact_email: str | None = Field(default=None, description='联系人邮箱')
     share_names: str | None = Field(default=None, description='共享人员姓名列表')
 
