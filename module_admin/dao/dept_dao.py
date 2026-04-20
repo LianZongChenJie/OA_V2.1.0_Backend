@@ -347,7 +347,7 @@ class DeptDao:
             user = aliased(SysUser)
             dept = aliased(SysDept)
             parent = aliased(SysDept)
-            query = select(dept.leader_id).join(user, user.dept_id == dept.dept_id, isouter=True).join(parent.dept_id == dept.parent_id,isouter=True).where(SysUser.user_desc == user_id)
+            query = select(dept.leader_id).join(user, user.dept_id == dept.dept_id, isouter=True).join(parent.dept_id == dept.parent_id,isouter=True).where(SysUser.user_id == user_id)
         result = await db.execute(query)
         return result.scalars().first()
 

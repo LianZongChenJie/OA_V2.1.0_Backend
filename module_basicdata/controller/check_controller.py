@@ -10,7 +10,6 @@ from fastapi import File, Form, Path, Query, Request, Response, UploadFile,Body
 
 from module_basicdata.service.public.check_service import CheckService
 from utils.response_util import ResponseUtil
-from utils.log_util import logger
 from module_admin.entity.vo.user_vo import CurrentUserModel
 
 
@@ -27,7 +26,7 @@ flow_check_controller = APIRouterPro(
     dependencies=[UserInterfaceAuthDependency('basicdata:flow:check')],
 )
 async def flow_check(
-    flow_query: Annotated[OaFlowCheckBaseModel, Query()],
+    flow_query: Annotated[OaFlowCheckBaseModel, Body()],
     query_db: Annotated[AsyncSession, DBSessionDependency()],
     current_user: Annotated[CurrentUserModel, CurrentUserDependency()]
 ) -> Response:
@@ -43,7 +42,6 @@ async def flow_check(
     dependencies=[UserInterfaceAuthDependency('basicdata:flow:query')],
 )
 async def get_flow(
-    request: Request,
     check_name: str,
     query_db: Annotated[AsyncSession, DBSessionDependency()]
     ) -> Response:
@@ -59,7 +57,6 @@ async def get_flow(
     dependencies=[UserInterfaceAuthDependency('basicdata:flow:query')],
 )
 async def get_flow_check_user(
-    request: Request,
     flow_id: int,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
     current_user: Annotated[CurrentUserModel, CurrentUserDependency()]
@@ -92,7 +89,6 @@ async def submit(
     dependencies=[UserInterfaceAuthDependency('basicdata:flow:query')],
 )
 async def get_flow_nodes(
-    request: Request,
     check_table: str,
     action_id: int,
     flow_id: int,
@@ -103,3 +99,20 @@ async def get_flow_nodes(
     dept_id = current_user.user.dept_id
     result = await CheckService.get_flow_nodes(query_db, check_table, action_id, flow_id, dept_id, user_id)
     return ResponseUtil.success(data=result)
+
+@flow_check_controller.put(
+    "/skipCheck",
+    summary='跳过审核步骤',
+    description='跳过审核步骤',
+    response_model=PageResponseModel[OaFlowBaseModel],
+    dependencies=[UserInterfaceAuthDependency('basicdata:flow:check')],
+)
+async def skip_check(
+    flow_query: Annotated[OaFlowCheckBaseModel, Body()],
+    query_db: Annotated[AsyncSession, DBSessionDependency()],
+    current_user: Annotated[CurrentUserModel, CurrentUserDependency()]
+) -> Response:
+    user_id = current_user.user.user_id
+    result = await CheckService.skip_check(query_db, flow_query, user_id)
+    return ResponseUtil.success(msg=result.message)
+

@@ -39,7 +39,7 @@ class FlowRecordDao:
         """
         query = select(func.count()).select_from(OaFlowRecord).where(OaFlowRecord.action_id == action_id,OaFlowRecord.flow_id == flow_id, OaFlowRecord.step_id == step_id)
         result = await db.execute(query)
-        return result.scalars()
+        return result.scalars().first()
     @classmethod
     async def delete_flow_info(cls, db: AsyncSession, flow_id: int, action_id: int):
         """
