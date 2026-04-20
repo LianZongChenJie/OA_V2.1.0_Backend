@@ -9,8 +9,7 @@ from common.aspect.interface_auth import UserInterfaceAuthDependency
 from common.aspect.pre_auth import PreAuthDependency, CurrentUserDependency
 from common.router import APIRouterPro
 from module_finance.entity.do.ticket_do import OaTicket
-from module_finance.entity.vo.ticket_vo import OaTicketBaseModel, OaTicketPageQueryModel, OaTicketDetailModel, \
-    OaTicketPayMentDetailModel,OaTicketPaymentBaseModel
+from module_finance.entity.vo.ticket_vo import OaTicketBaseModel, OaTicketPageQueryModel, OaTicketPaymentBaseModel
 from module_finance.service.ticket_service import TicketService
 from module_admin.entity.vo.user_vo import (
     CurrentUserModel
@@ -122,22 +121,22 @@ async def delete_expense(
     result =  await TicketService.del_by_id(query_db, id)
     return ResponseUtil.success(msg=result.message)
 
-@finance_invoice_controller.put(
-    "/review",
-    summary='审核',
-    description='用于审核',
-    response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:payment:pass')],
-)
-async def review(
-        request: Request,
-        query_db: Annotated[AsyncSession, DBSessionDependency()],
-        data: Annotated[OaTicketBaseModel, Body()],
-        current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
-) -> Response:
-    userId = current_user.user.user_id
-    result =  await TicketService.review(query_db, data, userId)
-    return ResponseUtil.success(msg=result.message)
+# @finance_invoice_controller.put(
+#     "/review",
+#     summary='审核',
+#     description='用于审核',
+#     response_model=None,
+#     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:payment:pass')],
+# )
+# async def review(
+#         request: Request,
+#         query_db: Annotated[AsyncSession, DBSessionDependency()],
+#         data: Annotated[OaTicketBaseModel, Body()],
+#         current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
+# ) -> Response:
+#     userId = current_user.user.user_id
+#     result =  await TicketService.review(query_db, data, userId)
+#     return ResponseUtil.success(msg=result.message)
 
 @finance_invoice_controller.put(
     "/pay",

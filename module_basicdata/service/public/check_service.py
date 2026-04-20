@@ -525,10 +525,10 @@ class CheckService:
                 nodes = await OaFlowStepDao.get_step_by_action_id_flow_id_list(db, action_id, flow_id)
                 node_list = []
                 for node in nodes:
-                    node = node['OaFlowRecord'].to_dict()
-                    node_list.append(node)
+                    node_dict = node.to_dict()
+                    node_list.append(node_dict)
                 for node in node_list:
-                    check_user_info = await UserDao.get_user_name_id_avatar_by_user_id(db, [node['check_uid']])
+                    check_user_info = await UserDao.get_user_name_id_avatar_by_user_id(db, [node['check_uids']])
                     check_user_info = [dict(obj) for obj in check_user_info]
                     for user_info in check_user_info:
                         user_info['check_time'] = 0
@@ -547,7 +547,10 @@ class CheckService:
                         node['check_position_name'] = ''
                     check_list = []
                     for check in records:
-                        if check['step_id'] ==node.id:
+                        check = dict(check)
+                        check.update(check['OaFlowRecord'].to_dict())
+                        check.pop('OaFlowRecord')
+                        if check['step_id'] ==node['id']:
                             check_list.append(check)
                     node['check_list'] = check_list
                 detail['nodes'] = node_list

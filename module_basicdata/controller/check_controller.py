@@ -9,6 +9,7 @@ from typing import Annotated
 from fastapi import File, Form, Path, Query, Request, Response, UploadFile,Body
 
 from module_basicdata.service.public.check_service import CheckService
+from utils.camel_converter import ModelConverter
 from utils.response_util import ResponseUtil
 from module_admin.entity.vo.user_vo import CurrentUserModel
 
@@ -46,7 +47,7 @@ async def get_flow(
     query_db: Annotated[AsyncSession, DBSessionDependency()]
     ) -> Response:
     flow_result = await CheckService.get_flow(query_db, check_name)
-    return ResponseUtil.success(data=flow_result)
+    return ResponseUtil.success(data=ModelConverter.convert_to_camel_case(flow_result.to_dict()))
 
 
 @flow_check_controller.get(

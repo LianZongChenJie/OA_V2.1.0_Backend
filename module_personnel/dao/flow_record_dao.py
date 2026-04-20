@@ -59,7 +59,7 @@ class FlowRecordDao:
         :param check_table:
         :return:
         """
-        query = select(OaFlowRecord, SysUser.nick_name).join(SysUser, OaFlowRecord.check_uid == SysUser.user_id, isouter=True).where(OaFlowRecord.action_id == action_id, OaFlowRecord.check_table == check_table)
+        query = select(OaFlowRecord, SysUser.nick_name).join(SysUser, OaFlowRecord.check_uid == SysUser.user_id, isouter=True).where(OaFlowRecord.action_id == action_id, OaFlowRecord.check_table == check_table, OaFlowRecord.delete_time == 0)
         result = await db.execute(query)
         return result.mappings().all()
     @classmethod

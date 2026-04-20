@@ -94,16 +94,16 @@ async def delete_talent(
     result = await TalentService.del_by_id(query_db, id)
     return ResponseUtil.success(msg=result.message)
 
-@talent_controller.put(
-    "/review",
-    summary='审核',
-    description='用于审核入职申请',
-    response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:personnel:talent:pass')],
-)
-async def review(
-        request: Request,
-        query_db: Annotated[AsyncSession, DBSessionDependency()],
-        data: Annotated[OaTalentBaseModel, Body()],
-) -> Response:
-    return await TalentService.review(query_db, data)
+# @talent_controller.put(
+#     "/review",
+#     summary='审核',
+#     description='用于审核入职申请',
+#     response_model=None,
+#     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:personnel:talent:pass')],
+# )
+# async def review(
+#         request: Request,
+#         query_db: Annotated[AsyncSession, DBSessionDependency()],
+#         data: Annotated[OaTalentBaseModel, Body()],
+# ) -> Response:
+#     return await TalentService.review(query_db, data)

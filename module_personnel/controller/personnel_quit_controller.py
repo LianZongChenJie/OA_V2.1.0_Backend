@@ -97,19 +97,19 @@ async def delete_quit(
     result = await PersonnelQuitService.del_by_id(query_db, id)
     return ResponseUtil.success(msg=result.message)
 
-@personnel_quit_controller.put(
-    "/review",
-    summary='审核',
-    description='用于审核',
-    response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:personnel:quit:pass')],
-)
-async def review(
-        request: Request,
-        query_db: Annotated[AsyncSession, DBSessionDependency()],
-        data: Annotated[OaPersonalQuitBaseModel, Body()],
-        current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
-) -> Response:
-    data.check_last_uid = current_user.user.user_id
-    result = await PersonnelQuitService.review(query_db, data)
-    return ResponseUtil.success(msg=result.message)
+# @personnel_quit_controller.put(
+#     "/review",
+#     summary='审核',
+#     description='用于审核',
+#     response_model=None,
+#     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:personnel:quit:pass')],
+# )
+# async def review(
+#         request: Request,
+#         query_db: Annotated[AsyncSession, DBSessionDependency()],
+#         data: Annotated[OaPersonalQuitBaseModel, Body()],
+#         current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
+# ) -> Response:
+#     data.check_last_uid = current_user.user.user_id
+#     result = await PersonnelQuitService.review(query_db, data)
+#     return ResponseUtil.success(msg=result.message)

@@ -97,19 +97,19 @@ async def delete_change(
     result =  await DepartmentChangeService.del_by_id(query_db, id)
     return ResponseUtil.success(data=result.message)
 
-@dept_change_controller.put(
-    "/review",
-    summary='审核',
-    description='用于审核操作',
-    response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:deptChange:pass')],
-)
-async def review(
-        request: Request,
-        query_db: Annotated[AsyncSession, DBSessionDependency()],
-        data: Annotated[OaDepartmentChangeBassModel, Body()],
-        current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
-) -> Response:
-    data.check_last_uid = current_user.user.user_id
-    result =  await DepartmentChangeService.review(query_db, data)
-    return ResponseUtil.success(data=result.message)
+# @dept_change_controller.put(
+#     "/review",
+#     summary='审核',
+#     description='用于审核操作',
+#     response_model=None,
+#     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:deptChange:pass')],
+# )
+# async def review(
+#         request: Request,
+#         query_db: Annotated[AsyncSession, DBSessionDependency()],
+#         data: Annotated[OaDepartmentChangeBassModel, Body()],
+#         current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
+# ) -> Response:
+#     data.check_last_uid = current_user.user.user_id
+#     result =  await DepartmentChangeService.review(query_db, data)
+#     return ResponseUtil.success(data=result.message)
