@@ -38,9 +38,9 @@ class LaborContractService:
             model.start_time = int_time(model.start_time)
             model.end_time = int_time(model.end_time)
             model.trial_end_time = int_time(model.trial_end_time)
-            if model.trial_salary is None:
+            if model.trial_salary is None or model.trial_salary == '':
                 model.trial_salary = decimal.Decimal(0)
-            if model.worker_salary is None:
+            if model.worker_salary is None or model.worker_salary == '':
                 model.worker_salary = decimal.Decimal(0)
             await LaborContractDao.add(query_db, model)
             await query_db.commit()
