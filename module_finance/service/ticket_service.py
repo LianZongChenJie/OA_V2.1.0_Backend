@@ -5,11 +5,11 @@ from exceptions.exception import ServiceException
 from module_basicdata.dao.public.flow_cate_dao import FlowCateDao
 from module_basicdata.dao.public.flow_step_dao import OaFlowStepDao
 from module_finance.dao.ticket_dao import TicketDao
-from module_finance.entity.do.ticket_do import OaTicket,OaTicketPayment
+from module_finance.entity.do.ticket_do import OaTicketPayment
 from module_personnel.dao.flow_record_dao import FlowRecordDao
 from sqlalchemy.sql import ColumnElement
 from module_finance.entity.vo.ticket_vo import OaTicketBaseModel, \
-    OaTicketPageQueryModel, OaTicketDetailModel, OaTicketPayMentDetailModel
+    OaTicketPageQueryModel, OaTicketPayMentDetailModel
 from common.vo import PageModel, CrudResponseModel
 from datetime import datetime
 

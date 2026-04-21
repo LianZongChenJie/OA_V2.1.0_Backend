@@ -81,3 +81,18 @@ async def get_view_log(
 )->Response:
     result =  await MainService.get_view_log(query_db)
     return ResponseUtil.success(data=result)
+
+@main_controller.get(
+    "/getLastData",
+    summary='获取用户昨天和今天操作数据统计',
+    description='获取用户昨天和今天操作数据统计',
+    response_model=None,
+    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:personnel:mian:query')],
+)
+async def get_last_data(
+    query_db: Annotated[AsyncSession, DBSessionDependency()],
+    current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
+)->Response:
+    user_name = current_user.user.user_name
+    result =  await MainService.get_last_data(query_db, user_name)
+    return ResponseUtil.success(data=result)

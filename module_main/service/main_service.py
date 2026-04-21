@@ -2,6 +2,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from module_admin.dao.official_docs_dao import OfficialDocsDao
 from module_administrative.dao.seal_dao import SealDao
+from module_basicdata.dao.public.check_dao import CheckDao
 from module_finance.dao.expense_dao import ExpenseDao
 from module_finance.dao.invoice_dao import InvoiceDao
 from module_finance.dao.ticket_dao import TicketDao
@@ -77,6 +78,46 @@ class MainService:
         except Exception as e:
             await query_db.rollback()
             raise e
+    @classmethod
+    async def get_last_data(cls, db:AsyncSession,user_name:str) -> dict:
+        """
+        获取用户昨天和今天操作数据统计
+        :param user_name:
+        :param db:
+        :return:
+        """
+        today = datetime.today()
+        yesterday = today - timedelta(days=1)
+        today = today.strftime('%Y-%m-%d')
+        yesterday = yesterday.strftime('%Y-%m-%d')
+        sql = 'SELECT HOUR(oper_time) AS hour, COUNT(*) AS count FROM sys_oper_log WHERE oper_name = :user_name AND DATE(oper_time) = :param_time GROUP BY HOUR(oper_time) ORDER BY hour ASC'
+        try:
+            today_data = await CheckDao.execute_list_sql(db, sql, {'user_name': user_name, 'param_time': today})
+            yesterday_data = await CheckDao.execute_list_sql(db, sql, {'user_name': user_name, 'param_time': yesterday})
+            today_data = await cls.get_user_info(today_data)
+            yesterday_data = await cls.get_user_info(yesterday_data)
+            return {'today': today_data, 'yesterday': yesterday_data}
+        except Exception as e:
+            await db.rollback()
+            raise e
+
+    @classmethod
+    async def get_user_info(cls, hours : list) -> list:
+        """
+        获取用户信息
+        :param hours:小时数据数组
+        :param db:
+        :return:
+        """
+        datas = []
+        for time in range(24):
+            if time < 24:
+                for hour in hours:
+                    if hour['hour']  == time:
+                        datas.append(hour['count'])
+                else:
+                    datas.append(0)
+        return datas
 
 
 

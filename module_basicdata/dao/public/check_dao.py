@@ -17,7 +17,7 @@ class CheckDao:
         return result.mappings().first()
 
     @classmethod
-    async def execute_list_sql(cls, db: AsyncSession, sql: str, params: list) -> list:
+    async def execute_list_sql(cls, db: AsyncSession, sql: str, params: dict) -> list:
         """
         执行sql语句，返回结果集
         :param db:
