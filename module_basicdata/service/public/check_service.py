@@ -447,7 +447,7 @@ class CheckService:
             return CrudResponseModel(is_success=False, message='操作失败')
 
     @classmethod
-    async def get_flow_nodes(cls, db: AsyncSession, check_table : str, action_id : int, flow_id: int, dept_id : int, user_id: int) -> list[dict]:
+    async def get_flow_nodes(cls, db: AsyncSession, action_id : int, flow_id: int, dept_id : int, user_id: int) -> list[dict]:
         """
         获取审核节点
         :param db:
@@ -458,7 +458,9 @@ class CheckService:
         :param user_id
         :return: 返回审核节点信息
         """
-        flow_cate = await FlowCateDao.get_flow_cate_info_by_name(db, check_table)
+        flow = await OaFlowDao.get_flow_detail(db, flow_id)
+
+        flow_cate = await FlowCateDao.get_flow_cate_info(db, flow.cate_id)
         if action_id == 0:
             flow_list = await OaFlowDao.get_flow_by_cate_id_dept_id(db, flow_cate.id, dept_id)
             flow_list = [dict(obj) for obj in flow_list]
