@@ -1,5 +1,3 @@
-from email.policy import default
-
 from pydantic import BaseModel, Field, validator, ConfigDict
 from pydantic.alias_generators import to_camel
 from decimal import Decimal
