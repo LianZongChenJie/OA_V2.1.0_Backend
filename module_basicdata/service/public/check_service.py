@@ -575,8 +575,8 @@ class CheckService:
             return CrudResponseModel(is_success=False,message="您没有操作此功能权限，请使用管理员账号操作！")
         if query_model.check_status != 1:
             return CrudResponseModel(is_success=False,message="提交审核状态不支持此功能")
-
-        flow_cate = await FlowCateDao.get_flow_cate_info_by_name(db, query_model.check_name)
+        flow = await OaFlowDao.get_flow_detail(db, query_model.flow_id)
+        flow_cate = await FlowCateDao.get_flow_cate_info(db, flow.cate_id)
         subject = flow_cate.title
         action_id = query_model.action_id
         check_table = flow_cate.check_table
