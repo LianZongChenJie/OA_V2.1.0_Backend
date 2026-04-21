@@ -168,12 +168,13 @@ async def adjust_task_hour(
     if not hour_data.admin_id:
         hour_data.admin_id = current_user.user.user_id
     
-    if hour_data.id and hour_data.id > 0:
+    if hour_data.id is not None and hour_data.id > 0:
         # 编辑工时
         result = await ScheduleService.update_service(query_db, hour_data)
         logger.info(f'编辑工时 {hour_data.id} 成功')
     else:
-        # 新增工时
+        # 新增工时（id 为 None 或 0）
+        hour_data.id = None
         result = await ScheduleService.add_service(query_db, hour_data)
         logger.info('新增工时成功')
 
