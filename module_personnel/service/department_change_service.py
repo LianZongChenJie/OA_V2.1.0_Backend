@@ -108,6 +108,9 @@ class DepartmentChangeService:
     @classmethod
     async def del_by_id(cls, db: AsyncSession, id: int):
         try:
+            change = await DepartmentChangeDao.get_info_by_id(db, id)
+            if change.check_status != 0 or change.check_status != 4:
+                raise CrudResponseModel(is_success=False, message='请先撤销申请再删除')
             await DepartmentChangeDao.del_by_id(db, id)
             return CrudResponseModel(is_success=True, message='删除成功')
         except Exception as e:

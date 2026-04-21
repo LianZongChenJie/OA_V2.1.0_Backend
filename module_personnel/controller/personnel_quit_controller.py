@@ -29,7 +29,6 @@ personnel_quit_controller = APIRouterPro(
     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:personnel:quit:query')],
 )
 async def get_page_list(
-    request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
     query_object: Annotated[OaPersonnelQuitPageQueryModel, Query()],
     data_scope_sql: Annotated[ColumnElement, DataScopeDependency(OaPersonalQuit)],
@@ -45,10 +44,11 @@ async def get_page_list(
     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:personnel:quit:add')],
 )
 async def add_quit(
-    request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
     query_object: Annotated[OaPersonalQuitBaseModel, Body()],
+    current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
 ) -> Response:
+    query_object.admin_id = current_user.user.user_id
     result = await PersonnelQuitService.add_service(query_db, query_object)
     return ResponseUtil.success(msg=result.message)
 
@@ -60,7 +60,6 @@ async def add_quit(
     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:personnel:quit:update')],
 )
 async def update_quit(
-    request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
     model: Annotated[OaPersonalQuitBaseModel, Body()],
 )->Response:
@@ -75,7 +74,6 @@ async def update_quit(
     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:personnel:quit:query')],
 )
 async def get_quit(
-    request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
     id: int,
 ) -> Response:
@@ -90,7 +88,6 @@ async def get_quit(
     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:personnel:quit:delete')],
 )
 async def delete_quit(
-    request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
     id: int,
 ) -> Response:

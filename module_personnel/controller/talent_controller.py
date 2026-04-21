@@ -7,12 +7,15 @@ from sqlalchemy.sql import ColumnElement
 from common.aspect.data_scope import DataScopeDependency
 from common.aspect.db_seesion import DBSessionDependency
 from common.aspect.interface_auth import UserInterfaceAuthDependency
-from common.aspect.pre_auth import PreAuthDependency
+from common.aspect.pre_auth import PreAuthDependency, CurrentUserDependency
 from common.router import APIRouterPro
 from module_personnel.entity.do.talent_do import OaTalent
 from module_personnel.entity.vo.talent_vo import OaTalentBaseModel, OaTalentPageQueryModel
 from module_personnel.service.talent_service import TalentService
 from utils.response_util import ResponseUtil
+from module_admin.entity.vo.user_vo import (
+    CurrentUserModel
+)
 
 talent_controller = APIRouterPro(
     prefix='/personnel/talent', order_num=3, tags=['人事管理-入职申请'], dependencies=[PreAuthDependency()]
@@ -45,7 +48,9 @@ async def add_talent(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
     query_object: Annotated[OaTalentBaseModel, Body()],
+    current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
 ) -> Response:
+    query_object.admin_id = current_user.user.user_id
     result=  await TalentService.add_service(query_db, query_object)
     return ResponseUtil.success(msg=result.message)
 

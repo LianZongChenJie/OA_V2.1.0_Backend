@@ -105,7 +105,11 @@ class SealService:
     @classmethod
     async def del_by_id(cls, db: AsyncSession, id: int):
         try:
-            await SealDao.del_by_id(db, id)
+            seal = await SealDao.get_info_by_id(db, id)
+            if not seal.check_status == 0 or seal.check_status == 4:    # 只能删除未提交审核或已撤销的申请
+                await SealDao.del_by_id(db, id)
+            else:
+                raise CrudResponseModel(is_success=False, message='请先撤销申请再删除')
             return CrudResponseModel(is_success=True, message='删除成功')
         except Exception as e:
             await db.rollback()
