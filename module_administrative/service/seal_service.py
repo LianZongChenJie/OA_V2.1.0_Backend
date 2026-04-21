@@ -50,8 +50,12 @@ class SealService:
                 model.use_time = int_time(model.use_time)
             if model.start_time:
                 model.start_time = int_time(model.start_time)
+            elif model.start_time == '':
+                model.start_time = None
             if model.end_time:
                 model.end_time = int_time(model.end_time)
+            elif model.end_time == '':
+                model.end_time = None
             change = await SealDao.add(query_db, model)
             # await cls.add_record(query_db, change, model)
             await query_db.commit()
