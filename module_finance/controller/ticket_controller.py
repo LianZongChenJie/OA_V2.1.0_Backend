@@ -80,7 +80,7 @@ async def add(
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:payment:update')],
 )
-async def update_expense(
+async def add_ticket(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
     model: Annotated[OaTicketBaseModel, Body()],

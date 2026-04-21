@@ -114,7 +114,7 @@ async def get_expense(
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:invoice:delete')],
 )
-async def delete_expense(
+async def delete_invoice(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
     id: int,

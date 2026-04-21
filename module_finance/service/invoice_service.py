@@ -73,6 +73,9 @@ class InvoiceService:
     @classmethod
     async def del_by_id(cls, db: AsyncSession, id: int):
         try:
+            invoice = await InvoiceDao.get_info_by_id(db, id)
+            if invoice.check_status !=0 or invoice.check_flow_id!=0:
+                raise CrudResponseModel(is_success=False, message='请先撤销申请再删除')
             await InvoiceDao.del_by_id(db, id)
             return CrudResponseModel(is_success=True, message='删除成功')
         except Exception as e:

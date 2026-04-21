@@ -66,7 +66,10 @@ async def add_loan(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
     query_object: Annotated[OaLoanBaseModel, Body()],
+    current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
 ) -> Response:
+    query_object.admin_id = current_user.user.user_id
+    query_object.did = current_user.user.dept_id
     result = await OaLoanService.add_service(query_db, query_object)
     return ResponseUtil.success(msg=result.message)
 
