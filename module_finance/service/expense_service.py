@@ -15,11 +15,13 @@ from common.vo import PageModel, CrudResponseModel
 from datetime import datetime
 
 from module_personnel.entity.vo.flow_record_vo import OaFlowRecordBaseModel
+from utils.camel_converter import ResponseConverter
 from utils.timeformat import int_time
 from decimal import Decimal
 
 
 class OaExpenseService:
+    time_fields = ['create_time', 'update_time', 'income_month', 'expense_time']
     @classmethod
     async def get_page_list_service(cls, query_db: AsyncSession, query_object: OaExpensePageQueryModel,
                                     data_scope_sql: ColumnElement, is_page: bool = False) -> PageModel[
@@ -92,14 +94,18 @@ class OaExpenseService:
 
     @classmethod
     async def get_info_service(cls, query_db: \
-            AsyncSession, id: int) -> OaExpenseBaseModel:
+            AsyncSession, id: int) -> dict[str, Any]:
         try:
             info = await ExpenseDao.get_info_by_id(query_db, id)
             records = await FlowRecordDao.get_records_by_action_id(query_db, info.id, info.check_flow_id)
             inter = await ExpenseInterfixDao.get_list_by_exid(query_db, info.id)
-            detail = OaExpenseDetailModel(info=info, interfix=inter, flow_records=records)
+            detail = {}
+            detail.update(info)
+            detail['records'] = records
+            detail['inter'] = inter
             if not detail:
                 raise ServiceException(message="未找到该数据")
+            detail = ResponseConverter.convert_to_camel_and_format_time(detail, cls.time_fields)
             return detail
         except Exception as e:
             await query_db.rollback()

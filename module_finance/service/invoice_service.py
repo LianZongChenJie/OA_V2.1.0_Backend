@@ -14,6 +14,7 @@ from common.vo import PageModel, CrudResponseModel
 from datetime import datetime
 
 from module_personnel.entity.vo.flow_record_vo import OaFlowRecordBaseModel
+from utils.camel_converter import ModelConverter
 from utils.timeformat import int_time
 
 
@@ -55,16 +56,17 @@ class InvoiceService:
 
     @classmethod
     async def get_info_service(cls, query_db: \
-            AsyncSession, id: int) -> OaInvoiceBaseModel:
+            AsyncSession, id: int) -> dict[str, Any]:
         try:
             info = await InvoiceDao.get_info_by_id(query_db, id)
             records = await FlowRecordDao.get_records_by_action_id(query_db, info.id, info.check_flow_id)
             detail = OaInvoiceDetailModel(info=None, records=None)
-            detail.info = info
-            detail.records = records
+            detail = {}
+            detail.update(info)
+            detail['records'] = records
             if not detail:
                 raise ServiceException(message="未找到该数据")
-            return detail
+            return ModelConverter.convert_to_camel_case(detail)
         except Exception as e:
             await query_db.rollback()
             raise e
