@@ -90,14 +90,14 @@ async def submit(
     dependencies=[UserInterfaceAuthDependency('basicdata:flow:query')],
 )
 async def get_flow_nodes(
-    action_id: int,
-    flow_id: int,
+    actionId: int,
+    flowId: int,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
     current_user: Annotated[CurrentUserModel, CurrentUserDependency()]
 )->Response:
     user_id = current_user.user.user_id
     dept_id = current_user.user.dept_id
-    result = await CheckService.get_flow_nodes(query_db, action_id, flow_id, dept_id, user_id)
+    result = await CheckService.get_flow_nodes(query_db, actionId, flowId, dept_id, user_id)
     return ResponseUtil.success(data=result)
 
 @flow_check_controller.put(
