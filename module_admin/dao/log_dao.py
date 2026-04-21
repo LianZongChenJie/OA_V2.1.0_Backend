@@ -1,11 +1,12 @@
 from datetime import datetime, time
 from typing import Any
 
-from sqlalchemy import asc, delete, desc, select
+from sqlalchemy import asc, delete, desc, select,func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from common.vo import PageModel
 from module_admin.entity.do.log_do import SysLogininfor, SysOperLog
+from module_admin.entity.do.user_do import SysUser
 from module_admin.entity.vo.log_vo import LogininforModel, LoginLogPageQueryModel, OperLogModel, OperLogPageQueryModel
 from utils.common_util import SnakeCaseUtil
 from utils.page_util import PageUtil
@@ -95,6 +96,21 @@ class OperationLogDao:
         :return:
         """
         await db.execute(delete(SysOperLog))
+
+    @classmethod
+    async def get_view_log(cls, db: AsyncSession, oper_time: str):
+        """
+        获取30天内访问量top10
+        :param db:
+        :param oper_time: 操作时间
+        :return:
+        """
+        query = (select(SysOperLog.oper_name,SysUser.nick_name, func.count(1))
+                 .join(SysUser, SysUser.user_name == SysOperLog.oper_name, isouter=True)
+                 .select_from(SysOperLog).group_by(
+            SysOperLog.oper_name).where(SysOperLog.oper_time >= oper_time).order_by(desc(func.count(1))).limit(10))
+        result = await db.execute(query)
+        return result.mappings().all()
 
 
 class LoginLogDao:
