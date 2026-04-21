@@ -45,6 +45,7 @@ class OaFlowPageQueryModel(OaFlowBaseModel):
 class OaFlowVOModel(OaFlowBaseModel):
     """审批视图模型"""
     cate_name: Optional[str] = Field(None, description='审批类型名称')
+    check_table: Optional[str] = Field(None, description='审批数据表')
     module_name: Optional[str] = Field(None, description='审批模块名称')
     copy_names: Optional[str] = Field(None, description='抄送人名称')
     department_names: Optional[str] = Field(None, description='应用部门名称')

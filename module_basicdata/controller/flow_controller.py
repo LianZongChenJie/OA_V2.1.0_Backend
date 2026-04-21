@@ -38,7 +38,7 @@ async def list_page(
     data_scope_sql: Annotated[ColumnElement, DataScopeDependency(OaFlow)], ) -> Response:
     flow_list = await FlowService.get_flow_list(query_db, flow_cate_page_query, data_scope_sql, is_page=True)
     logger.info('获取成功')
-    return ResponseUtil.success(model_content=flow_list)
+    return ResponseUtil.success(data=ModelConverter.convert_to_camel_case(flow_list))
 
 @flow_controller.post(
     "/add",

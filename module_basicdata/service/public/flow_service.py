@@ -10,6 +10,9 @@ from module_basicdata.entity.do.public.flow_step_do import OaFlowStep
 from module_basicdata.entity.vo.public.flow_vo import OaFlowBaseModel, OaFlowVOModel
 from datetime import datetime
 
+from utils.camel_converter import ModelConverter
+
+
 class FlowService:
     @classmethod
     async def get_flow_detail(cls, query_db: AsyncSession, id: int) -> OaFlowBaseModel:
@@ -80,6 +83,7 @@ class FlowService:
                 flowVO = OaFlowVOModel(**flow)
                 flowVO.cate_name = flowCate.get('title')
                 flowVO.module_name = flowModule.get('title')
+                flowVO.check_table = flowCate.get('checkTable')
                 if flowVO.copy_names:
                     flowVO.copy_names = user.get('nickName')
                 else:
@@ -94,6 +98,7 @@ class FlowService:
                     else:
                         flowVO.department_names = '未找到部门'
                 new_rows.append(flowVO)
+            new_rows = ModelConverter.convert_to_camel_case(new_rows)
             result.rows = new_rows
             return result
         except Exception as e:
