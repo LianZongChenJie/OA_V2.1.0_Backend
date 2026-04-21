@@ -15,6 +15,7 @@ from module_admin.dao.log_dao import OperationLogDao
 
 from datetime import datetime, timedelta
 
+from utils.camel_converter import ModelConverter
 from utils.timeformat import format_timestamp
 
 
@@ -67,6 +68,15 @@ class MainService:
         :return:
         """
         create_time = format_timestamp(int((datetime.now() - timedelta(days=30)).timestamp()))
+        try:
+            datas = await OperationLogDao.get_view_log(query_db, create_time)
+            data_list = []
+            for data in datas:
+                data_list.append(dict(data))
+            return ModelConverter.convert_to_camel_case(data_list)
+        except Exception as e:
+            await query_db.rollback()
+            raise e
 
 
 
