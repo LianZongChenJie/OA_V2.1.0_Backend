@@ -80,7 +80,7 @@ class DepartmentChangeService:
             AsyncSession, id: int) -> dict:
         try:
             detail = await DepartmentChangeDao.get_info_by_id(query_db, id)
-            detail['info'] = ResponseConverter.convert_to_camel_and_format_time(detail['info'],cls.time_fields)
+            detail = ResponseConverter.convert_to_camel_and_format_time(detail,cls.time_fields)
             detail['records'] = ResponseConverter.convert_to_camel_and_format_time_list(detail['records'],cls.time_fields)
             if not detail:
                 raise ServiceException(message="未找到该数据")
