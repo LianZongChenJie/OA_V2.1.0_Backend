@@ -1,3 +1,5 @@
+import decimal
+
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Any
 
@@ -36,6 +38,10 @@ class LaborContractService:
             model.start_time = int_time(model.start_time)
             model.end_time = int_time(model.end_time)
             model.trial_end_time = int_time(model.trial_end_time)
+            if model.trial_salary is None:
+                model.trial_salary = decimal.Decimal(0)
+            if model.worker_salary is None:
+                model.worker_salary = decimal.Decimal(0)
             await LaborContractDao.add(query_db, model)
             await query_db.commit()
             return CrudResponseModel(is_success=True, message='新增成功')
