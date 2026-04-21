@@ -11,6 +11,11 @@ from module_contract.dao.purchase_dao import PurchaseDao
 from module_main.entity.vo.main_count_vo import CountBaseModel, AwaitReviewBaseModel
 from module_project.dao.project_dao import ProjectDao
 from module_project.dao.project_task_dao import ProjectTaskDao
+from module_admin.dao.log_dao import OperationLogDao
+
+from datetime import datetime, timedelta
+
+from utils.timeformat import format_timestamp
 
 
 class MainService:
@@ -53,3 +58,15 @@ class MainService:
         except Exception as e:
             await query_db.rollback()
             raise e
+
+    @classmethod
+    async def get_view_log(cls, query_db: AsyncSession) -> dict:
+        """
+        获取最近30天用户操作日志数据
+        :param query_db:
+        :return:
+        """
+        create_time = format_timestamp(int((datetime.now() - timedelta(days=30)).timestamp()))
+
+
+
