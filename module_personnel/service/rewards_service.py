@@ -10,6 +10,8 @@ from module_personnel.entity.vo.rewards_vo import OaRewardsBaseModel, OaRewardsP
 from common.vo import PageModel, CrudResponseModel
 from datetime import datetime
 
+from utils.camel_converter import ModelConverter
+
 
 class RewardsService:
     @classmethod
@@ -19,9 +21,23 @@ class RewardsService:
                                                                                              list[dict[str, Any]]:
         query_list = await RewardsDao.get_page_list(query_db, query_object, data_scope_sql, is_page)
         if is_page:
-            result_list = PageModel[OaRewardsBaseModel](**{
-                **query_list.model_dump(by_alias=True)
-            })
+            rows = []
+            for row in query_list.rows:
+                row = dict(row)
+                row.update(row['OaRewards'].to_dict())
+                row.pop('OaRewards')
+                if row['status'] == 1:
+                    row['statusStr'] = '已执行'
+                else:
+                    row['statusStr'] = '未执行'
+                if row['types'] == 1:
+                    row['typesStr'] = '奖励'
+                elif row['types'] == 2:
+                    row['typesStr'] = '惩罚'
+                row = ModelConverter.convert_to_camel_case(row)
+                rows.append(row)
+            query_list.rows = rows
+            result_list = query_list
         else:
             result_list = []
             if query_list:

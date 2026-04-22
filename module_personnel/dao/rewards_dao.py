@@ -2,8 +2,11 @@ from operator import and_
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, desc
+from sqlalchemy.orm import aliased
 from sqlalchemy.sql import ColumnElement, func,or_
 from common.vo import PageModel
+from module_admin.entity.do.rewards_cate_do import SysRewardsCate
+from module_admin.entity.do.user_do import SysUser
 from utils.page_util import PageUtil
 from module_personnel.entity.vo.rewards_vo import OaRewardsBaseModel, OaRewardsPageQueryModel
 from module_personnel.entity.do.rewards_do import OaRewards
@@ -15,7 +18,11 @@ class RewardsDao:
     async def get_page_list(cls, db: AsyncSession, query_object: OaRewardsPageQueryModel,
                             data_scope_sql: ColumnElement,
                             is_page: bool = False) -> PageModel | list[list[dict[str, Any]]]:
-        query = (select(OaRewards)
+        user = aliased(SysUser, name='user')
+        query = (select(OaRewards,SysRewardsCate.title.label('cate_name'),SysUser.nick_name.label('user_name'), user.nick_name.label('admin_name'))
+                 .join(SysRewardsCate, OaRewards.rewards_cate == SysRewardsCate.id,isouter=True)\
+                 .join(SysUser, OaRewards.uid == SysUser.user_id,isouter=True)
+                 .join(user, OaRewards.admin_id == user.user_id,isouter=True)
                      .where(
                             OaRewards.status == query_object.status if query_object.status else True,
                             OaRewards.types == query_object.types if query_object.types else True,
@@ -27,7 +34,7 @@ class RewardsDao:
                             ) if query_object.begin_time and query_object.end_time else True,
                         data_scope_sql,
             ).order_by(desc(OaRewards.create_time)))
-        page_list: PageModel | list[list[dict[str, Any]]] = await PageUtil.paginate(
+        page_list: PageModel | list[list[dict[str, Any]]] = await PageUtil.paginate_dict(
             db, query, query_object.page_num, query_object.page_size, is_page
         )
         return page_list
