@@ -116,6 +116,10 @@ class ProjectDao:
         if query_object.cate_id_filter is not None:
             conditions.append(OaProject.cate_id == query_object.cate_id_filter)
 
+        # 客户筛选（支持多选）
+        if query_object.customer_id_filter:
+            conditions.append(OaProject.customer_id.in_(query_object.customer_id_filter))
+
         # 关键词搜索
         if query_object.keywords:
             conditions.append(
@@ -403,18 +407,17 @@ class ProjectDao:
     @classmethod
     async def _get_current_step_info(cls, db: AsyncSession, project_id: int) -> dict[str, Any]:
         """
-        获取当前阶段信息
+        获取当前阶段信息（返回sort值最大的最新阶段）
 
         :param db: orm 对象
         :param project_id: 项目 ID
         :return: 当前阶段信息
         """
-        # 查询当前阶段
+        # 查询最新阶段（sort值最大的阶段）
         step_query = select(OaProjectStep).where(
             OaProjectStep.project_id == project_id,
-            OaProjectStep.is_current == 1,
             OaProjectStep.delete_time == 0
-        )
+        ).order_by(OaProjectStep.sort.desc())
         current_step = (await db.execute(step_query)).scalars().first()
 
         if current_step:

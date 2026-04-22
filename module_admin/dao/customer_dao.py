@@ -27,7 +27,7 @@ class CustomerDao:
         :return: 客户详细信息对象
         """
         from module_admin.entity.do.customer_contact_do import OaCustomerContact
-        
+
         query = select(OaCustomer).where(OaCustomer.id == customer_id)
         customer_info = (await db.execute(query)).scalars().first()
 
@@ -62,7 +62,7 @@ class CustomerDao:
                 .order_by(OaCustomerContact.is_default.desc(), OaCustomerContact.id.asc())
             )
             contact_rows = (await db.execute(contact_query)).scalars().all()
-            
+
             contact_list = []
             first_contact = None
             for contact in contact_rows:
@@ -88,12 +88,12 @@ class CustomerDao:
                     'deleteTime': contact.delete_time,
                 }
                 contact_list.append(contact_dict)
-                
+
                 if contact.is_default == 1 and first_contact is None:
                     first_contact = contact
-            
+
             result['contact_list'] = contact_list
-            
+
             if first_contact:
                 result['contact_name'] = first_contact.name
                 result['contact_mobile'] = first_contact.mobile
@@ -207,10 +207,10 @@ class CustomerDao:
             OaCustomer.delete_time == 0,
             OaCustomer.discard_time == 0
         ]
-        
+
         if customer_info.name:
             conditions.append(OaCustomer.name == customer_info.name)
-        
+
         query = select(OaCustomer).where(*conditions)
         result = await db.execute(query)
         return result.scalars().first()
@@ -270,14 +270,15 @@ class CustomerDao:
 
         # 根据 tab 参数设置查询条件
         if query_object.tab == 0:
-            # 全部客户（根据权限过滤）
-            pass
+            # 全部客户（根据权限过滤，排除公海客户）
+            conditions.append(OaCustomer.belong_uid != 0)
         elif query_object.tab == 1:
             # 我的客户
             conditions.append(OaCustomer.belong_uid == user_id)
         elif query_object.tab == 2:
             # 下属客户
             conditions.append(OaCustomer.belong_uid != user_id)
+            conditions.append(OaCustomer.belong_uid != 0)  # 排除公海客户
         elif query_object.tab == 3:
             # 分享客户
             conditions.append(func.find_in_set(str(user_id), OaCustomer.share_ids))
@@ -315,7 +316,7 @@ class CustomerDao:
         :return: 处理后的字典数据
         """
         from utils.camel_converter import ModelConverter
-        
+
         if not isinstance(row, dict):
             if hasattr(row, '__table__'):
                 row = ModelConverter.to_dict(row, by_alias=True)
@@ -492,8 +493,3 @@ class CustomerDao:
 
 
 
-    @classmethod
-    async def get_customer_count(cls, db: AsyncSession) -> OaCustomer | None:
-        query = select(func.count()).select_from(OaCustomer).where(OaCustomer.delete_time == 0)
-        count = await db.execute(query)
-        return count.scalar()

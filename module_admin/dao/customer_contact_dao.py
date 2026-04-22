@@ -107,6 +107,60 @@ class CustomerContactDao:
             db, query, query_object.page_num, query_object.page_size, is_page
         )
 
+        # 为每个联系人添加客户名称
+        if isinstance(contact_list, PageModel) and hasattr(contact_list, 'rows'):
+            enhanced_rows = []
+            for contact in contact_list.rows:
+                # 将 ORM 对象转换为字典
+                if isinstance(contact, dict):
+                    contact_dict = contact.copy()
+                elif hasattr(contact, '__dict__'):
+                    contact_dict = {key: value for key, value in contact.__dict__.items() if not key.startswith('_')}
+                else:
+                    contact_dict = dict(contact) if hasattr(contact, '__iter__') else {}
+                
+                # 查询客户名称
+                cid = contact_dict.get('cid')
+                if cid and int(cid) > 0:
+                    try:
+                        from module_admin.entity.do.customer_do import OaCustomer
+                        customer_query = select(OaCustomer).where(OaCustomer.id == cid)
+                        customer_info = (await db.execute(customer_query)).scalars().first()
+                        if customer_info:
+                            contact_dict['customer_name'] = customer_info.name
+                    except Exception as e:
+                        from utils.log_util import logger
+                        logger.error(f'查询客户名称失败: {e}')
+                
+                enhanced_rows.append(contact_dict)
+            contact_list.rows = enhanced_rows
+        elif isinstance(contact_list, list):
+            enhanced_list = []
+            for contact in contact_list:
+                # 将 ORM 对象转换为字典
+                if isinstance(contact, dict):
+                    contact_dict = contact.copy()
+                elif hasattr(contact, '__dict__'):
+                    contact_dict = {key: value for key, value in contact.__dict__.items() if not key.startswith('_')}
+                else:
+                    contact_dict = dict(contact) if hasattr(contact, '__iter__') else {}
+                
+                # 查询客户名称
+                cid = contact_dict.get('cid')
+                if cid and int(cid) > 0:
+                    try:
+                        from module_admin.entity.do.customer_do import OaCustomer
+                        customer_query = select(OaCustomer).where(OaCustomer.id == cid)
+                        customer_info = (await db.execute(customer_query)).scalars().first()
+                        if customer_info:
+                            contact_dict['customer_name'] = customer_info.name
+                    except Exception as e:
+                        from utils.log_util import logger
+                        logger.error(f'查询客户名称失败: {e}')
+                
+                enhanced_list.append(contact_dict)
+            contact_list = enhanced_list
+
         return contact_list
 
     @classmethod

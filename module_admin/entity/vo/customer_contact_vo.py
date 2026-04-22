@@ -33,7 +33,9 @@ class CustomerContactModel(BaseModel):
     delete_time: int | None = Field(default=None, description='删除时间')
 
     # 扩展字段，用于列表展示
-    customer_name: str | None = Field(default=None, description='客户名称')
+    customer_name: str | None = Field(default=None, alias='customerName', description='客户名称')
+    create_time_str: str | None = Field(default=None, alias='createTimeStr', description='创建时间字符串')
+    update_time_str: str | None = Field(default=None, alias='updateTimeStr', description='更新时间字符串')
 
     @Xss(field_name='name', message='姓名不能包含脚本字符')
     @NotBlank(field_name='name', message='姓名不能为空')

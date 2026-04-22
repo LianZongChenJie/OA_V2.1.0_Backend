@@ -52,6 +52,11 @@ async def rush_customer_list(
         
         query = select(OaCustomer).where(*conditions)
         
+        # 获取总数
+        count_query = select(func.count(OaCustomer.id)).where(*conditions)
+        count_result = await query_db.execute(count_query)
+        total = count_result.scalar() or 0
+        
         # 随机排序
         query = query.order_by(func.rand())
         
@@ -61,11 +66,6 @@ async def rush_customer_list(
         
         result = await query_db.execute(query)
         customer_list = result.scalars().all()
-        
-        # 获取总数
-        count_query = select(func.count(OaCustomer.id)).where(*conditions)
-        count_result = await query_db.execute(count_query)
-        total = count_result.scalar() or 0
         
         # 转换结果
         customers = [
@@ -82,16 +82,21 @@ async def rush_customer_list(
                 belong_uid=c.belong_uid,
                 belong_did=c.belong_did,
                 belong_time=c.belong_time,
+                delete_time=c.delete_time,
             )
             for c in customer_list
         ]
         
+        # 计算是否有下一页
+        has_next = (page_num * page_size) < total
+        
         return ResponseUtil.success(
-            data={
-                'list': customers,
+            rows=[customer.model_dump(by_alias=True) for customer in customers],
+            dict_content={
+                'pageNum': page_num,
+                'pageSize': page_size,
                 'total': total,
-                'page_num': page_num,
-                'page_size': page_size
+                'hasNext': has_next
             }
         )
     except Exception as e:
@@ -197,17 +202,17 @@ async def sea_customer_list(
         query = select(OaCustomer).where(*conditions)
         query = query.order_by(OaCustomer.create_time.desc())
         
+        # 获取总数
+        count_query = select(func.count(OaCustomer.id)).where(*conditions)
+        count_result = await query_db.execute(count_query)
+        total = count_result.scalar() or 0
+        
         # 分页
         offset = (page_num - 1) * page_size
         query = query.limit(page_size).offset(offset)
         
         result = await query_db.execute(query)
         customer_list = result.scalars().all()
-        
-        # 获取总数
-        count_query = select(func.count(OaCustomer.id)).where(*conditions)
-        count_result = await query_db.execute(count_query)
-        total = count_result.scalar() or 0
         
         # 转换结果
         customers = [
@@ -224,16 +229,21 @@ async def sea_customer_list(
                 belong_uid=c.belong_uid,
                 belong_did=c.belong_did,
                 belong_time=c.belong_time,
+                delete_time=c.delete_time,
             )
             for c in customer_list
         ]
         
+        # 计算是否有下一页
+        has_next = (page_num * page_size) < total
+        
         return ResponseUtil.success(
-            data={
-                'list': customers,
+            rows=[customer.model_dump(by_alias=True) for customer in customers],
+            dict_content={
+                'pageNum': page_num,
+                'pageSize': page_size,
                 'total': total,
-                'page_num': page_num,
-                'page_size': page_size
+                'hasNext': has_next
             }
         )
     except Exception as e:
@@ -292,17 +302,17 @@ async def trash_customer_list(
         query = select(OaCustomer).where(*conditions)
         query = query.order_by(OaCustomer.delete_time.desc())
         
+        # 获取总数
+        count_query = select(func.count(OaCustomer.id)).where(*conditions)
+        count_result = await query_db.execute(count_query)
+        total = count_result.scalar() or 0
+        
         # 分页
         offset = (page_num - 1) * page_size
         query = query.limit(page_size).offset(offset)
         
         result = await query_db.execute(query)
         customer_list = result.scalars().all()
-        
-        # 获取总数
-        count_query = select(func.count(OaCustomer.id)).where(*conditions)
-        count_result = await query_db.execute(count_query)
-        total = count_result.scalar() or 0
         
         # 转换结果
         customers = [
@@ -323,12 +333,16 @@ async def trash_customer_list(
             for c in customer_list
         ]
         
+        # 计算是否有下一页
+        has_next = (page_num * page_size) < total
+        
         return ResponseUtil.success(
-            data={
-                'list': customers,
+            rows=[customer.model_dump(by_alias=True) for customer in customers],
+            dict_content={
+                'pageNum': page_num,
+                'pageSize': page_size,
                 'total': total,
-                'page_num': page_num,
-                'page_size': page_size
+                'hasNext': has_next
             }
         )
     except Exception as e:

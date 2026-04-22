@@ -18,7 +18,7 @@ class SealCateDao:
     """
 
     @classmethod
-    async def get_seal_cate_detail_by_id(cls, db: AsyncSession, seal_cate_id: int) -> dict[str, Any] | None:
+    async def get_seal_cate_detail_by_id(cls, db: AsyncSession, seal_cate_id: int) -> SysSealCate | None:
         """
         根据印章类别 id 获取印章类别详细信息
 
@@ -32,37 +32,7 @@ class SealCateDao:
             .first()
         )
 
-        if not seal_cate_info:
-            return None
-
-        result = {
-            'seal_cate_info': seal_cate_info,
-            'dept_names': [],
-            'keeper_name': None,
-        }
-
-        # 查询应用部门名称
-        if seal_cate_info.dids:
-            dept_ids = [int(d.strip()) for d in seal_cate_info.dids.split(',') if d.strip() and d.strip().isdigit()]
-            if dept_ids:
-                depts = (
-                    await db.execute(
-                        select(SysDept.dept_name).where(SysDept.dept_id.in_(dept_ids)).order_by(SysDept.dept_id)
-                    )
-                ).scalars().all()
-                result['dept_names'] = list(depts)
-
-        # 查询保管人姓名
-        if seal_cate_info.keep_uid and seal_cate_info.keep_uid > 0:
-            user = (
-                await db.execute(
-                    select(SysUser.nick_name, SysUser.user_name).where(SysUser.user_id == seal_cate_info.keep_uid)
-                )
-            ).first()
-            if user:
-                result['keeper_name'] = user.nick_name or user.user_name
-
-        return result
+        return seal_cate_info
 
     @classmethod
     async def get_seal_cate_detail_by_info(cls, db: AsyncSession, seal_cate: SealCateModel) -> SysSealCate | None:

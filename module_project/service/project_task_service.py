@@ -162,11 +162,15 @@ class ProjectTaskService:
                         task_dict['dept_name'] = detail_info.get('dept_name')
                         task_dict['priority_name'] = detail_info.get('priority_name')
                         task_dict['status_name'] = detail_info.get('status_name')
+                        task_dict['work_name'] = detail_info.get('work_name')
                         task_dict['end_time_str'] = detail_info.get('end_time_str')
+                        task_dict['create_time_str'] = detail_info.get('create_time_str')
+                        task_dict['update_time_str'] = detail_info.get('update_time_str')
+                        task_dict['over_time_str'] = detail_info.get('over_time_str')
 
                 task_list.append(task_dict)
 
-            task_list_result.rows = task_list
+            task_list_result.rows = CamelCaseUtil.transform_result(task_list)
         else:
             task_list = []
             for item in task_list_result:
@@ -195,11 +199,15 @@ class ProjectTaskService:
                         task_dict['dept_name'] = detail_info.get('dept_name')
                         task_dict['priority_name'] = detail_info.get('priority_name')
                         task_dict['status_name'] = detail_info.get('status_name')
+                        task_dict['work_name'] = detail_info.get('work_name')
                         task_dict['end_time_str'] = detail_info.get('end_time_str')
+                        task_dict['create_time_str'] = detail_info.get('create_time_str')
+                        task_dict['update_time_str'] = detail_info.get('update_time_str')
+                        task_dict['over_time_str'] = detail_info.get('over_time_str')
 
                 task_list.append(task_dict)
 
-            task_list_result = task_list
+            task_list_result = CamelCaseUtil.transform_result(task_list)
 
         return task_list_result
 
@@ -293,32 +301,15 @@ class ProjectTaskService:
             raise ServiceException(message='传入任务 id 为空')
 
     @classmethod
-    async def project_task_detail_services(cls, query_db: AsyncSession, id: int) -> ProjectTaskModel:
+    async def project_task_detail_services(cls, query_db: AsyncSession, id: int) -> dict[str, Any]:
         """
-        获取任务详细信息 service
-
-        :param query_db: orm 对象
-        :param id: 任务 id
-        :return: 任务详细信息对象
+        获取任务详细信息 service - 直接返回字典
         """
         task_result = await ProjectTaskDao.get_project_task_detail_by_id(query_db, id)
 
-        if task_result:
-            # 将 task_info 对象转换为字典
-            task_info_dict = {key: value for key, value in task_result['task_info'].__dict__.items() if not key.startswith('_')}
+        if not task_result:
+            raise ServiceException(message="任务不存在")
 
-            # 合并其他字段
-            task_info_dict.update({
-                'project_name': task_result.get('project_name'),
-                'admin_name': task_result.get('admin_name'),
-                'director_name': task_result.get('director_name'),
-                'dept_name': task_result.get('dept_name'),
-                'priority_name': task_result.get('priority_name'),
-                'status_name': task_result.get('status_name'),
-                'end_time_str': task_result.get('end_time_str'),
-            })
+        logger.info(f"【Service层】任务详情数据：{task_result}")
 
-            result = ProjectTaskModel(**task_info_dict)
-            return result
-        else:
-            raise ServiceException(message='任务不存在')
+        return task_result

@@ -34,7 +34,6 @@ project_task_controller = APIRouterPro(
     '/list',
     summary='获取项目任务分页列表接口',
     description='用于获取项目任务分页列表',
-    response_model=PageResponseModel[ProjectTaskModel],
     dependencies=[UserInterfaceAuthDependency('project:task:list')],
 )
 async def get_project_task_list(
@@ -43,20 +42,226 @@ async def get_project_task_list(
         query_db: Annotated[AsyncSession, DBSessionDependency()],
         current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
 ) -> Response:
-    # 获取分页数据
-    project_task_page_query_result = await ProjectTaskService.get_project_task_list_services(
-        query_db,
-        project_task_page_query,
-        current_user.user.user_id,
-        current_user.user.auth_dids or '',
-        current_user.user.son_dids or '',
-        current_user.user.admin,
-        False,  # is_project_admin 需要根据实际权限判断
-        is_page=True
-    )
-    logger.info('获取成功')
-
-    return ResponseUtil.success(model_content=project_task_page_query_result)
+    """
+    获取项目任务列表
+    
+    :param request: Request 对象
+    :param project_task_page_query: 查询参数
+    :param query_db: 数据库会话
+    :param current_user: 当前用户
+    :return: 任务列表
+    """
+    from sqlalchemy import text
+    from datetime import datetime
+    from utils.common_util import CamelCaseUtil
+    
+    # 分页参数
+    page_num = project_task_page_query.page_num if project_task_page_query.page_num else 1
+    page_size = project_task_page_query.page_size if project_task_page_query.page_size else 10
+    offset = (page_num - 1) * page_size
+    
+    # 当前用户信息
+    user_id = current_user.user.user_id
+    is_admin = current_user.user.admin
+    auth_dids = current_user.user.auth_dids or ''
+    son_dids = current_user.user.son_dids or ''
+    
+    # 构建 WHERE 条件
+    conditions = ["t.delete_time = 0"]
+    params = {}
+    
+    # 状态筛选
+    if project_task_page_query.status_filter is not None:
+        conditions.append("t.status = :status")
+        params['status'] = project_task_page_query.status_filter
+    
+    # 优先级筛选
+    if project_task_page_query.priority_filter is not None:
+        conditions.append("t.priority = :priority")
+        params['priority'] = project_task_page_query.priority_filter
+    
+    # 工作类型筛选
+    if project_task_page_query.work_id_filter is not None:
+        conditions.append("t.work_id = :work_id")
+        params['work_id'] = project_task_page_query.work_id_filter
+    
+    # 项目筛选
+    if project_task_page_query.project_id_filter is not None:
+        conditions.append("t.project_id = :project_id")
+        params['project_id'] = project_task_page_query.project_id_filter
+    
+    # 关键词搜索
+    if project_task_page_query.keywords:
+        conditions.append("(t.title LIKE :keywords OR t.content LIKE :keywords)")
+        params['keywords'] = f"%{project_task_page_query.keywords}%"
+    
+    # 负责人筛选
+    director_uid_list = project_task_page_query.get_director_uid_list()
+    if director_uid_list:
+        conditions.append("t.director_uid IN :director_uids")
+        params['director_uids'] = tuple(director_uid_list)
+    
+    # 根据 tab 参数设置查询条件
+    current_time = int(datetime.now().timestamp())
+    seven_days_later = current_time + 7 * 86400
+    
+    if project_task_page_query.tab == 1:
+        # 进行中
+        conditions.append("t.status < 3")
+    elif project_task_page_query.tab == 2:
+        # 即将逾期
+        conditions.append("t.status < 3")
+        conditions.append("t.end_time BETWEEN :current_time AND :seven_days_later")
+        params['current_time'] = current_time
+        params['seven_days_later'] = seven_days_later
+    elif project_task_page_query.tab == 3:
+        # 已逾期
+        conditions.append("t.status < 3")
+        conditions.append("t.end_time < :current_time")
+        params['current_time'] = current_time
+    
+    # 数据权限过滤（非管理员）
+    if not is_admin:
+        permission_conditions = [
+            "t.admin_id = :user_id",
+            "t.director_uid = :user_id",
+        ]
+        params['user_id'] = user_id
+        
+        # 部门权限
+        if auth_dids or son_dids:
+            dept_ids = set()
+            if auth_dids:
+                dept_ids.update([int(d.strip()) for d in auth_dids.split(',') if d.strip()])
+            if son_dids:
+                dept_ids.update([int(d.strip()) for d in son_dids.split(',') if d.strip()])
+            
+            if dept_ids:
+                permission_conditions.append("t.did IN :dept_ids")
+                params['dept_ids'] = tuple(dept_ids)
+        
+        # 协助人员
+        permission_conditions.append("t.assist_admin_ids LIKE :assist_ids")
+        params['assist_ids'] = f"%{user_id}%"
+        
+        if permission_conditions:
+            conditions.append("(" + " OR ".join(permission_conditions) + ")")
+    
+    where_clause = " AND ".join(conditions)
+    
+    # 构建完整 SQL 查询
+    sql = text(f"""
+        SELECT 
+            t.id,
+            t.title,
+            t.pid,
+            t.before_task AS beforeTask,
+            t.project_id AS projectId,
+            t.work_id AS workId,
+            t.step_id AS stepId,
+            t.plan_hours AS planHours,
+            t.end_time AS endTime,
+            t.over_time AS overTime,
+            t.admin_id AS adminId,
+            t.director_uid AS directorUid,
+            t.did,
+            t.assist_admin_ids AS assistAdminIds,
+            t.priority,
+            t.status,
+            t.done_ratio AS doneRatio,
+            t.content,
+            t.create_time AS createTime,
+            t.update_time AS updateTime,
+            t.delete_time AS deleteTime,
+            p.name AS projectName,
+            u1.nick_name AS adminName,
+            u1.user_name AS userName,
+            u2.nick_name AS directorName,
+            u2.user_name AS directorUserName,
+            d.dept_name AS deptName,
+            CASE t.priority
+                WHEN 1 THEN '低'
+                WHEN 2 THEN '中'
+                WHEN 3 THEN '高'
+                WHEN 4 THEN '紧急'
+                ELSE '未知'
+            END AS priorityName,
+            CASE t.status
+                WHEN 1 THEN '待办的'
+                WHEN 2 THEN '进行中'
+                WHEN 3 THEN '已完成'
+                WHEN 4 THEN '已拒绝'
+                WHEN 5 THEN '已关闭'
+                ELSE '未知'
+            END AS statusName,
+            wc.title AS workName,
+            FROM_UNIXTIME(t.end_time, '%Y-%m-%d') AS endTimeStr,
+            FROM_UNIXTIME(t.create_time, '%Y-%m-%d %H:%i:%s') AS createTimeStr,
+            FROM_UNIXTIME(t.update_time, '%Y-%m-%d %H:%i:%s') AS updateTimeStr,
+            FROM_UNIXTIME(t.over_time, '%Y-%m-%d %H:%i:%s') AS overTimeStr
+        FROM oa_project_task t
+        LEFT JOIN oa_project p ON t.project_id = p.id
+        LEFT JOIN sys_user u1 ON t.admin_id = u1.user_id
+        LEFT JOIN sys_user u2 ON t.director_uid = u2.user_id
+        LEFT JOIN sys_dept d ON t.did = d.dept_id
+        LEFT JOIN oa_work_cate wc ON t.work_id = wc.id
+        WHERE {where_clause}
+        ORDER BY t.status ASC, t.create_time DESC
+        LIMIT :limit OFFSET :offset
+    """)
+    
+    # 执行查询获取总数
+    count_sql = text(f"""
+        SELECT COUNT(*) as total
+        FROM oa_project_task t
+        LEFT JOIN oa_project p ON t.project_id = p.id
+        LEFT JOIN sys_user u1 ON t.admin_id = u1.user_id
+        LEFT JOIN sys_user u2 ON t.director_uid = u2.user_id
+        LEFT JOIN sys_dept d ON t.did = d.dept_id
+        LEFT JOIN oa_work_cate wc ON t.work_id = wc.id
+        WHERE {where_clause}
+    """)
+    
+    # 添加分页参数到 params
+    params['limit'] = page_size
+    params['offset'] = offset
+    
+    # 执行总数查询
+    count_result = await query_db.execute(count_sql, params)
+    total = count_result.scalar()
+    
+    # 执行分页查询
+    result = await query_db.execute(sql, params)
+    rows = result.mappings().all()
+    
+    # 转换为字典列表并处理数据类型
+    task_list = []
+    for row in rows:
+        task_dict = dict(row)
+        
+        # 处理数值类型
+        for key in ['id', 'pid', 'beforeTask', 'projectId', 'workId', 'stepId', 
+                    'endTime', 'overTime', 'adminId', 'directorUid', 'did', 
+                    'priority', 'status', 'doneRatio', 'createTime', 'updateTime', 'deleteTime']:
+            if key in task_dict and task_dict[key] is not None:
+                task_dict[key] = int(task_dict[key])
+        
+        # 处理浮点数
+        if 'planHours' in task_dict and task_dict['planHours'] is not None:
+            task_dict['planHours'] = float(task_dict['planHours'])
+        
+        # 处理字符串默认值
+        if 'assistAdminIds' not in task_dict or task_dict['assistAdminIds'] is None:
+            task_dict['assistAdminIds'] = ""
+        
+        task_list.append(task_dict)
+    
+    # 计算是否有下一页
+    has_next = page_num * page_size < total
+    
+    logger.info(f'获取任务列表成功，共 {total} 条记录')
+    
+    return ResponseUtil.success(rows=task_list, dict_content={'total': total, 'pageNum': page_num, 'pageSize': page_size, 'hasNext': has_next})
 
 
 @project_task_controller.get(
@@ -73,25 +278,162 @@ async def get_project_task_hour_list(
 ) -> Response:
     """
     获取任务工时列表
-    
+
     对应 PHP 接口：project/task/hour?page=1&limit=20&range_time=&username=&uid=&keywords=
-    
+
     :param request: Request 对象
     :param schedule_page_query: 查询参数（包含 tid, range_time, keywords, uid 等）
     :param query_db: 数据库会话
     :param current_user: 当前用户
     :return: 工时列表
     """
-    # 调用 ScheduleService 获取工时列表
-    hour_list_result = await ScheduleService.get_page_list_service(
-        query_db,
-        schedule_page_query,
-        None,  # data_scope_sql 暂时不传
-        True
-    )
-    logger.info('获取任务工时列表成功')
+    from sqlalchemy import text
+    from datetime import datetime
+    from utils.common_util import CamelCaseUtil
 
-    return ResponseUtil.success(data=hour_list_result)
+    # 分页参数
+    page_num = schedule_page_query.page_num if schedule_page_query.page_num else 1
+    page_size = schedule_page_query.page_size if schedule_page_query.page_size else 20
+    offset = (page_num - 1) * page_size
+
+    # 构建 WHERE 条件
+    conditions = ["s.delete_time = 0"]
+    params = {}
+
+    # 任务ID筛选
+    if schedule_page_query.tid:
+        conditions.append("s.tid = :tid")
+        params['tid'] = schedule_page_query.tid
+
+    # 用户ID筛选
+    if schedule_page_query.uid:
+        conditions.append("s.admin_id = :uid")
+        params['uid'] = schedule_page_query.uid
+
+    # 关键词搜索（标题或备注）
+    if schedule_page_query.keywords:
+        conditions.append("(s.title LIKE :keywords OR s.remark LIKE :keywords)")
+        params['keywords'] = f"%{schedule_page_query.keywords}%"
+
+    # 时间范围筛选
+    if schedule_page_query.range_time:
+        try:
+            range_parts = schedule_page_query.range_time.split('至')
+            if len(range_parts) == 2:
+                start_timestamp = int(datetime.strptime(range_parts[0].strip(), "%Y-%m-%d").timestamp())
+                end_timestamp = int(datetime.strptime(range_parts[1].strip(), "%Y-%m-%d").timestamp()) + 86399
+                conditions.append("s.start_time BETWEEN :start_time AND :end_time")
+                params['start_time'] = start_timestamp
+                params['end_time'] = end_timestamp
+        except Exception as e:
+            logger.warning(f'解析时间范围失败：{str(e)}')
+
+    where_clause = " AND ".join(conditions)
+
+    # 构建完整 SQL 查询（直接在 SQL 中添加 LIMIT 和 OFFSET）
+    sql = text(f"""
+        SELECT 
+            s.id,
+            s.title,
+            s.cid,
+            s.cmid,
+            s.ptid,
+            s.tid,
+            s.admin_id,
+            s.did,
+            s.start_time,
+            s.end_time,
+            s.labor_time,
+            s.labor_type,
+            s.remark,
+            s.file_ids,
+            s.delete_time,
+            s.create_time,
+            s.update_time,
+            u.nick_name AS admin_name,
+            u.user_name,
+            d.dept_name,
+            wc.title AS work_title,
+            CASE s.labor_type
+                WHEN 1 THEN '案头'
+                WHEN 2 THEN '外勤'
+                ELSE '未知'
+            END AS labor_type_name,
+            FROM_UNIXTIME(s.start_time, '%Y-%m-%d %H:%i:%s') AS start_time_str,
+            FROM_UNIXTIME(s.end_time, '%Y-%m-%d %H:%i:%s') AS end_time_str,
+            FROM_UNIXTIME(s.create_time, '%Y-%m-%d %H:%i:%s') AS create_time_str,
+            FROM_UNIXTIME(s.update_time, '%Y-%m-%d %H:%i:%s') AS update_time_str
+        FROM oa_schedule s
+        LEFT JOIN sys_user u ON s.admin_id = u.user_id
+        LEFT JOIN sys_dept d ON u.dept_id = d.dept_id
+        LEFT JOIN oa_work_cate wc ON s.cid = wc.id
+        WHERE {where_clause}
+        ORDER BY s.create_time DESC
+        LIMIT :limit OFFSET :offset
+    """)
+
+    # 执行查询获取总数
+    count_sql = text(f"""
+        SELECT COUNT(*) as total
+        FROM oa_schedule s
+        LEFT JOIN sys_user u ON s.admin_id = u.user_id
+        LEFT JOIN sys_dept d ON u.dept_id = d.dept_id
+        LEFT JOIN oa_work_cate wc ON s.cid = wc.id
+        WHERE {where_clause}
+    """)
+
+    # 添加分页参数到 params
+    params['limit'] = page_size
+    params['offset'] = offset
+
+    # 执行总数查询
+    count_result = await query_db.execute(count_sql, params)
+    total = count_result.scalar()
+
+    # 执行分页查询
+    result = await query_db.execute(sql, params)
+    rows = result.mappings().all()
+
+    # 转换为字典列表并处理数据类型
+    hour_list = []
+    for row in rows:
+        hour_dict = dict(row)
+
+        # 处理数值类型
+        for key in ['id', 'cid', 'cmid', 'ptid', 'tid', 'admin_id', 'did',
+                    'start_time', 'end_time', 'delete_time', 'create_time', 'update_time', 'labor_type']:
+            if key in hour_dict and hour_dict[key] is not None:
+                hour_dict[key] = int(hour_dict[key])
+
+        # 处理浮点数
+        if 'labor_time' in hour_dict and hour_dict['labor_time'] is not None:
+            hour_dict['labor_time'] = float(hour_dict['labor_time'])
+
+        # 处理字符串默认值
+        if 'file_ids' not in hour_dict or hour_dict['file_ids'] is None:
+            hour_dict['file_ids'] = ""
+        if 'remark' not in hour_dict or hour_dict['remark'] is None:
+            hour_dict['remark'] = ""
+
+        hour_list.append(hour_dict)
+
+    # 转换为驼峰命名
+    hour_list = CamelCaseUtil.transform_result(hour_list)
+
+    # 计算是否有下一页
+    has_next = page_num * page_size < total
+
+    response_data = {
+        'rows': hour_list,
+        'total': total,
+        'pageNum': page_num,
+        'pageSize': page_size,
+        'hasNext': has_next
+    }
+
+    logger.info(f'获取任务工时列表成功，共 {total} 条记录')
+
+    return ResponseUtil.success(rows=hour_list, dict_content={'total': total, 'pageNum': page_num, 'pageSize': page_size, 'hasNext': has_next})
 
 
 @project_task_controller.post(
@@ -141,10 +483,109 @@ async def edit_project_task(
     return ResponseUtil.success(msg=edit_project_task_result.message)
 
 
+@project_task_controller.post(
+    '/hours',
+    summary='新增任务工时接口',
+    description='用于新增任务工时记录',
+    response_model=ResponseBaseModel,
+    dependencies=[UserInterfaceAuthDependency('project:task:hour:add')],
+)
+@Log(title='任务工时管理', business_type=BusinessType.INSERT)
+async def add_task_hour(
+        request: Request,
+        hour_data: Annotated[OaScheduleBaseModel, Body()],
+        query_db: Annotated[AsyncSession, DBSessionDependency()],
+        current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
+) -> Response:
+    """
+    新增任务工时
+    
+    :param request: Request 对象
+    :param hour_data: 工时数据（必须包含 tid 任务ID）
+    :param query_db: 数据库会话
+    :param current_user: 当前用户
+    :return: 操作结果
+    """
+    from sqlalchemy import text
+    from datetime import datetime
+    from utils.timeformat import int_time
+    from exceptions.exception import ServiceException
+    
+    # 验证必须提供任务ID
+    if not hour_data.tid or hour_data.tid <= 0:
+        raise ServiceException(message='新增工时必须关联任务ID')
+    
+    # 验证时间字段
+    if not hour_data.start_time or not hour_data.end_time:
+        raise ServiceException(message='开始时间和结束时间不能为空')
+    
+    # 设置创建人 ID
+    if not hour_data.admin_id:
+        hour_data.admin_id = current_user.user.user_id
+    
+    # 确保 id 为 None（新增时不应该有 id）
+    hour_data.id = None
+    
+    # 转换时间格式为 Unix 时间戳
+    hour_data.start_time = int_time(hour_data.start_time)
+    hour_data.end_time = int_time(hour_data.end_time)
+    
+    # 验证时间逻辑
+    if hour_data.start_time >= hour_data.end_time:
+        raise ServiceException(message='结束时间必须大于开始时间')
+    
+    # 计算工时（小时）
+    hour_data.labor_time = (hour_data.end_time - hour_data.start_time) / 3600
+    
+    # 设置默认值
+    hour_data.create_time = int(datetime.now().timestamp())
+    hour_data.update_time = 0
+    if not hour_data.delete_time:
+        hour_data.delete_time = 0
+    if not hour_data.labor_type:
+        hour_data.labor_type = 1  # 默认案头工作
+    if not hour_data.cid:
+        hour_data.cid = 1  # 默认工作类型
+    
+    # 使用原生 SQL 插入数据
+    sql = text("""
+        INSERT INTO oa_schedule 
+        (title, cid, cmid, ptid, tid, admin_id, did, start_time, end_time, labor_time, labor_type, remark, file_ids, delete_time, create_time, update_time)
+        VALUES 
+        (:title, :cid, :cmid, :ptid, :tid, :admin_id, :did, :start_time, :end_time, :labor_time, :labor_type, :remark, :file_ids, :delete_time, :create_time, :update_time)
+    """)
+    
+    params = {
+        'title': hour_data.title or '',
+        'cid': hour_data.cid,
+        'cmid': hour_data.cmid or 0,
+        'ptid': hour_data.ptid or 0,
+        'tid': hour_data.tid,
+        'admin_id': hour_data.admin_id,
+        'did': hour_data.did or 0,
+        'start_time': hour_data.start_time,
+        'end_time': hour_data.end_time,
+        'labor_time': hour_data.labor_time,
+        'labor_type': hour_data.labor_type,
+        'remark': hour_data.remark or '',
+        'file_ids': hour_data.file_ids or '',
+        'delete_time': hour_data.delete_time,
+        'create_time': hour_data.create_time,
+        'update_time': hour_data.update_time
+    }
+    
+    await query_db.execute(sql, params)
+    await query_db.commit()
+    
+    logger.info(f'新增任务工时成功，任务ID: {hour_data.tid}, 工时: {hour_data.labor_time}小时')
+    
+    return ResponseUtil.success(msg='新增工时成功')
+
+
 @project_task_controller.put(
     '/hour',
     summary='调整任务工时接口',
-    description='用于调整（新增或编辑）任务工时记录',
+    description='用于调整（编辑）任务工时记录',
     response_model=ResponseBaseModel,
     dependencies=[UserInterfaceAuthDependency('project:task:hour:edit')],
 )
@@ -156,7 +597,7 @@ async def adjust_task_hour(
         current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
 ) -> Response:
     """
-    调整任务工时（新增或编辑）
+    编辑任务工时
     
     :param request: Request 对象
     :param hour_data: 工时数据
@@ -164,18 +605,26 @@ async def adjust_task_hour(
     :param current_user: 当前用户
     :return: 操作结果
     """
-    # 设置创建人 ID
-    if not hour_data.admin_id:
-        hour_data.admin_id = current_user.user.user_id
-    
-    if hour_data.id and hour_data.id > 0:
-        # 编辑工时
-        result = await ScheduleService.update_service(query_db, hour_data)
-        logger.info(f'编辑工时 {hour_data.id} 成功')
-    else:
-        # 新增工时
-        result = await ScheduleService.add_service(query_db, hour_data)
-        logger.info('新增工时成功')
+    # 验证必须提供 id
+    if not hour_data.id or hour_data.id <= 0:
+        from exceptions.exception import ServiceException
+        raise ServiceException(message='编辑工时必须提供有效的工时ID')
+
+    # 设置更新时间
+    from datetime import datetime
+    from utils.timeformat import int_time
+
+    hour_data.update_time = int(datetime.now().timestamp())
+    hour_data.start_time = int_time(hour_data.start_time)
+    hour_data.end_time = int_time(hour_data.end_time)
+
+    # 重新计算工时（小时）
+    if hour_data.start_time and hour_data.end_time:
+        hour_data.labor_time = (hour_data.end_time - hour_data.start_time) / 3600
+
+    # 调用 Service 层更新
+    result = await ScheduleService.update_service(query_db, hour_data)
+    logger.info(f'编辑工时 {hour_data.id} 成功')
 
     return ResponseUtil.success(msg=result.message)
 
@@ -217,7 +666,7 @@ async def delete_task_hour(
 ) -> Response:
     """
     删除任务工时
-    
+
     :param request: Request 对象
     :param hour_id: 工时记录 ID
     :param query_db: 数据库会话
@@ -242,9 +691,10 @@ async def query_project_task_detail(
         query_db: Annotated[AsyncSession, DBSessionDependency()],
 ) -> Response:
     detail_project_task_result = await ProjectTaskService.project_task_detail_services(query_db, id)
+
     logger.info(f'获取 id 为{id}的信息成功')
 
-    return ResponseUtil.success(data=detail_project_task_result)
+    return ResponseUtil.success(dict_content=detail_project_task_result)
 
 
 @project_task_controller.get(
@@ -263,7 +713,7 @@ async def get_task_hour_list(
 ) -> Response:
     """
     获取指定任务的工时列表
-    
+
     :param request: Request 对象
     :param task_id: 任务 ID
     :param schedule_page_query: 查询参数
@@ -273,7 +723,7 @@ async def get_task_hour_list(
     """
     # 设置 tid 筛选条件
     schedule_page_query.tid = task_id
-    
+
     # 调用 ScheduleService 获取工时列表
     hour_list_result = await ScheduleService.get_page_list_service(
         query_db,
@@ -300,7 +750,7 @@ async def get_task_hour_detail(
 ) -> Response:
     """
     获取工时详情
-    
+
     :param request: Request 对象
     :param hour_id: 工时记录 ID
     :param query_db: 数据库会话
