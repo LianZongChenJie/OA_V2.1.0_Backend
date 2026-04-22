@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import CHAR, BigInteger, Column, DateTime, Index, Integer, String
+from sqlalchemy import CHAR, BigInteger, Column, DateTime, Index, Integer, String, Date
 
 from config.database import Base
 
@@ -58,3 +58,18 @@ class SysOperLog(Base):
     idx_sys_oper_log_bt = Index('idx_sys_oper_log_bt', business_type)
     idx_sys_oper_log_s = Index('idx_sys_oper_log_s', status)
     idx_sys_oper_log_ot = Index('idx_sys_oper_log_ot', oper_time)
+
+
+class OaAdminLogCount(Base):
+    """
+    员工操作日志统计
+    """
+
+    __tablename__ = 'oa_admin_log_count'
+    __table_args__ = {'comment': '员工操作日志统计'}
+
+    id = Column(BigInteger, primary_key=True, nullable=False, autoincrement=True, comment='主键')
+    year = Column(Integer, nullable=True, server_default='0', comment='年份')
+    date = Column(Date, nullable=True, server_default="''", comment='日期')
+    num = Column(Integer, nullable=True, server_default='0', comment='操作次数')
+    create_time = Column(BigInteger, nullable=True, comment='创建时间')

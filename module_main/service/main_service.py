@@ -1,6 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from module_admin.dao.official_docs_dao import OfficialDocsDao
+from module_admin.entity.do.log_do import SysOperLog
 from module_administrative.dao.seal_dao import SealDao
 from module_basicdata.dao.public.check_dao import CheckDao
 from module_finance.dao.expense_dao import ExpenseDao
@@ -118,6 +119,17 @@ class MainService:
                 else:
                     datas.append(0)
         return datas
+
+    @classmethod
+    async def get_year_log(cls, query_db: AsyncSession) -> dict:
+        """
+          获取访问记录数据
+          """
+        result = await OperationLogDao.get_year_log(query_db)
+
+        return result
+
+
 
 
 

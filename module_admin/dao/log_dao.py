@@ -1,17 +1,17 @@
-from datetime import datetime, time
+from datetime import datetime, time, timedelta
 from typing import Any
 
-from sqlalchemy import asc, delete, desc, select,func
+from sqlalchemy import asc, delete, desc, select,func, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from common.vo import PageModel
-from module_admin.entity.do.log_do import SysLogininfor, SysOperLog
+from module_admin.entity.do.log_do import SysLogininfor, SysOperLog, OaAdminLogCount
 from module_admin.entity.do.user_do import SysUser
 from module_admin.entity.vo.log_vo import LogininforModel, LoginLogPageQueryModel, OperLogModel, OperLogPageQueryModel
 from utils.common_util import SnakeCaseUtil
 from utils.page_util import PageUtil
 from utils.time_format_util import TimeFormatUtil
-
+from utils.timeformat import format_timestamp
 
 class OperationLogDao:
     """
@@ -111,6 +111,46 @@ class OperationLogDao:
             SysOperLog.oper_name).where(SysOperLog.oper_time >= oper_time).order_by(desc(func.count(1))).limit(10))
         result = await db.execute(query)
         return result.mappings().all()
+
+    @classmethod
+    async def get_year_log(cls, db: AsyncSession):
+        """
+        获取访问记录数据（简化版）
+        :param db:
+        :return:
+        """
+        now = datetime.now()
+        today_start = format_timestamp(int(now.replace(hour=0, minute=0, second=0, microsecond=0).timestamp()))
+        today_end = format_timestamp(int(now.replace(hour=23, minute=59, second=59, microsecond=999999).timestamp()))
+
+        # 一年前的日期
+        one_year_ago = now - timedelta(days=365)
+        start_date = one_year_ago.strftime('%Y-%m-%d')
+        end_date = (now - timedelta(days=1)).strftime('%Y-%m-%d')
+        # 查询今天访问量
+        today_stmt = select(func.count()).select_from(SysOperLog).where(
+            and_(
+                SysOperLog.oper_time >= today_start,
+                SysOperLog.oper_time <= today_end
+            )
+        )
+        today_count = await db.scalar(today_stmt) or 0
+
+        # 查询一年内每日访问量
+        yearly_stmt = select(
+            OaAdminLogCount.date,
+            OaAdminLogCount.num
+        ).where(
+            and_(
+                OaAdminLogCount.date >= start_date,
+                OaAdminLogCount.date <= end_date
+            )
+        ).order_by(OaAdminLogCount.date)
+
+        result = await db.execute(yearly_stmt)
+        data_three = {row.date: row.num for row in result}
+        data_three[now.strftime('%Y-%m-%d')] = today_count
+        return data_three
 
 
 class LoginLogDao:

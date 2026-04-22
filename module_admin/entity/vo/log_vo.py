@@ -136,3 +136,15 @@ class UnlockUser(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel)
 
     user_name: str = Field(description='用户名称')
+
+class OperLogCountModel(BaseModel):
+    """
+    操作日志统计模型
+    """
+    model_config = ConfigDict(alias_generator=to_camel, from_attributes=True)
+    id: int | None = Field(default=None, description='主键')
+    year: int | None = Field(default=None, description='年份')
+    date: str | None = Field(default=None, description='日期')
+    num: int | None = Field(default=None, description='操作次数')
+    create_time: int | None = Field(default=None, description='创建时间')
+

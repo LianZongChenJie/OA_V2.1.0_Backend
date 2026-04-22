@@ -5,7 +5,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from common.aspect.db_seesion import DBSessionDependency
 from common.aspect.interface_auth import UserInterfaceAuthDependency
 from common.aspect.pre_auth import PreAuthDependency, CurrentUserDependency
-from common.enums import BusinessType
 from common.router import APIRouterPro
 from module_main.service.main_service import MainService
 from utils.response_util import ResponseUtil
@@ -13,7 +12,6 @@ from module_admin.entity.vo.user_vo import (
     CurrentUserModel
 )
 
-from common.annotation.log_annotation import Log
 
 main_controller = APIRouterPro(
     prefix='/main', order_num=3, tags=['主页'], dependencies=[PreAuthDependency()]
@@ -26,7 +24,6 @@ main_controller = APIRouterPro(
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:personnel:mian:query')],
 )
-@Log(title='主页', business_type=BusinessType.OTHER)
 async def get_count(
     query_db: Annotated[AsyncSession, DBSessionDependency()],
     current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
@@ -50,7 +47,6 @@ async def get_count(
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:personnel:mian:query')],
 )
-@Log(title='主页', business_type=BusinessType.OTHER)
 async def get_await_review(
     query_db: Annotated[AsyncSession, DBSessionDependency()],
     current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
@@ -74,7 +70,6 @@ async def get_await_review(
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:personnel:mian:query')],
 )
-# @Log(title='主页', business_type=BusinessType.OTHER)
 async def get_view_log(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
@@ -95,4 +90,17 @@ async def get_last_data(
 )->Response:
     user_name = current_user.user.user_name
     result =  await MainService.get_last_data(query_db, user_name)
+    return ResponseUtil.success(data=result)
+
+@main_controller.get(
+    "/getYearLog",
+    summary='获取一年内每日访问量数据',
+    description='获取一年内每日访问量数据',
+    response_model=None,
+    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:personnel:mian:query')],
+)
+async def get_year_log(
+    query_db: Annotated[AsyncSession, DBSessionDependency()],
+)->Response:
+    result =  await MainService.get_year_log(query_db)
     return ResponseUtil.success(data=result)
