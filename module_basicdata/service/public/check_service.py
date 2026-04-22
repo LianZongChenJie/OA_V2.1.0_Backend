@@ -365,16 +365,24 @@ class CheckService:
             flow_steps = json.loads(flow_data['flow_list'])
             for flow_step in flow_steps:
                 if flow_step['check_role'] == '1':
-                    check_uids = await DeptDao.get_dept_manages(db, user_id)
+                    check_uids = await DeptDao.get_dept_manages(db, user_id,False)
+                    if check_uids:
+                        check_uids = ','.join(str(uid) for uid in check_uids)
                     flow_name = '当前部门负责人'
                     check_position_id = 0
                 if flow_step['check_role'] == '2':
                     check_uids = await DeptDao.get_dept_manages(db, user_id, True)
+                    if check_uids:
+                        check_uids = ','.join(str(uid) for uid in check_uids)
                     flow_name = '上级部门负责人'
                     check_position_id = 0
                 if flow_step['check_role'] == '3':
                     check_position = await PostDao.get_post_by_id(db, flow_step['check_position_id'])
                     check_uids = await UserDao.get_user_by_post_id(db, flow_step['check_position_id'])
+                    if check_uids:
+                        check_uids = ','.join(str(uid) for uid in check_uids)
+                    else:
+                        check_uids = ''
                     flow_name = check_position.post_name
                     check_position_id = check_position.post_id
                 if flow_step['check_role'] == '4':
@@ -407,7 +415,7 @@ class CheckService:
                     'check_flow_id': query_model.flow_id,
                     "check_step_sort": 0,
                     "check_status": 1,
-                    "check_uids": ','.join(str(uid) for uid in step[0].check_uids),
+                    "check_uids": ','.join(str(uid) for uid in step[0].check_uids) if step[0].check_uids else '',
                     "check_copy_uids": query_model.check_copy_uids if query_model.check_copy_uids else '',
                     "action_id": query_model.action_id
                 }
