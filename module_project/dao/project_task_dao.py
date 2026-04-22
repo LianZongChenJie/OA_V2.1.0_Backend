@@ -21,115 +21,93 @@ class ProjectTaskDao:
     @classmethod
     async def get_project_task_detail_by_id(cls, db: AsyncSession, task_id: int) -> dict[str, Any] | None:
         """
-        根据任务 ID 获取任务详细信息
-
-        :param db: orm 对象
-        :param task_id: 任务 ID
-        :return: 任务详细信息对象
+        根据任务 ID 获取任务详细信息 - 直接使用 SQL 查询返回字典
         """
-        query = select(OaProjectTask).where(OaProjectTask.id == task_id, OaProjectTask.delete_time == 0)
-        task_info = (await db.execute(query)).scalars().first()
-
-        if not task_info:
+        from sqlalchemy import text
+        
+        sql = text("""
+            SELECT 
+                t.id,
+                t.title,
+                t.pid,
+                t.before_task AS beforeTask,
+                t.project_id AS projectId,
+                t.work_id AS workId,
+                t.step_id AS stepId,
+                t.plan_hours AS planHours,
+                t.end_time AS endTime,
+                t.over_time AS overTime,
+                t.admin_id AS adminId,
+                t.director_uid AS directorUid,
+                t.did,
+                t.assist_admin_ids AS assistAdminIds,
+                t.priority,
+                t.status,
+                t.done_ratio AS doneRatio,
+                t.content,
+                t.create_time AS createTime,
+                t.update_time AS updateTime,
+                t.delete_time AS deleteTime,
+                p.name AS projectName,
+                u1.nick_name AS adminName,
+                u2.nick_name AS directorName,
+                d.dept_name AS deptName,
+                CASE t.priority
+                    WHEN 1 THEN '低'
+                    WHEN 2 THEN '中'
+                    WHEN 3 THEN '高'
+                    WHEN 4 THEN '紧急'
+                    ELSE '未知'
+                END AS priorityName,
+                CASE t.status
+                    WHEN 1 THEN '待办的'
+                    WHEN 2 THEN '进行中'
+                    WHEN 3 THEN '已完成'
+                    WHEN 4 THEN '已拒绝'
+                    WHEN 5 THEN '已关闭'
+                    ELSE '未知'
+                END AS statusName,
+                wc.title AS workName,
+                FROM_UNIXTIME(t.end_time, '%Y-%m-%d') AS endTimeStr,
+                FROM_UNIXTIME(t.create_time, '%Y-%m-%d %H:%i:%s') AS createTimeStr,
+                FROM_UNIXTIME(t.update_time, '%Y-%m-%d %H:%i:%s') AS updateTimeStr,
+                FROM_UNIXTIME(t.over_time, '%Y-%m-%d %H:%i:%s') AS overTimeStr
+            FROM oa_project_task t
+            LEFT JOIN oa_project p ON t.project_id = p.id
+            LEFT JOIN sys_user u1 ON t.admin_id = u1.user_id
+            LEFT JOIN sys_user u2 ON t.director_uid = u2.user_id
+            LEFT JOIN sys_dept d ON t.did = d.dept_id
+            LEFT JOIN oa_work_cate wc ON t.work_id = wc.id
+            WHERE t.id = :task_id AND t.delete_time = 0
+        """)
+        
+        result = await db.execute(sql, {"task_id": task_id})
+        row = result.mappings().first()
+        
+        if not row:
             return None
-
-        result = {
-            'task_info': task_info,
-            'project_name': None,
-            'admin_name': None,
-            'director_name': None,
-            'dept_name': None,
-            'priority_name': None,
-            'status_name': None,
-            'work_name': None,
-            'end_time_str': None,
-            'create_time_str': None,
-            'update_time_str': None,
-            'over_time_str': None,
-        }
-
-        # 查询项目名称
-        if task_info.project_id and task_info.project_id > 0:
-            try:
-                from module_project.entity.do.project_do import OaProject
-                project_query = select(OaProject).where(OaProject.id == int(task_info.project_id))
-                project_info = (await db.execute(project_query)).scalars().first()
-                if project_info:
-                    result['project_name'] = project_info.name
-            except Exception as e:
-                logger.error(f'查询项目名称失败: {e}')
-
-        # 查询创建人姓名
-        if task_info.admin_id and task_info.admin_id > 0:
-            from module_admin.dao.user_dao import UserDao
-            admin_result = await UserDao.get_user_by_id(db, task_info.admin_id)
-            if admin_result and admin_result.get('user_basic_info'):
-                admin_info = admin_result['user_basic_info']
-                result['admin_name'] = admin_info.nick_name or admin_info.user_name
-
-        # 查询负责人姓名
-        if task_info.director_uid and task_info.director_uid > 0:
-            from module_admin.dao.user_dao import UserDao
-            director_result = await UserDao.get_user_by_id(db, task_info.director_uid)
-            if director_result and director_result.get('user_basic_info'):
-                director_info = director_result['user_basic_info']
-                result['director_name'] = director_info.nick_name or director_info.user_name
-
-        # 查询部门名称
-        if task_info.did and task_info.did > 0:
-            from module_admin.dao.dept_dao import DeptDao
-            dept_info = await DeptDao.get_dept_detail_by_id(db, task_info.did)
-            if dept_info:
-                result['dept_name'] = dept_info.dept_name
-
-        # 设置优先级名称
-        priority_map = {
-            1: '低',
-            2: '中',
-            3: '高',
-            4: '紧急'
-        }
-        if task_info.priority is not None:
-            result['priority_name'] = priority_map.get(task_info.priority, '未知')
-
-        # 设置状态名称
-        status_map = {
-            1: '待办的',
-            2: '进行中',
-            3: '已完成',
-            4: '已拒绝',
-            5: '已关闭'
-        }
-        if task_info.status is not None:
-            result['status_name'] = status_map.get(task_info.status, '未知')
-
-        # 查询工作类型名称
-        if task_info.work_id and int(task_info.work_id) > 0:
-            try:
-                from module_basicdata.entity.do.project.work_cate_do import OaWorkCate
-                work_query = select(OaWorkCate).where(OaWorkCate.id == int(task_info.work_id))
-                work_info = (await db.execute(work_query)).scalars().first()
-                if work_info:
-                    result['work_name'] = work_info.title
-            except Exception as e:
-                logger.error(f'查询工作类型失败: {e}')
-
-        # 格式化时间
-        from utils.time_format_util import timestamp_to_datetime
         
-        if task_info.end_time and int(task_info.end_time) > 0:
-            result['end_time_str'] = timestamp_to_datetime(int(task_info.end_time), '%Y-%m-%d')
+        # 转换为普通字典
+        task_dict = dict(row)
         
-        if task_info.create_time and int(task_info.create_time) > 0:
-            result['create_time_str'] = timestamp_to_datetime(int(task_info.create_time), '%Y-%m-%d %H:%M:%S')
+        # 处理数值类型，确保不是 Decimal
+        for key in ['id', 'pid', 'beforeTask', 'projectId', 'workId', 'stepId', 
+                    'endTime', 'overTime', 'adminId', 'directorUid', 'did', 
+                    'priority', 'status', 'doneRatio', 'createTime', 'updateTime', 'deleteTime']:
+            if key in task_dict and task_dict[key] is not None:
+                task_dict[key] = int(task_dict[key])
         
-        if task_info.update_time and int(task_info.update_time) > 0:
-            result['update_time_str'] = timestamp_to_datetime(int(task_info.update_time), '%Y-%m-%d %H:%M:%S')
+        # 处理浮点数
+        if 'planHours' in task_dict and task_dict['planHours'] is not None:
+            task_dict['planHours'] = float(task_dict['planHours'])
         
-        if task_info.over_time and int(task_info.over_time) > 0:
-            result['over_time_str'] = timestamp_to_datetime(int(task_info.over_time), '%Y-%m-%d %H:%M:%S')
-
-        return result
+        # 处理字符串字段默认值
+        if 'assistAdminIds' not in task_dict or task_dict['assistAdminIds'] is None:
+            task_dict['assistAdminIds'] = ""
+        
+        logger.info(f"【SQL查询详情】task_id={task_id}, 查询结果：{task_dict}")
+        
+        return task_dict
 
     @classmethod
     async def get_project_task_detail_by_info(cls, db: AsyncSession, task: ProjectTaskModel) -> OaProjectTask | None:
@@ -175,17 +153,17 @@ class ProjectTaskDao:
             OaProjectTask.title == (title if title else ''),
             OaProjectTask.project_id == (project_id if project_id else 0)
         ]
-        
+
         if exclude_id is not None and exclude_id > 0:
             conditions.append(OaProjectTask.id != exclude_id)
-        
+
         # 执行查询
         count_query = select(func.count('*')).select_from(OaProjectTask).where(and_(*conditions))
         count_result = await db.execute(count_query)
         count = count_result.scalar()
-        
+
         logger.info(f'任务验重 - title: {title}, project_id: {project_id}, exclude_id: {exclude_id}, 重复数量：{count}')
-        
+
         return count == 0
 
     @classmethod
@@ -340,7 +318,7 @@ class ProjectTaskDao:
             k: v for k, v in task.items()
             if k in valid_fields
         }
-        
+
         await db.execute(
             update(OaProjectTask)
             .where(OaProjectTask.id == task_id)

@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import Path, Query, Request, Response
+from fastapi import Body, Path, Query, Request, Response
 from pydantic_validation_decorator import ValidateFields
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -102,6 +102,69 @@ async def edit_project(
     logger.info(edit_project_result.message)
 
     return ResponseUtil.success(msg=edit_project_result.message)
+
+
+@project_controller.put(
+    '/status',
+    summary='修改项目状态接口',
+    description='用于修改项目状态',
+    response_model=ResponseBaseModel,
+    dependencies=[UserInterfaceAuthDependency('project:edit')],
+)
+@Log(title='项目管理', business_type=BusinessType.UPDATE)
+async def update_project_status(
+        request: Request,
+        status_data: Annotated[dict, Body(description='包含项目ID和状态的数据')],
+        query_db: Annotated[AsyncSession, DBSessionDependency()],
+        current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
+) -> Response:
+    """
+    修改项目状态
+    
+    :param request: Request 对象
+    :param status_data: 包含 id 和 status 的字典
+    :param query_db: 数据库会话
+    :param current_user: 当前用户
+    :return: 操作结果
+    """
+    from sqlalchemy import text
+    from datetime import datetime
+    
+    project_id = status_data.get('id')
+    status = status_data.get('status')
+    
+    if not project_id:
+        from exceptions.exception import ServiceException
+        raise ServiceException(message='项目ID不能为空')
+    
+    if status is None:
+        from exceptions.exception import ServiceException
+        raise ServiceException(message='项目状态不能为空')
+    
+    # 验证状态值的有效性（根据实际业务调整）
+    if status not in [1, 2, 3, 4, 5]:
+        from exceptions.exception import ServiceException
+        raise ServiceException(message='无效的项目状态')
+    
+    update_time = int(datetime.now().timestamp())
+    
+    # 使用原生 SQL 更新项目状态
+    sql = text("""
+        UPDATE oa_project 
+        SET status = :status, update_time = :update_time 
+        WHERE id = :project_id AND delete_time = 0
+    """)
+    
+    await query_db.execute(sql, {
+        'status': status,
+        'update_time': update_time,
+        'project_id': project_id
+    })
+    await query_db.commit()
+    
+    logger.info(f'修改项目 {project_id} 状态为 {status} 成功')
+    
+    return ResponseUtil.success(msg='修改项目状态成功')
 
 
 @project_controller.delete(
