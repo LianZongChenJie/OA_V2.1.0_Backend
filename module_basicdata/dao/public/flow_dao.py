@@ -24,6 +24,7 @@ class OaFlowDao:
             OaFlow.status != "-1"
             if query_object
             else True,
+            OaFlow.title.like(f'%{query_object.title}%') if query_object.title else True,
             data_scope_sql,
         ).order_by(asc(OaFlow.id)))
         flow_cate_list: PageModel | list[list[dict[str, Any]]] = await PageUtil.paginate(

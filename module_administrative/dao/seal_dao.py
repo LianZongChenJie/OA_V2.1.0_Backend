@@ -6,7 +6,9 @@ from sqlalchemy.sql import ColumnElement, func,or_
 from sqlalchemy.orm import aliased
 from common.vo import PageModel
 from module_admin.entity.do.dept_do import SysDept
+from module_admin.entity.do.seal_cate_do import SysSealCate
 from module_admin.entity.do.user_do import SysUser
+from module_basicdata.entity.do.public.flow_do import OaFlow
 from module_personnel.dao.flow_record_dao import FlowRecordDao
 from utils.page_util import PageUtil
 from module_administrative.entity.vo.seal_vo import OaSealBaseModel, OaSealPageQueryModel
@@ -158,7 +160,8 @@ class SealDao:
             OaSeal,
             did_name.dept_name.label('did_dept'),
             admin.nick_name.label('admin_name'),
-            last_checker.nick_name.label('check_last_name')
+            last_checker.nick_name.label('check_last_name'),
+            SysSealCate.title.label('cate_name')
         ).join(
             user, OaSeal.admin_id == user.user_id, isouter=True
         ).join(
@@ -167,6 +170,8 @@ class SealDao:
             admin, OaSeal.admin_id == admin.user_id, isouter=True
         ).join(
             last_checker, OaSeal.check_last_uid == last_checker.user_id, isouter=True
+        ).join(
+            SysSealCate, SysSealCate.id == OaSeal.seal_cate_id, isouter=True
         ).where(OaSeal.id == id)
         result = await db.execute(query)
         row = result.first()
@@ -178,6 +183,7 @@ class SealDao:
             'id': seal.id,
             'title': seal.title,
             'seal_cate_id': seal.seal_cate_id,
+            'seal_cate_name': getattr(row, 'cate_name', None),
             'content': seal.content,
             'num': seal.num,
             'status': seal.status,
@@ -227,11 +233,8 @@ class SealDao:
         records = await FlowRecordDao.get_records_by_action_id(
             db, seal.id, seal.check_flow_id
         )
-
-        return {
-            'info': info,
-            'records': records
-        }
+        info['records'] = records
+        return info
 
     @classmethod
     async def del_by_id(cls, db: AsyncSession, id: int):

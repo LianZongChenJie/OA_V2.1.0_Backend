@@ -121,56 +121,56 @@ async def delete_expense(
     result =  await OaExpenseService.del_by_id(query_db, id)
     return ResponseUtil.success(msg=result.message)
 
-@finance_expense_controller.put(
-    "/pass",
-    summary='审核通过',
-    description='用于审核通过',
-    response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:expense:pass')],
-)
-async def pass_expense(
-        request: Request,
-        query_db: Annotated[AsyncSession, DBSessionDependency()],
-        data: Annotated[OaExpenseBaseModel, Body()],
-        current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
-) -> Response:
-    userId = current_user.user.user_id
-    result =  await OaExpenseService.pass_expense(query_db, data, userId)
-    return ResponseUtil.success(msg=result.message)
-
-@finance_expense_controller.put(
-    "/reject",
-    summary='审核拒绝',
-    description='用于审核拒绝',
-    response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:expense:reject')],
-)
-async def reject_expense(
-        request: Request,
-        query_db: Annotated[AsyncSession, DBSessionDependency()],
-        data: Annotated[OaExpenseBaseModel, Body()],
-        current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
-) -> Response:
-    userId = current_user.user.user_id
-    result =  await OaExpenseService.reject_expense(query_db, data, userId)
-    return ResponseUtil.success(msg=result.message)
-
-@finance_expense_controller.put(
-    "/cancel",
-    summary='撤销申请',
-    description='用于撤销申请',
-    response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:expense:cancel')],
-)
-async def cancel_expense(
-        request: Request,
-        query_db: Annotated[AsyncSession, DBSessionDependency()],
-        data: Annotated[OaExpenseBaseModel, Body()],
-        current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
-) -> Response:
-    userId = current_user.user.user_id
-    result =  await OaExpenseService.cancel_expense(query_db, data, userId)
-    return ResponseUtil.success(msg=result.message)
+# @finance_expense_controller.put(
+#     "/pass",
+#     summary='审核通过',
+#     description='用于审核通过',
+#     response_model=None,
+#     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:expense:pass')],
+# )
+# async def pass_expense(
+#         request: Request,
+#         query_db: Annotated[AsyncSession, DBSessionDependency()],
+#         data: Annotated[OaExpenseBaseModel, Body()],
+#         current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
+# ) -> Response:
+#     userId = current_user.user.user_id
+#     result =  await OaExpenseService.pass_expense(query_db, data, userId)
+#     return ResponseUtil.success(msg=result.message)
+#
+# @finance_expense_controller.put(
+#     "/reject",
+#     summary='审核拒绝',
+#     description='用于审核拒绝',
+#     response_model=None,
+#     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:expense:reject')],
+# )
+# async def reject_expense(
+#         request: Request,
+#         query_db: Annotated[AsyncSession, DBSessionDependency()],
+#         data: Annotated[OaExpenseBaseModel, Body()],
+#         current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
+# ) -> Response:
+#     userId = current_user.user.user_id
+#     result =  await OaExpenseService.reject_expense(query_db, data, userId)
+#     return ResponseUtil.success(msg=result.message)
+#
+# @finance_expense_controller.put(
+#     "/cancel",
+#     summary='撤销申请',
+#     description='用于撤销申请',
+#     response_model=None,
+#     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:expense:cancel')],
+# )
+# async def cancel_expense(
+#         request: Request,
+#         query_db: Annotated[AsyncSession, DBSessionDependency()],
+#         data: Annotated[OaExpenseBaseModel, Body()],
+#         current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
+# ) -> Response:
+#     userId = current_user.user.user_id
+#     result =  await OaExpenseService.cancel_expense(query_db, data, userId)
+#     return ResponseUtil.success(msg=result.message)
 
 @finance_expense_controller.put(
     "/pay",

@@ -45,6 +45,7 @@ class OaFlowPageQueryModel(OaFlowBaseModel):
 class OaFlowVOModel(OaFlowBaseModel):
     """审批视图模型"""
     cate_name: Optional[str] = Field(None, description='审批类型名称')
+    check_table: Optional[str] = Field(None, description='审批数据表')
     module_name: Optional[str] = Field(None, description='审批模块名称')
     copy_names: Optional[str] = Field(None, description='抄送人名称')
     department_names: Optional[str] = Field(None, description='应用部门名称')
@@ -59,14 +60,17 @@ class OaFlowAndStepModel(OaFlowBaseModel):
 class OaFlowCheckBaseModel(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel, from_attributes=True)
 
-    id: int | None = Field(None, description='ID')
     check: int = Field(None, description='审批状态1:通过, 2:拒绝, 3:撤销, 4:反确认')
-    content : str | None = Field(None, description='审批备注')
+    content : str | None = Field(None, description='审批意见')
     action_id: int = Field(None, description='审批动作ID')
     type: str| None = Field(None, description='审批类型')
     flow_id: int | None = Field(None, description='审批流程ID')
     check_files: str | None = Field(None, description='审批文件ID')
     check_name: str | None = Field(None, description='审批人名称')
+    check_uids : str | None = Field(None, description='审批人ID')
+    check_copy_uids: str | None = Field(None, description='抄送人ID')
+    check_node : int | None = Field(None, description='审批节点')
+    check_status : int | None = Field(None, description='审批状态')
 
 class OaFlowListBaseModel(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel, from_attributes=True)

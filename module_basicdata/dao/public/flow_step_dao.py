@@ -14,10 +14,10 @@ class OaFlowStepDao:
         return db_module
 
     @classmethod
-    async def add_flow_step(cls, db : AsyncSession, step:list):
+    async def add_flow_step(cls, db : AsyncSession, steps:list):
         try:
-            for info in step:
-                db_module = OaFlowStep(**info)
+            for step in steps:
+                db_module = OaFlowStep(**step.model_dump(exclude_none=True))
                 db.add(db_module)
             await db.commit()
             return True
@@ -68,11 +68,12 @@ class OaFlowStepDao:
         :param action_id:
         :return:
         """
-        query = update(OaFlowStep).values(OaFlowStep.delete_time == datetime.now().timestamp()).where(OaFlowStep.flow_id == flow_id, OaFlowStep.action_id == action_id)
-        result = await db.execute(query)
-        for item in result.scalars():
-            item.delete_time = 1
-            db.add(item)
-        await db.commit()
+        try:
+            query = update(OaFlowStep).values(delete_time = int(datetime.now().timestamp())).where(OaFlowStep.flow_id == flow_id, OaFlowStep.action_id == action_id)
+            await db.execute(query)
+            await db.commit()
+            return True
+        except Exception as e:
+            return False
 
 

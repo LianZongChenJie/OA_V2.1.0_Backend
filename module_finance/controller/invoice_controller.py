@@ -114,7 +114,7 @@ async def get_expense(
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:invoice:delete')],
 )
-async def delete_expense(
+async def delete_invoice(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
     id: int,
@@ -122,22 +122,22 @@ async def delete_expense(
     result =  await InvoiceService.del_by_id(query_db, id)
     return ResponseUtil.success(msg=result.message)
 
-@finance_invoice_controller.put(
-    "/review",
-    summary='审核',
-    description='用于审核',
-    response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:invoice:pass')],
-)
-async def review(
-        request: Request,
-        query_db: Annotated[AsyncSession, DBSessionDependency()],
-        data: Annotated[OaInvoiceBaseModel, Body()],
-        current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
-) -> Response:
-    userId = current_user.user.user_id
-    result =  await InvoiceService.review(query_db, data, userId)
-    return ResponseUtil.success(msg=result.message)
+# @finance_invoice_controller.put(
+#     "/review",
+#     summary='审核',
+#     description='用于审核',
+#     response_model=None,
+#     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:invoice:pass')],
+# )
+# async def review(
+#         request: Request,
+#         query_db: Annotated[AsyncSession, DBSessionDependency()],
+#         data: Annotated[OaInvoiceBaseModel, Body()],
+#         current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
+# ) -> Response:
+#     userId = current_user.user.user_id
+#     result =  await InvoiceService.review(query_db, data, userId)
+#     return ResponseUtil.success(msg=result.message)
 
 @finance_invoice_controller.put(
     "/pay",

@@ -15,6 +15,7 @@ from datetime import datetime
 from module_basicdata.dao.public.flow_cate_dao import FlowCateDao
 
 from module_personnel.entity.vo.flow_record_vo import OaFlowRecordBaseModel
+from utils.camel_converter import ModelConverter
 
 
 class PersonnelQuitService:
@@ -74,12 +75,12 @@ class PersonnelQuitService:
 
             info = await PersonnelQuitDao.get_info_by_id(query_db, id)
             records = await FlowRecordDao.get_records_by_action_id(query_db, info.id, info.check_flow_id)
-            detail = OaPersonnelQuitDetailModel(info=None, records=None)
-            detail.info = info
-            detail.records = records
+            detail = {}
+            detail.update(info)
+            detail['records'] = records
             if not detail:
                 raise ServiceException(message="未找到该数据")
-            return detail
+            return ModelConverter.convert_to_camel_case(detail)
         except Exception as e:
             await query_db.rollback()
             raise e
@@ -103,6 +104,9 @@ class PersonnelQuitService:
     @classmethod
     async def del_by_id(cls, db: AsyncSession, id: int):
         try:
+            quit = await PersonnelQuitDao.del_by_id(db, id)
+            if quit.check_status != 0 or quit.check_status != 4:
+                raise CrudResponseModel(is_success=False, message='请先撤销申请再删除')
             await PersonnelQuitDao.del_by_id(db, id)
             return CrudResponseModel(is_success=True, message='删除成功')
         except Exception as e:

@@ -228,11 +228,8 @@ class DepartmentChangeDao:
         records = await FlowRecordDao.get_records_by_action_id(
             db, dept_change.id, dept_change.check_flow_id
         )
-
-        return {
-            'info': info,
-            'records': records
-        }
+        info['records'] = records
+        return info
     @classmethod
     async def get_info_by_uid(cls, db: AsyncSession, model: OaDepartmentChangeBassModel) -> OaDepartmentChange | None:
         """

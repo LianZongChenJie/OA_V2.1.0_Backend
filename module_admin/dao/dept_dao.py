@@ -341,13 +341,13 @@ class DeptDao:
         :return:
         """
         query = ''
-        if is_parent:
-            query = select(SysDept.leader_id).join(SysUser.dept_id == SysDept.dept_id, isouter=True).join(SysDept)
+        if not is_parent:
+            query = select(SysDept.leader_id).join(SysUser, SysUser.dept_id == SysDept.dept_id, isouter=True).where(SysUser.user_id == user_id)
         else:
-            user = aliased(SysUser)
-            dept = aliased(SysDept)
-            parent = aliased(SysDept)
-            query = select(dept.leader_id).join(user, user.dept_id == dept.dept_id, isouter=True).join(parent.dept_id == dept.parent_id,isouter=True).where(SysUser.user_desc == user_id)
+            user = aliased(SysUser, name='user')
+            dept = aliased(SysDept, name='dept')
+            parent = aliased(SysDept, name='parent')
+            query = select(dept.leader_id).join(user, user.dept_id == dept.dept_id, isouter=True).join(parent,parent.dept_id == dept.parent_id,isouter=True).where(SysUser.user_id == user_id)
         result = await db.execute(query)
         return result.scalars().first()
 

@@ -31,5 +31,6 @@ class OaFlow(Base):
     update_time = Column(BigInteger, nullable=False, default=0, comment='更新时间')
     delete_time = Column(BigInteger, nullable=False, default=0, comment='删除时间')
 
+
     def to_dict(self):
         return {c.name: getattr(self, c.name) for c in self.__table__.columns}

@@ -8,7 +8,7 @@ from common.aspect.pre_auth import PreAuthDependency, CurrentUserDependency
 from common.router import APIRouterPro
 from common.vo import PageResponseModel
 from module_basicdata.entity.do.public.flow_do import OaFlow
-from module_basicdata.entity.vo.public.flow_vo import OaFlowBaseModel, OaFlowPageQueryModel, OaFlowCheckBaseModel
+from module_basicdata.entity.vo.public.flow_vo import OaFlowBaseModel, OaFlowPageQueryModel
 from typing import Annotated
 from fastapi import File, Form, Path, Query, Request, Response, UploadFile,Body
 
@@ -38,7 +38,7 @@ async def list_page(
     data_scope_sql: Annotated[ColumnElement, DataScopeDependency(OaFlow)], ) -> Response:
     flow_list = await FlowService.get_flow_list(query_db, flow_cate_page_query, data_scope_sql, is_page=True)
     logger.info('获取成功')
-    return ResponseUtil.success(model_content=flow_list)
+    return ResponseUtil.success(model_content=ModelConverter.convert_to_camel_case(flow_list))
 
 @flow_controller.post(
     "/add",
@@ -99,10 +99,8 @@ async def update(
     dependencies=[UserInterfaceAuthDependency('basicdata:flow:edit')],
 )
 async def change_status(
-    request: Request,
     oa_flow_base_model: OaFlowBaseModel,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
-
 ) -> Response:
     await FlowService.change_status_flow(query_db, oa_flow_base_model)
     logger.info('更新成功')

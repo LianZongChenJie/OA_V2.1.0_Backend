@@ -66,7 +66,10 @@ async def add_loan(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
     query_object: Annotated[OaLoanBaseModel, Body()],
+    current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
 ) -> Response:
+    query_object.admin_id = current_user.user.user_id
+    query_object.did = current_user.user.dept_id
     result = await OaLoanService.add_service(query_db, query_object)
     return ResponseUtil.success(msg=result.message)
 
@@ -115,56 +118,56 @@ async def delete_loan(
     result =  await OaLoanService.del_by_id(query_db, id)
     return ResponseUtil.success(msg=result.message)
 
-@finance_loan_controller.put(
-    "/pass",
-    summary='审核通过',
-    description='用于审核通过',
-    response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:loan:pass')],
-)
-async def pass_loan(
-        request: Request,
-        query_db: Annotated[AsyncSession, DBSessionDependency()],
-        data: Annotated[OaLoanBaseModel, Body()],
-        current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
-) -> Response:
-    userId = current_user.user.user_id
-    result =  await OaLoanService.pass_loan(query_db, data, userId)
-    return ResponseUtil.success(msg=result.message)
-
-@finance_loan_controller.put(
-    "/reject",
-    summary='审核拒绝',
-    description='用于审核拒绝',
-    response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:loan:reject')],
-)
-async def reject_loan(
-        request: Request,
-        query_db: Annotated[AsyncSession, DBSessionDependency()],
-        data: Annotated[OaLoanBaseModel, Body()],
-        current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
-) -> Response:
-    userId = current_user.user.user_id
-    result =  await OaLoanService.reject_loan(query_db, data, userId)
-    return ResponseUtil.success(msg=result.message)
-
-@finance_loan_controller.put(
-    "/cancel",
-    summary='撤销申请',
-    description='用于撤销申请',
-    response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:loan:cancel')],
-)
-async def cancel_loan(
-        request: Request,
-        query_db: Annotated[AsyncSession, DBSessionDependency()],
-        data: Annotated[OaLoanBaseModel, Body()],
-        current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
-) -> Response:
-    userId = current_user.user.user_id
-    result =  await OaLoanService.cancel_loan(query_db, data, userId)
-    return ResponseUtil.success(msg=result.message)
+# @finance_loan_controller.put(
+#     "/pass",
+#     summary='审核通过',
+#     description='用于审核通过',
+#     response_model=None,
+#     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:loan:pass')],
+# )
+# async def pass_loan(
+#         request: Request,
+#         query_db: Annotated[AsyncSession, DBSessionDependency()],
+#         data: Annotated[OaLoanBaseModel, Body()],
+#         current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
+# ) -> Response:
+#     userId = current_user.user.user_id
+#     result =  await OaLoanService.pass_loan(query_db, data, userId)
+#     return ResponseUtil.success(msg=result.message)
+#
+# @finance_loan_controller.put(
+#     "/reject",
+#     summary='审核拒绝',
+#     description='用于审核拒绝',
+#     response_model=None,
+#     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:loan:reject')],
+# )
+# async def reject_loan(
+#         request: Request,
+#         query_db: Annotated[AsyncSession, DBSessionDependency()],
+#         data: Annotated[OaLoanBaseModel, Body()],
+#         current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
+# ) -> Response:
+#     userId = current_user.user.user_id
+#     result =  await OaLoanService.reject_loan(query_db, data, userId)
+#     return ResponseUtil.success(msg=result.message)
+#
+# @finance_loan_controller.put(
+#     "/cancel",
+#     summary='撤销申请',
+#     description='用于撤销申请',
+#     response_model=None,
+#     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:loan:cancel')],
+# )
+# async def cancel_loan(
+#         request: Request,
+#         query_db: Annotated[AsyncSession, DBSessionDependency()],
+#         data: Annotated[OaLoanBaseModel, Body()],
+#         current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
+# ) -> Response:
+#     userId = current_user.user.user_id
+#     result =  await OaLoanService.cancel_loan(query_db, data, userId)
+#     return ResponseUtil.success(msg=result.message)
 
 @finance_loan_controller.put(
     "/pay",

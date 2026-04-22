@@ -50,8 +50,12 @@ class SealService:
                 model.use_time = int_time(model.use_time)
             if model.start_time:
                 model.start_time = int_time(model.start_time)
+            elif model.start_time == '':
+                model.start_time = None
             if model.end_time:
                 model.end_time = int_time(model.end_time)
+            elif model.end_time == '':
+                model.end_time = None
             change = await SealDao.add(query_db, model)
             # await cls.add_record(query_db, change, model)
             await query_db.commit()
@@ -89,7 +93,7 @@ class SealService:
             if not detail:
                 raise ServiceException(message="未找到该数据")
 
-            detail['info'] = ResponseConverter.convert_to_camel_and_format_time(detail['info'],cls.time_fields)
+            detail = ResponseConverter.convert_to_camel_and_format_time(detail,cls.time_fields)
             detail['records'] = ResponseConverter.convert_to_camel_and_format_time_list(detail['records'],cls.time_fields)
 
             return detail
@@ -101,7 +105,11 @@ class SealService:
     @classmethod
     async def del_by_id(cls, db: AsyncSession, id: int):
         try:
-            await SealDao.del_by_id(db, id)
+            seal = await SealDao.get_info_by_id(db, id)
+            if not seal.check_status == 0 or seal.check_status == 4:    # 只能删除未提交审核或已撤销的申请
+                await SealDao.del_by_id(db, id)
+            else:
+                raise CrudResponseModel(is_success=False, message='请先撤销申请再删除')
             return CrudResponseModel(is_success=True, message='删除成功')
         except Exception as e:
             await db.rollback()

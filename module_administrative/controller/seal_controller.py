@@ -47,7 +47,9 @@ async def add_seal(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
     query_object: Annotated[OaSealBaseModel, Body()],
+    current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
 ) -> Response:
+    query_object.admin_id = current_user.user.user_id
     result = await SealService.add_service(query_db, query_object)
     return ResponseUtil.success(msg=result.message)
 
@@ -73,7 +75,7 @@ async def update_seal(
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:seal:query')],
 )
-async def get_profile(
+async def get_seal(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
     id: int,
@@ -95,54 +97,54 @@ async def delete_seal(
 ) -> Response:
     result =  await SealService.del_by_id(query_db, id)
     return ResponseUtil.success(msg=result.message)
-
-@administrative_seal_controller.put(
-    "/pass",
-    summary='审核通过',
-    description='用于审核通过',
-    response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:seal:pass')],
-)
-async def pass_seal(
-        request: Request,
-        query_db: Annotated[AsyncSession, DBSessionDependency()],
-        data: Annotated[OaSealBaseModel, Body()],
-        current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
-) -> Response:
-    userId = current_user.user.user_id
-    result =  await SealService.pass_seal(query_db, data, userId)
-    return ResponseUtil.success(msg=result.message)
-
-@administrative_seal_controller.put(
-    "/reject",
-    summary='审核拒绝',
-    description='用于审核拒绝',
-    response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:seal:reject')],
-)
-async def reject_seal(
-        request: Request,
-        query_db: Annotated[AsyncSession, DBSessionDependency()],
-        data: Annotated[OaSealBaseModel, Body()],
-        current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
-) -> Response:
-    userId = current_user.user.user_id
-    result =  await SealService.reject_seal(query_db, data, userId)
-    return ResponseUtil.success(msg=result.message)
-
-@administrative_seal_controller.put(
-    "/cancel",
-    summary='撤销申请',
-    description='用于撤销申请',
-    response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:seal:cancel')],
-)
-async def cancel_seal(
-        request: Request,
-        query_db: Annotated[AsyncSession, DBSessionDependency()],
-        data: Annotated[OaSealBaseModel, Body()],
-        current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
-) -> Response:
-    userId = current_user.user.user_id
-    result =  await SealService.cancel_seal(query_db, data, userId)
-    return ResponseUtil.success(msg=result.message)
+#
+# @administrative_seal_controller.put(
+#     "/pass",
+#     summary='审核通过',
+#     description='用于审核通过',
+#     response_model=None,
+#     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:seal:pass')],
+# )
+# async def pass_seal(
+#         request: Request,
+#         query_db: Annotated[AsyncSession, DBSessionDependency()],
+#         data: Annotated[OaSealBaseModel, Body()],
+#         current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
+# ) -> Response:
+#     userId = current_user.user.user_id
+#     result =  await SealService.pass_seal(query_db, data, userId)
+#     return ResponseUtil.success(msg=result.message)
+#
+# @administrative_seal_controller.put(
+#     "/reject",
+#     summary='审核拒绝',
+#     description='用于审核拒绝',
+#     response_model=None,
+#     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:seal:reject')],
+# )
+# async def reject_seal(
+#         request: Request,
+#         query_db: Annotated[AsyncSession, DBSessionDependency()],
+#         data: Annotated[OaSealBaseModel, Body()],
+#         current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
+# ) -> Response:
+#     userId = current_user.user.user_id
+#     result =  await SealService.reject_seal(query_db, data, userId)
+#     return ResponseUtil.success(msg=result.message)
+#
+# @administrative_seal_controller.put(
+#     "/cancel",
+#     summary='撤销申请',
+#     description='用于撤销申请',
+#     response_model=None,
+#     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:seal:cancel')],
+# )
+# async def cancel_seal(
+#         request: Request,
+#         query_db: Annotated[AsyncSession, DBSessionDependency()],
+#         data: Annotated[OaSealBaseModel, Body()],
+#         current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
+# ) -> Response:
+#     userId = current_user.user.user_id
+#     result =  await SealService.cancel_seal(query_db, data, userId)
+#     return ResponseUtil.success(msg=result.message)

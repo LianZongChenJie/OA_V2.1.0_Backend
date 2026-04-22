@@ -5,15 +5,16 @@ from exceptions.exception import ServiceException
 from module_basicdata.dao.public.flow_cate_dao import FlowCateDao
 from module_basicdata.dao.public.flow_step_dao import OaFlowStepDao
 from module_finance.dao.ticket_dao import TicketDao
-from module_finance.entity.do.ticket_do import OaTicket,OaTicketPayment
+from module_finance.entity.do.ticket_do import OaTicketPayment
 from module_personnel.dao.flow_record_dao import FlowRecordDao
 from sqlalchemy.sql import ColumnElement
 from module_finance.entity.vo.ticket_vo import OaTicketBaseModel, \
-    OaTicketPageQueryModel, OaTicketDetailModel, OaTicketPayMentDetailModel
+    OaTicketPageQueryModel, OaTicketPayMentDetailModel
 from common.vo import PageModel, CrudResponseModel
 from datetime import datetime
 
 from module_personnel.entity.vo.flow_record_vo import OaFlowRecordBaseModel
+from utils.camel_converter import ModelConverter
 from utils.timeformat import int_time
 
 
@@ -56,16 +57,16 @@ class TicketService:
 
     @classmethod
     async def get_info_service(cls, query_db: \
-            AsyncSession, id: int) -> OaTicketBaseModel:
+            AsyncSession, id: int) -> dict[str, Any]:
         try:
             info = await TicketDao.get_info_by_id(query_db, id)
             records = await FlowRecordDao.get_records_by_action_id(query_db, info.id, info.check_flow_id)
-            detail = OaTicketDetailModel(ticket=None, flow_records=None)
-            detail.ticket = info
-            detail.flow_records = records
+            detail = {}
+            detail.update(info)
+            detail['records'] = records
             if not detail:
                 raise ServiceException(message="未找到该数据")
-            return detail
+            return ModelConverter.convert_to_camel_case(detail)
         except Exception as e:
             await query_db.rollback()
             raise e
