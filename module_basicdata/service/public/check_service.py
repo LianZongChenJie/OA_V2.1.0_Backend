@@ -330,7 +330,8 @@ class CheckService:
         :param user_id: 
         :return: 
         """
-        flow_cate = await FlowCateDao.get_flow_cate_info_by_name(db, query_model.check_name)
+        flow = await OaFlowDao.get_flow_detail(db, query_model.flow_id)
+        flow_cate = await FlowCateDao.get_flow_cate_info(db, flow.cate_id)
         flow_data = await OaFlowDao.get_flow_info_by_cate_id(db, flow_cate.id)
         flow_cate = flow_cate.to_dict()
         flow_data = flow_data.to_dict()
@@ -347,7 +348,7 @@ class CheckService:
         record.flow_id = flow_data['id'],
         record.check_time = datetime.now().timestamp(),
         record.check_status = 0,
-        record.check_files = query_model.check_files,
+        record.check_files = query_model.check_files if query_model.check_files else '',
         record.content = query_model.content
         await FlowRecordDao.add(db, record)
 
@@ -408,7 +409,7 @@ class CheckService:
                     "check_copy_uids": query_model.check_copy_uids if query_model.check_copy_uids else '',
                     "action_id": query_model.action_id
                 }
-                sql = 'update %s set check_flow_id = :check_flow_id,check_step_sort=:check_step_sort,check_status=:check_status,check_uids=:check_uids, check_copy_uids=:check_copy_uids where id = :action_id' % ('oa_'+ query_model.check_name)
+                sql = 'update %s set check_flow_id = :check_flow_id,check_step_sort=:check_step_sort,check_status=:check_status,check_uids=:check_uids, check_copy_uids=:check_copy_uids where id = :action_id' % ('oa_'+ flow_cate['check_table'])
                 # 更新表审核信息
                 await CheckDao.execute_update_sql(db, sql, update_dict)
 
@@ -439,7 +440,7 @@ class CheckService:
                     "check_copy_uids": query_model.check_copy_uids,
                     "action_id": query_model.action_id
                 }
-                sql = 'update %s set check_flow_id = :check_flow_id,check_step_sort=:check_step_sort,check_status=:check_status,check_uids=:check_uids, check_copy_uids=:check_copy_uids where id = :action_id' % ('oa_'+ query_model.check_name)
+                sql = 'update %s set check_flow_id = :check_flow_id,check_step_sort=:check_step_sort,check_status=:check_status,check_uids=:check_uids, check_copy_uids=:check_copy_uids where id = :action_id' % ('oa_'+ flow_cate['check_table'])
                 await CheckDao.execute_update_sql(db, sql, update_dict)
                 # 发送消息通知
                 # todo
@@ -479,6 +480,7 @@ class CheckService:
                 is_creater = 1
             detail['is_creater'] = is_creater
             detail['admin_name'] = await UserDao.get_user_name_by_user_id(db, [detail['admin_id']])
+            detail['nick_name'] = await UserDao.get_nick_name_by_user_id(db, [detail['admin_id']])
 
 
             # 当前审批人

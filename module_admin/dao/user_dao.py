@@ -608,6 +608,12 @@ class UserDao:
         return result.scalars().all()
 
     @classmethod
+    async def get_nick_name_by_user_id(cls, db: AsyncSession, user_ids: list[int]):
+        query = select(SysUser.nick_name).where(SysUser.user_id.in_(user_ids))
+        result = await db.execute(query)
+        return result.scalars().all()
+
+    @classmethod
     async def get_user_name_id_avatar_by_user_id(cls, db: AsyncSession, user_ids: list[int]):
         """
         根据用户岗位关联获取用户岗位关联详细信息
@@ -616,6 +622,6 @@ class UserDao:
         :param user_ids: 用户岗位关联对象
         :return: 用户岗位关联信息
         """
-        query = select(SysUser.user_name, SysUser.user_id, SysUser.avatar).where(SysUser.user_id.in_(user_ids))
+        query = select(SysUser.user_name,SysUser.nick_name, SysUser.user_id, SysUser.avatar).where(SysUser.user_id.in_(user_ids))
         result = await db.execute(query)
         return result.mappings().all()
