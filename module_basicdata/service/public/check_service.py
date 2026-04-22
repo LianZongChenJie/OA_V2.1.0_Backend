@@ -103,6 +103,7 @@ class CheckService:
                 else:
                     check_status = 2
                     check_uids = ''
+                    check_step_sort = detail['check_step_sort'] + 1
             else:
                 # 查询当前步骤审批记录
                 check_count = await FlowRecordDao.get_count_by_action_id_flow_id_step_id(db, action_id, detail['check_flow_id'], detail['check_step_sort'])
@@ -128,6 +129,7 @@ class CheckService:
                         check_status = 1
                     else:
                         check_status = 2
+                        check_step_sort = detail['check_step_sort'] + 1
                         check_uids = ''
 
             if check_status == 1 and check_uids is None:
