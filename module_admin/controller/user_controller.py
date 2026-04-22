@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import Annotated, Literal
 
 import aiofiles
-from fastapi import File, Form, Path, Query, Request, Response, UploadFile
+from fastapi import File, Form, Path, Query, Request, Response, UploadFile, Body
 from fastapi.responses import StreamingResponse
 from pydantic_validation_decorator import ValidateFields
 from sqlalchemy import ColumnElement
@@ -37,7 +37,7 @@ from module_admin.entity.vo.user_vo import (
     UserProfileModel,
     UserRoleQueryModel,
     UserRoleResponseModel,
-    UserRowModel,
+    UserRowModel, DeptLeaderModel,
 )
 from module_admin.service.dept_service import DeptService
 from module_admin.service.role_service import RoleService
@@ -151,6 +151,8 @@ async def edit_system_user(
         await RoleService.check_role_data_scope_services(
             query_db, ','.join([str(item) for item in edit_user.role_ids]), role_data_scope_sql
         )
+        if edit_user.is_leader:
+            await DeptService.set_leader(query_db, edit_user.dept_id, edit_user.user_id)
     edit_user.update_by = current_user.user.user_name
     edit_user.update_time = datetime.now()
     edit_user_result = await UserService.edit_user_services(query_db, edit_user)
@@ -270,6 +272,22 @@ async def query_detail_system_user_profile(
 
     return ResponseUtil.success(model_content=profile_user_result)
 
+@user_controller.put(
+    '/setLeader',
+    summary='设置部门领导接口',
+    description='用于设置指定部门的领导',
+    response_model=ResponseBaseModel,
+    dependencies=[UserInterfaceAuthDependency('system:dept:edit')],
+)
+@Log(title='部门管理', business_type=BusinessType.UPDATE)
+async def set_leader(
+    request: Request,
+    query_model: Annotated[DeptLeaderModel, Body()],
+        query_db: Annotated[AsyncSession, DBSessionDependency()]
+) -> Response:
+    await DeptService.set_leader(query_db, query_model.dept_id,query_model.leader_id, query_model.leader_name)
+    logger.info('设置成功')
+    return ResponseUtil.success(msg='设置成功')
 
 @user_controller.get(
     '/{user_id}',

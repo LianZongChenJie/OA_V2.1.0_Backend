@@ -283,3 +283,19 @@ class DeptService:
             update_children.append({'dept_id': child.dept_id, 'ancestors': child_ancestors})
         if children:
             await DeptDao.update_dept_children_dao(query_db, update_children)
+
+    @classmethod
+    async def set_leader(cls,db: AsyncSession, dept_id:int, user_id:int, user_name:str) -> None:
+        """
+        将员工设置为部门领导
+        :param db:
+        :param dept_id:
+        :param user_id:
+        :param user_name:
+        :return:
+        """
+        try:
+            await DeptDao.set_leader(db, dept_id, user_id, user_name)
+        except Exception as e:
+            await db.rollback()
+

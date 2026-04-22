@@ -90,6 +90,7 @@ class UserModel(BaseModel):
     auth_dids: str | None = Field(default=None, description='可见部门数据')
     son_dids: str | None = Field(default=None, description='可见子部门数据')
     admin_status: int | None = Field(default=None, description='员工状态：-1待入职,0禁止登录,1正常,2离职')
+    is_leader: bool | None = Field(default=None, description='是否为部门领导领导：0否,1是')
     @model_validator(mode='after')
     def check_password(self) -> 'UserModel':
         pattern = r"""^[^<>"'|\\]+$"""
@@ -396,3 +397,14 @@ class ContactsBookPageQueryModel(ContactsBookModel):
     page_size: int = Field(default=20, description='每页记录数')
     keywords: str | None = Field(default=None, description='搜索关键词')
     did: int | None = Field(default=None, description='部门ID')
+
+class DeptLeaderModel(BaseModel):
+    """
+    部门领导模型
+    """
+
+    model_config = ConfigDict(alias_generator=to_camel)
+
+    dept_id: int | None = Field(default=None, description='部门ID')
+    leader_id: int | None = Field(default=None, description='领导ID')
+    leader_name: str | None = Field(default=None, description='领导姓名')

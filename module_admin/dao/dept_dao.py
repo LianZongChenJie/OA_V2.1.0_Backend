@@ -350,6 +350,18 @@ class DeptDao:
             query = select(dept.leader_id).join(user, user.dept_id == dept.dept_id, isouter=True).join(parent,parent.dept_id == dept.parent_id,isouter=True).where(SysUser.user_id == user_id)
         result = await db.execute(query)
         return result.scalars().first()
+    @classmethod
+    async def set_leader(cls, db: AsyncSession, dept_id: int, user_id: int, user_name:str) -> None:
+        """
+        更新部门领导
+        :param db:
+        :param dept_id:
+        :param user_id:
+        :param user_name:
+        :return:
+        """
+        await db.execute(update(SysDept).where(SysDept.dept_id == dept_id).values(leader_id=user_id,leader=user_name))
+        await db.commit()
 
 
 
