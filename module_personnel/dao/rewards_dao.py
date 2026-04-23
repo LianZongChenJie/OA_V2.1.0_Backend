@@ -28,6 +28,8 @@ class RewardsDao:
                             OaRewards.types == query_object.types if query_object.types else True,
                             OaRewards.rewards_cate == query_object.rewards_cate if query_object.rewards_cate else True,
                             OaRewards.uid == query_object.uid if query_object.uid else True,
+                            OaRewards.cate == query_object.cate if query_object.cate else True,
+                            OaRewards.remark.like('%' + query_object.remark + '%') if query_object.remark else True,
                             OaRewards.check_time.between(
                                 int(datetime.strptime(query_object.begin_time, "%Y-%m-%d %H:%M:%S").timestamp()),
                                 int(datetime.strptime(query_object.end_time, "%Y-%m-%d %H:%M:%S").timestamp()),
