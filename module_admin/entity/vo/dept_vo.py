@@ -18,7 +18,7 @@ class DeptModel(BaseModel):
     ancestors: str | None = Field(default=None, description='祖级列表')
     dept_name: str | None = Field(default=None, description='部门名称')
     order_num: int | None = Field(default=None, description='显示顺序')
-    leader_id: int | None = Field(default=None, description='负责人ID')
+    leader_id: str | None = Field(default=None, description='负责人ID')
     leader: str | None = Field(default=None, description='负责人')
     phone: str | None = Field(default=None, description='联系电话')
     email: str | None = Field(default=None, description='邮箱')

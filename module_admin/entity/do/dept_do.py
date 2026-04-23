@@ -20,9 +20,9 @@ class SysDept(Base):
     ancestors = Column(String(50), nullable=True, server_default="''", comment='祖级列表')
     dept_name = Column(String(30), nullable=True, server_default="''", comment='部门名称')
     order_num = Column(Integer, server_default='0', comment='显示顺序')
-    leader_id = Column(Integer, default=0, comment='负责人ID')
+    leader_id = Column(String(500), default=0, comment='负责人ID')
     leader = Column(
-        String(20),
+        String(500),
         nullable=True,
         server_default=SqlalchemyUtil.get_server_default_null(DataBaseConfig.db_type),
         comment='负责人',

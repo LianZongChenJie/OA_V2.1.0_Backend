@@ -351,7 +351,7 @@ class DeptDao:
         result = await db.execute(query)
         return result.scalars().first()
     @classmethod
-    async def set_leader(cls, db: AsyncSession, dept_id: int, user_id: int, user_name:str) -> None:
+    async def set_leader(cls, db: AsyncSession, dept_id: int, user_id: str, user_name:str) -> None:
         """
         更新部门领导
         :param db:
