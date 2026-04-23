@@ -113,55 +113,55 @@ class ExpenseDao:
         await db.commit()
         return result.rowcount
 
-    @classmethod
-    async def cancel_expense(cls, db: AsyncSession, query_model: OaExpenseBaseModel):
-        result = await db.execute(update(OaExpense).values(
-            update_time=int(datetime.now().timestamp()),
-            check_status=query_model.check_status,
-            remark=query_model.remark
-        ).where(OaExpense.id == query_model.id))
-        await db.commit()
-        return result.rowcount
-
     # @classmethod
-    # async def count_by_uid(cls, db: AsyncSession, uid: str):
-    #     result = await db.execute(select(func.count()).where(OaExpense.uid == uid))
-    #     return result.scalar()
-    @classmethod
-    async def pass_expense(cls, db: AsyncSession, data: OaExpenseBaseModel):
-        try:
-            result = await db.execute(
-                update(OaExpense)
-                .values(
-                    check_status=2,
-                    check_time=data.check_time,
-                    remark=data.remark
-                )
-                .where(OaExpense.id == data.id)
-            )
-            await db.commit()
-        except Exception as e:
-            await db.rollback()
-            raise e
-        return result.rowcount
-
-    @classmethod
-    async def reject_expense(cls, db: AsyncSession, data: OaExpenseBaseModel):
-        try:
-            result = await db.execute(
-                update(OaExpense)
-                .values(
-                    check_status=3,
-                    check_time=data.check_time,
-                    remark=data.remark
-                )
-                .where(OaExpense.id == data.id)
-            )
-            await db.commit()
-            return result.rowcount
-        except Exception as e:
-            await db.rollback()
-            raise e
+    # async def cancel_expense(cls, db: AsyncSession, query_model: OaExpenseBaseModel):
+    #     result = await db.execute(update(OaExpense).values(
+    #         update_time=int(datetime.now().timestamp()),
+    #         check_status=query_model.check_status,
+    #         remark=query_model.remark
+    #     ).where(OaExpense.id == query_model.id))
+    #     await db.commit()
+    #     return result.rowcount
+    #
+    # # @classmethod
+    # # async def count_by_uid(cls, db: AsyncSession, uid: str):
+    # #     result = await db.execute(select(func.count()).where(OaExpense.uid == uid))
+    # #     return result.scalar()
+    # @classmethod
+    # async def pass_expense(cls, db: AsyncSession, data: OaExpenseBaseModel):
+    #     try:
+    #         result = await db.execute(
+    #             update(OaExpense)
+    #             .values(
+    #                 check_status=2,
+    #                 check_time=data.check_time,
+    #                 remark=data.remark
+    #             )
+    #             .where(OaExpense.id == data.id)
+    #         )
+    #         await db.commit()
+    #     except Exception as e:
+    #         await db.rollback()
+    #         raise e
+    #     return result.rowcount
+    #
+    # @classmethod
+    # async def reject_expense(cls, db: AsyncSession, data: OaExpenseBaseModel):
+    #     try:
+    #         result = await db.execute(
+    #             update(OaExpense)
+    #             .values(
+    #                 check_status=3,
+    #                 check_time=data.check_time,
+    #                 remark=data.remark
+    #             )
+    #             .where(OaExpense.id == data.id)
+    #         )
+    #         await db.commit()
+    #         return result.rowcount
+    #     except Exception as e:
+    #         await db.rollback()
+    #         raise e
 
     @classmethod
     async def pay_expense(cls, db: AsyncSession, data: OaExpenseBaseModel, userId: int):

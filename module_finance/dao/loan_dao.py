@@ -112,55 +112,55 @@ class LoanDao:
         await db.commit()
         return result.rowcount
 
-    @classmethod
-    async def cancel_loan(cls, db: AsyncSession, query_model: OaLoanBaseModel):
-        result = await db.execute(update(OaLoan).values(
-            update_time=int(datetime.now().timestamp()),
-            check_status=query_model.check_status,
-            content=query_model.content,
-        ).where(OaLoan.id == query_model.id))
-        await db.commit()
-        return result.rowcount
-
     # @classmethod
-    # async def count_by_uid(cls, db: AsyncSession, uid: str):
-    #     result = await db.execute(select(func.count()).where(OaLoan.uid == uid))
-    #     return result.scalar()
-    @classmethod
-    async def pass_loan(cls, db: AsyncSession, data: OaLoanBaseModel):
-        try:
-            result = await db.execute(
-                update(OaLoan)
-                .values(
-                    check_status=2,
-                    check_time=data.check_time,
-                    content=data.content,
-                )
-                .where(OaLoan.id == data.id)
-            )
-            await db.commit()
-        except Exception as e:
-            await db.rollback()
-            raise e
-        return result.rowcount
-
-    @classmethod
-    async def reject_loan(cls, db: AsyncSession, data: OaLoanBaseModel):
-        try:
-            result = await db.execute(
-                update(OaLoan)
-                .values(
-                    check_status=3,
-                    check_time=data.check_time,
-                    content=data.content,
-                )
-                .where(OaLoan.id == data.id)
-            )
-            await db.commit()
-            return result.rowcount
-        except Exception as e:
-            await db.rollback()
-            raise e
+    # async def cancel_loan(cls, db: AsyncSession, query_model: OaLoanBaseModel):
+    #     result = await db.execute(update(OaLoan).values(
+    #         update_time=int(datetime.now().timestamp()),
+    #         check_status=query_model.check_status,
+    #         content=query_model.content,
+    #     ).where(OaLoan.id == query_model.id))
+    #     await db.commit()
+    #     return result.rowcount
+    #
+    # # @classmethod
+    # # async def count_by_uid(cls, db: AsyncSession, uid: str):
+    # #     result = await db.execute(select(func.count()).where(OaLoan.uid == uid))
+    # #     return result.scalar()
+    # @classmethod
+    # async def pass_loan(cls, db: AsyncSession, data: OaLoanBaseModel):
+    #     try:
+    #         result = await db.execute(
+    #             update(OaLoan)
+    #             .values(
+    #                 check_status=2,
+    #                 check_time=data.check_time,
+    #                 content=data.content,
+    #             )
+    #             .where(OaLoan.id == data.id)
+    #         )
+    #         await db.commit()
+    #     except Exception as e:
+    #         await db.rollback()
+    #         raise e
+    #     return result.rowcount
+    #
+    # @classmethod
+    # async def reject_loan(cls, db: AsyncSession, data: OaLoanBaseModel):
+    #     try:
+    #         result = await db.execute(
+    #             update(OaLoan)
+    #             .values(
+    #                 check_status=3,
+    #                 check_time=data.check_time,
+    #                 content=data.content,
+    #             )
+    #             .where(OaLoan.id == data.id)
+    #         )
+    #         await db.commit()
+    #         return result.rowcount
+    #     except Exception as e:
+    #         await db.rollback()
+    #         raise e
 
     @classmethod
     async def pay_loan(cls, db: AsyncSession, data: OaLoanBaseModel, userId: int):

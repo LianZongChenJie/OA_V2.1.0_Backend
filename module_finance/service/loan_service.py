@@ -65,7 +65,6 @@ class OaLoanService:
                 if model.cost < 0:
                     model.cost = Decimal(0)
             change = await LoanDao.update(query_db, model)
-            # await cls.add_record(query_db, change, model)
             await query_db.commit()
             return CrudResponseModel(is_success=True, message='修改成功')
         except Exception as e:
@@ -81,7 +80,7 @@ class OaLoanService:
             info = await LoanDao.get_info_by_id(query_db, id)
             records = await FlowRecordDao.get_records_by_action_id(query_db, info.id, info.check_flow_id)
             detail = {}
-            detail.update(info)
+            detail.update(info.to_dict())
             detail['records'] = records
             if not detail:
                 raise ServiceException(message="未找到该数据")
@@ -100,46 +99,46 @@ class OaLoanService:
             await db.rollback()
             raise e
 
-    @classmethod
-    async def pass_loan(cls, db: AsyncSession, data: OaLoanBaseModel, userId: int):
-        try:
-            data.check_time = int(datetime.now().timestamp())
-            await cls.set_check_uid(db, data, userId)
-            await LoanDao.pass_loan(db, data)
-            seal = await LoanDao.get_info_by_id(db, data.id)
-            await cls.add_record(db, seal, data, userId)
-            await db.commit()
-            return CrudResponseModel(is_success=True, message='审核通过成功')
-        except Exception as e:
-            await db.rollback()
-            raise e
-
-    @classmethod
-    async def reject_loan(cls, db: AsyncSession, data: OaLoanBaseModel, userId: int):
-        try:
-            data.check_time = int(datetime.now().timestamp())
-            await cls.set_check_uid(db, data, userId)
-            await LoanDao.reject_loan(db, data)
-            seal = await LoanDao.get_info_by_id(db, data.id)
-            await cls.add_record(db, seal, data, userId)
-            await db.commit()
-            return CrudResponseModel(is_success=True, message='审核拒绝成功')
-        except Exception as e:
-            await db.rollback()
-            raise e
-
-    @classmethod
-    async def cancel_loan(cls, db: AsyncSession, data: OaLoanBaseModel, userId: int):
-        try:
-            await cls.set_check_uid(db, data, userId)
-            await LoanDao.cancel_loan(db, data)
-            loan = await LoanDao.get_info_by_id(db, data.id)
-            await cls.add_record(db, loan, data, userId)
-            await db.commit()
-            return CrudResponseModel(is_success=True, message='撤销申请成功')
-        except Exception as e:
-            await db.rollback()
-            raise e
+    # @classmethod
+    # async def pass_loan(cls, db: AsyncSession, data: OaLoanBaseModel, userId: int):
+    #     try:
+    #         data.check_time = int(datetime.now().timestamp())
+    #         await cls.set_check_uid(db, data, userId)
+    #         await LoanDao.pass_loan(db, data)
+    #         seal = await LoanDao.get_info_by_id(db, data.id)
+    #         await cls.add_record(db, seal, data, userId)
+    #         await db.commit()
+    #         return CrudResponseModel(is_success=True, message='审核通过成功')
+    #     except Exception as e:
+    #         await db.rollback()
+    #         raise e
+    #
+    # @classmethod
+    # async def reject_loan(cls, db: AsyncSession, data: OaLoanBaseModel, userId: int):
+    #     try:
+    #         data.check_time = int(datetime.now().timestamp())
+    #         await cls.set_check_uid(db, data, userId)
+    #         await LoanDao.reject_loan(db, data)
+    #         seal = await LoanDao.get_info_by_id(db, data.id)
+    #         await cls.add_record(db, seal, data, userId)
+    #         await db.commit()
+    #         return CrudResponseModel(is_success=True, message='审核拒绝成功')
+    #     except Exception as e:
+    #         await db.rollback()
+    #         raise e
+    #
+    # @classmethod
+    # async def cancel_loan(cls, db: AsyncSession, data: OaLoanBaseModel, userId: int):
+    #     try:
+    #         await cls.set_check_uid(db, data, userId)
+    #         await LoanDao.cancel_loan(db, data)
+    #         loan = await LoanDao.get_info_by_id(db, data.id)
+    #         await cls.add_record(db, loan, data, userId)
+    #         await db.commit()
+    #         return CrudResponseModel(is_success=True, message='撤销申请成功')
+    #     except Exception as e:
+    #         await db.rollback()
+    #         raise e
 
     @classmethod
     async def pay_loan(cls, db: AsyncSession, data: OaLoanBaseModel, userId: int):

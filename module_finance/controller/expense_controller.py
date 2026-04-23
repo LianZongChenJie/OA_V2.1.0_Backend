@@ -3,10 +3,12 @@ from typing import Annotated
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import ColumnElement
 
+from common.annotation.log_annotation import Log
 from common.aspect.data_scope import DataScopeDependency
 from common.aspect.db_seesion import DBSessionDependency
 from common.aspect.interface_auth import UserInterfaceAuthDependency
 from common.aspect.pre_auth import PreAuthDependency, CurrentUserDependency
+from common.enums import BusinessType
 from common.router import APIRouterPro
 from module_finance.entity.do.expense_do import OaExpense
 from module_finance.entity.vo.expense_vo import OaExpenseBaseModel, OaExpensePageQueryModel, OaExpenseDetailModel
@@ -62,6 +64,7 @@ async def get_page_list(
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:expense:add')],
 )
+@Log(title="新增报销管理", business_type=BusinessType.INSERT)
 async def add(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
@@ -80,6 +83,7 @@ async def add(
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:expense:update')],
 )
+@Log(title="更新报销管理", business_type=BusinessType.UPDATE)
 async def update_expense(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
@@ -113,6 +117,7 @@ async def get_expense(
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:expense:delete')],
 )
+@Log(title="删除报销管理", business_type=BusinessType.DELETE)
 async def delete_expense(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
@@ -179,6 +184,7 @@ async def delete_expense(
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:expense:pay')],
 )
+@Log(title="打款", business_type=BusinessType.UPDATE)
 async def pay_expense(
         request: Request,
         query_db: Annotated[AsyncSession, DBSessionDependency()],

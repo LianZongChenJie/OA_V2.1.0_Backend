@@ -3,10 +3,12 @@ from typing import Annotated
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import ColumnElement
 
+from common.annotation.log_annotation import Log
 from common.aspect.data_scope import DataScopeDependency
 from common.aspect.db_seesion import DBSessionDependency
 from common.aspect.interface_auth import UserInterfaceAuthDependency
 from common.aspect.pre_auth import PreAuthDependency, CurrentUserDependency
+from common.enums import BusinessType
 from common.router import APIRouterPro
 from module_finance.entity.do.invoice_do import OaInvoice
 from module_finance.entity.vo.invoice_vo import OaInvoiceBaseModel, OaInvoicePageQueryModel, OaInvoiceDetailModel, \
@@ -63,6 +65,7 @@ async def get_page_list(
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:invoice:add')],
 )
+@Log(title='开票管理-新增',business_type=BusinessType.INSERT)
 async def add(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
@@ -81,6 +84,7 @@ async def add(
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:invoice:update')],
 )
+@Log(title='开票管理-更新',business_type=BusinessType.UPDATE)
 async def update_expense(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
@@ -114,6 +118,7 @@ async def get_expense(
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:invoice:delete')],
 )
+@Log(title='开票管理-删除',business_type=BusinessType.DELETE)
 async def delete_invoice(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
@@ -146,6 +151,7 @@ async def delete_invoice(
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:invoice:pay')],
 )
+@Log(title='开票管理-打款',business_type=BusinessType.UPDATE)
 async def payment(
         request: Request,
         query_db: Annotated[AsyncSession, DBSessionDependency()],
@@ -163,6 +169,7 @@ async def payment(
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:invoice:edit')],
 )
+@Log(title='开票管理-开票状态',business_type=BusinessType.UPDATE)
 async def open_status(
         request: Request,
         query_db: Annotated[AsyncSession, DBSessionDependency()],
@@ -184,6 +191,7 @@ async def open_status(
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:invoice:add')],
 )
+@Log(title='开票管理-添加发票回款记录',business_type=BusinessType.INSERT)
 async def add_income(
         request: Request,
         query_db: Annotated[AsyncSession, DBSessionDependency()],
@@ -201,6 +209,7 @@ async def add_income(
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:invoice:delete')],
 )
+@Log(title='开票管理-删除发票回款记录',business_type=BusinessType.DELETE)
 async def delete_income(
         request: Request,
         ids: Annotated[str, Query(description='要删除的ID，多个用逗号分隔')],

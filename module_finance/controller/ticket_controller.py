@@ -3,10 +3,12 @@ from typing import Annotated
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import ColumnElement
 
+from common.annotation.log_annotation import Log
 from common.aspect.data_scope import DataScopeDependency
 from common.aspect.db_seesion import DBSessionDependency
 from common.aspect.interface_auth import UserInterfaceAuthDependency
 from common.aspect.pre_auth import PreAuthDependency, CurrentUserDependency
+from common.enums import BusinessType
 from common.router import APIRouterPro
 from module_finance.entity.do.ticket_do import OaTicket
 from module_finance.entity.vo.ticket_vo import OaTicketBaseModel, OaTicketPageQueryModel, OaTicketPaymentBaseModel
@@ -62,6 +64,7 @@ async def get_page_list(
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:payment:add')],
 )
+@Log(title="收票管理-新增",business_type=BusinessType.INSERT)
 async def add(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
@@ -80,6 +83,7 @@ async def add(
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:payment:update')],
 )
+@Log(title="收票管理-更新",business_type=BusinessType.UPDATE)
 async def add_ticket(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
@@ -113,6 +117,7 @@ async def get_expense(
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:payment:delete')],
 )
+@Log(title="收票管理-删除",business_type=BusinessType.DELETE)
 async def delete_expense(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
@@ -145,6 +150,7 @@ async def delete_expense(
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:payment:pay')],
 )
+@Log(title="收票管理-打款",business_type=BusinessType.UPDATE)
 async def payment(
         request: Request,
         query_db: Annotated[AsyncSession, DBSessionDependency()],
@@ -162,6 +168,7 @@ async def payment(
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:payment:edit')],
 )
+@Log(title="收票管理-开票状态",business_type=BusinessType.UPDATE)
 async def open_status(
         request: Request,
         query_db: Annotated[AsyncSession, DBSessionDependency()],

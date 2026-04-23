@@ -117,15 +117,15 @@ class TicketDao:
         await db.commit()
         return result.rowcount
 
-    @classmethod
-    async def review(cls, db: AsyncSession, query_model: OaTicketBaseModel):
-        result = await db.execute(update(OaTicket).values(
-            update_time=int(datetime.now().timestamp()),
-            check_status=query_model.check_status,
-            remark=query_model.remark
-        ).where(OaTicket.id == query_model.id))
-        await db.commit()
-        return result.rowcount
+    # @classmethod
+    # async def review(cls, db: AsyncSession, query_model: OaTicketBaseModel):
+    #     result = await db.execute(update(OaTicket).values(
+    #         update_time=int(datetime.now().timestamp()),
+    #         check_status=query_model.check_status,
+    #         remark=query_model.remark
+    #     ).where(OaTicket.id == query_model.id))
+    #     await db.commit()
+    #     return result.rowcount
 
     @classmethod
     async def open_status(cls, db: AsyncSession, query_model: OaTicketBaseModel):

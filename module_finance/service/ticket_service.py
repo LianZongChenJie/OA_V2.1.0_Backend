@@ -62,7 +62,7 @@ class TicketService:
             info = await TicketDao.get_info_by_id(query_db, id)
             records = await FlowRecordDao.get_records_by_action_id(query_db, info.id, info.check_flow_id)
             detail = {}
-            detail.update(info)
+            detail.update(info.to_dict())
             detail['records'] = records
             if not detail:
                 raise ServiceException(message="未找到该数据")
@@ -81,19 +81,19 @@ class TicketService:
             await db.rollback()
             raise e
 
-    @classmethod
-    async def review(cls, db: AsyncSession, data: OaTicketBaseModel, userId: int):
-        try:
-            data.check_time = int(datetime.now().timestamp())
-            await cls.set_check_uid(db, data, userId)
-            await TicketDao.review(db, data)
-            invoice = await TicketDao.get_info_by_id(db, data.id)
-            await cls.add_record(db, invoice, data, userId)
-            await db.commit()
-            return CrudResponseModel(is_success=True, message='操作成功！')
-        except Exception as e:
-            await db.rollback()
-            return CrudResponseModel(is_success=False, message='操作失败')
+    # @classmethod
+    # async def review(cls, db: AsyncSession, data: OaTicketBaseModel, userId: int):
+    #     try:
+    #         data.check_time = int(datetime.now().timestamp())
+    #         await cls.set_check_uid(db, data, userId)
+    #         await TicketDao.review(db, data)
+    #         invoice = await TicketDao.get_info_by_id(db, data.id)
+    #         await cls.add_record(db, invoice, data, userId)
+    #         await db.commit()
+    #         return CrudResponseModel(is_success=True, message='操作成功！')
+    #     except Exception as e:
+    #         await db.rollback()
+    #         return CrudResponseModel(is_success=False, message='操作失败')
 
     # @classmethod
     # async def payment(cls, db: AsyncSession, data: OaTicketBaseModel, userId: int):
@@ -115,25 +115,25 @@ class TicketService:
     #         await db.rollback()
     #         return CrudResponseModel(is_success=False, message='还款失败')
 
-    @classmethod
-    async def add_record(cls, db: AsyncSession, change: OaFlowRecordBaseModel, model: OaTicketBaseModel, userId: int):
-        try:
-            flow_cate = await FlowCateDao.get_flow_cate_info(db, change.check_flow_id)
-            step = await OaFlowStepDao.get_info_by_flow_id(db, change.check_flow_id)
-            record = OaFlowRecordBaseModel()
-            record.action_id = change.id
-            record.check_table = flow_cate.check_table
-            record.flow_id = change.check_flow_id
-            record.check_files = model.file_ids
-            record.check_uid = userId
-            record.check_status = model.check_status
-            record.step_id = step.id if step is not None else 0
-            record.content = model.remark
-            record.check_time = int(datetime.now().timestamp())
-            await FlowRecordDao.add(db, record)
-        except Exception as e:
-            await db.rollback()
-            raise e
+    # @classmethod
+    # async def add_record(cls, db: AsyncSession, change: OaFlowRecordBaseModel, model: OaTicketBaseModel, userId: int):
+    #     try:
+    #         flow_cate = await FlowCateDao.get_flow_cate_info(db, change.check_flow_id)
+    #         step = await OaFlowStepDao.get_info_by_flow_id(db, change.check_flow_id)
+    #         record = OaFlowRecordBaseModel()
+    #         record.action_id = change.id
+    #         record.check_table = flow_cate.check_table
+    #         record.flow_id = change.check_flow_id
+    #         record.check_files = model.file_ids
+    #         record.check_uid = userId
+    #         record.check_status = model.check_status
+    #         record.step_id = step.id if step is not None else 0
+    #         record.content = model.remark
+    #         record.check_time = int(datetime.now().timestamp())
+    #         await FlowRecordDao.add(db, record)
+    #     except Exception as e:
+    #         await db.rollback()
+    #         raise e
 
     @classmethod
     async def set_check_uid(cls, query_db: AsyncSession, query_object: OaTicketBaseModel, userId: int):

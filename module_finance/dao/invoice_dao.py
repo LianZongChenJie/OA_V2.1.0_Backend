@@ -117,15 +117,15 @@ class InvoiceDao:
         await db.commit()
         return result.rowcount
 
-    @classmethod
-    async def review(cls, db: AsyncSession, query_model: OaInvoiceBaseModel):
-        result = await db.execute(update(OaInvoice).values(
-            update_time=int(datetime.now().timestamp()),
-            check_status=query_model.check_status,
-            remark=query_model.remark
-        ).where(OaInvoice.id == query_model.id))
-        await db.commit()
-        return result.rowcount
+    # @classmethod
+    # async def review(cls, db: AsyncSession, query_model: OaInvoiceBaseModel):
+    #     result = await db.execute(update(OaInvoice).values(
+    #         update_time=int(datetime.now().timestamp()),
+    #         check_status=query_model.check_status,
+    #         remark=query_model.remark
+    #     ).where(OaInvoice.id == query_model.id))
+    #     await db.commit()
+    #     return result.rowcount
 
     @classmethod
     async def open_status(cls, db: AsyncSession, query_model: OaInvoiceBaseModel):

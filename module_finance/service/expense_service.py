@@ -100,7 +100,7 @@ class OaExpenseService:
             records = await FlowRecordDao.get_records_by_action_id(query_db, info.id, info.check_flow_id)
             inter = await ExpenseInterfixDao.get_list_by_exid(query_db, info.id)
             detail = {}
-            detail.update(info)
+            detail.update(info.to_dict())
             detail['records'] = records
             detail['inter'] = inter
             if not detail:
@@ -124,46 +124,46 @@ class OaExpenseService:
             await db.rollback()
             raise e
 
-    @classmethod
-    async def pass_expense(cls, db: AsyncSession, data: OaExpenseBaseModel, userId: int):
-        try:
-            data.check_time = int(datetime.now().timestamp())
-            await cls.set_check_uid(db, data, userId)
-            await ExpenseDao.pass_expense(db, data)
-            seal = await ExpenseDao.get_info_by_id(db, data.id)
-            await cls.add_record(db, seal, data, userId)
-            await db.commit()
-            return CrudResponseModel(is_success=True, message='审核通过成功')
-        except Exception as e:
-            await db.rollback()
-            raise e
-
-    @classmethod
-    async def reject_expense(cls, db: AsyncSession, data: OaExpenseBaseModel, userId: int):
-        try:
-            data.check_time = int(datetime.now().timestamp())
-            await cls.set_check_uid(db, data, userId)
-            await ExpenseDao.reject_expense(db, data)
-            seal = await ExpenseDao.get_info_by_id(db, data.id)
-            await cls.add_record(db, seal, data, userId)
-            await db.commit()
-            return CrudResponseModel(is_success=True, message='审核拒绝成功')
-        except Exception as e:
-            await db.rollback()
-            raise e
-
-    @classmethod
-    async def cancel_expense(cls, db: AsyncSession, data: OaExpenseBaseModel, userId: int):
-        try:
-            await cls.set_check_uid(db, data, userId)
-            await ExpenseDao.cancel_expense(db, data)
-            loan = await ExpenseDao.get_info_by_id(db, data.id)
-            await cls.add_record(db, loan, data, userId)
-            await db.commit()
-            return CrudResponseModel(is_success=True, message='撤销申请成功')
-        except Exception as e:
-            await db.rollback()
-            raise e
+    # @classmethod
+    # async def pass_expense(cls, db: AsyncSession, data: OaExpenseBaseModel, userId: int):
+    #     try:
+    #         data.check_time = int(datetime.now().timestamp())
+    #         await cls.set_check_uid(db, data, userId)
+    #         await ExpenseDao.pass_expense(db, data)
+    #         seal = await ExpenseDao.get_info_by_id(db, data.id)
+    #         await cls.add_record(db, seal, data, userId)
+    #         await db.commit()
+    #         return CrudResponseModel(is_success=True, message='审核通过成功')
+    #     except Exception as e:
+    #         await db.rollback()
+    #         raise e
+    #
+    # @classmethod
+    # async def reject_expense(cls, db: AsyncSession, data: OaExpenseBaseModel, userId: int):
+    #     try:
+    #         data.check_time = int(datetime.now().timestamp())
+    #         await cls.set_check_uid(db, data, userId)
+    #         await ExpenseDao.reject_expense(db, data)
+    #         seal = await ExpenseDao.get_info_by_id(db, data.id)
+    #         await cls.add_record(db, seal, data, userId)
+    #         await db.commit()
+    #         return CrudResponseModel(is_success=True, message='审核拒绝成功')
+    #     except Exception as e:
+    #         await db.rollback()
+    #         raise e
+    #
+    # @classmethod
+    # async def cancel_expense(cls, db: AsyncSession, data: OaExpenseBaseModel, userId: int):
+    #     try:
+    #         await cls.set_check_uid(db, data, userId)
+    #         await ExpenseDao.cancel_expense(db, data)
+    #         loan = await ExpenseDao.get_info_by_id(db, data.id)
+    #         await cls.add_record(db, loan, data, userId)
+    #         await db.commit()
+    #         return CrudResponseModel(is_success=True, message='撤销申请成功')
+    #     except Exception as e:
+    #         await db.rollback()
+    #         raise e
 
     @classmethod
     async def pay_expense(cls, db: AsyncSession, data: OaExpenseBaseModel, userId: int):

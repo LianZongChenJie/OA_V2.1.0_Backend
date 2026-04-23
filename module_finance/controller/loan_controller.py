@@ -3,10 +3,12 @@ from typing import Annotated
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import ColumnElement
 
+from common.annotation.log_annotation import Log
 from common.aspect.data_scope import DataScopeDependency
 from common.aspect.db_seesion import DBSessionDependency
 from common.aspect.interface_auth import UserInterfaceAuthDependency
 from common.aspect.pre_auth import PreAuthDependency, CurrentUserDependency
+from common.enums import BusinessType
 from common.router import APIRouterPro
 from module_finance.entity.do.loan_do import OaLoan
 from module_finance.entity.vo.loan_vo import OaLoanPageQueryModel, OaLoanBaseModel
@@ -62,6 +64,7 @@ async def get_page_list(
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:loan:add')],
 )
+@Log(title='借支管理-新增',business_type=BusinessType.INSERT)
 async def add_loan(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
@@ -80,6 +83,7 @@ async def add_loan(
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:loan:update')],
 )
+@Log(title='借支管理-编辑',business_type=BusinessType.UPDATE)
 async def update_loan(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
@@ -110,6 +114,7 @@ async def get_loan(
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:loan:delete')],
 )
+@Log(title='借支管理-删除',business_type=BusinessType.DELETE)
 async def delete_loan(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
@@ -176,6 +181,7 @@ async def delete_loan(
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:loan:pay')],
 )
+@Log(title='借支管理-打款',business_type=BusinessType.UPDATE)
 async def pay_loan(
         request: Request,
         query_db: Annotated[AsyncSession, DBSessionDependency()],
@@ -193,6 +199,7 @@ async def pay_loan(
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:loan:back')],
 )
+@Log(title='借支管理-还款',business_type=BusinessType.UPDATE)
 async def back_loan(
         request: Request,
         query_db: Annotated[AsyncSession, DBSessionDependency()],
