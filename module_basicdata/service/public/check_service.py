@@ -111,7 +111,7 @@ class CheckService:
                 check_status = 1
                 check_uids = detail['check_uids'] + ',' + str(user_id)
 
-                if ((check_count + 1) >= flow_count and step.check_types ==1) or step.check_types == 2:
+                if ((check_count + 1) <= flow_count and step.check_types ==1) or step.check_types == 2:
                     # 会签
                     next_step = await OaFlowStepDao.get_step_by_action_id_flow_id(db, action_id, detail['check_flow_id'], detail['check_step_sort'] + 1)
                     if next_step:
@@ -403,6 +403,7 @@ class CheckService:
                 st.check_uids = check_uids
                 st.create_time = int(datetime.now().timestamp())
                 st.sort = sort
+                st.check_types = flow_step['check_types']
                 step.append(st)
                 sort += 1
             if step is None:
@@ -550,7 +551,7 @@ class CheckService:
                         user_info['content'] = ''
                         user_info['check_status'] = 0
                         steps = await FlowRecordDao.get_flow_record_by_check_uid_step_id(db, user_info['user_id'], flow_id)
-                        if steps is not None:
+                        if steps is not None and len(steps) > 0:
                             checked = steps[0]['OaFlowRecord'].to_dict()
                             user_info['check_time'] = format_timestamp(checked['check_time'])
                             user_info['content'] = checked['content']

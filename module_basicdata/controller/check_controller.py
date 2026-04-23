@@ -1,7 +1,10 @@
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from common.annotation.log_annotation import Log
 from common.aspect.db_seesion import DBSessionDependency
 from common.aspect.interface_auth import UserInterfaceAuthDependency
 from common.aspect.pre_auth import PreAuthDependency, CurrentUserDependency
+from common.enums import BusinessType
 from common.router import APIRouterPro
 from common.vo import PageResponseModel
 from module_basicdata.entity.vo.public.flow_vo import OaFlowBaseModel, OaFlowCheckBaseModel
@@ -26,7 +29,9 @@ flow_check_controller = APIRouterPro(
     response_model=PageResponseModel[OaFlowBaseModel],
     dependencies=[UserInterfaceAuthDependency('basicdata:flow:check')],
 )
+@Log(title="审核",business_type=BusinessType.UPDATE)
 async def flow_check(
+    request: Request,
     flow_query: Annotated[OaFlowCheckBaseModel, Body()],
     query_db: Annotated[AsyncSession, DBSessionDependency()],
     current_user: Annotated[CurrentUserModel, CurrentUserDependency()]
@@ -73,7 +78,9 @@ async def get_flow_check_user(
     response_model=OaFlowBaseModel,
     dependencies=[UserInterfaceAuthDependency('basicdata:flow:submitCheck')],
 )
+@Log(title="提交审核",business_type=BusinessType.INSERT)
 async def submit(
+    request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
     query_model: Annotated[OaFlowCheckBaseModel, Body()],
     current_user: Annotated[CurrentUserModel, CurrentUserDependency()]
@@ -107,7 +114,9 @@ async def get_flow_nodes(
     response_model=PageResponseModel[OaFlowBaseModel],
     dependencies=[UserInterfaceAuthDependency('basicdata:flow:check')],
 )
+@Log(title="跳过审核步骤",business_type=BusinessType.UPDATE)
 async def skip_check(
+    request: Request,
     flow_query: Annotated[OaFlowCheckBaseModel, Body()],
     query_db: Annotated[AsyncSession, DBSessionDependency()],
     current_user: Annotated[CurrentUserModel, CurrentUserDependency()]
