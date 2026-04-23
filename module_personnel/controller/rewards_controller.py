@@ -4,10 +4,12 @@ from typing import Annotated
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import ColumnElement
 
+from common.annotation.log_annotation import Log
 from common.aspect.data_scope import DataScopeDependency
 from common.aspect.db_seesion import DBSessionDependency
 from common.aspect.interface_auth import UserInterfaceAuthDependency
 from common.aspect.pre_auth import PreAuthDependency, CurrentUserDependency
+from common.enums import BusinessType
 from common.router import APIRouterPro
 from module_personnel.entity.do.rewards_do import OaRewards
 from module_personnel.entity.vo.rewards_vo import OaRewardsBaseModel, OaRewardsPageQueryModel
@@ -45,6 +47,7 @@ async def get_page_list(
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:personnel:rewards:add')],
 )
+@Log(title='奖罚管理-新增', business_type=BusinessType.INSERT)
 async def add_reward(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
@@ -62,6 +65,7 @@ async def add_reward(
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:personnel:rewards:update')],
 )
+@Log(title='奖罚管理-编辑', business_type=BusinessType.UPDATE)
 async def update_reward(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
@@ -83,7 +87,7 @@ async def get_detail(
     id: int,
 ) -> Response:
     result =  await RewardsService.get_info_service(query_db, id)
-    return ResponseUtil.success(data=ModelConverter.time_format(ModelConverter.to_dict(result)))
+    return ResponseUtil.success(data=result)
 
 @personnel_rewards_controller.delete(
     "/delete/{id}",
@@ -92,6 +96,7 @@ async def get_detail(
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:personnel:rewards:delete')],
 )
+@Log(title='奖罚管理-删除', business_type=BusinessType.DELETE)
 async def delete_change(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],

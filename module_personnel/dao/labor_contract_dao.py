@@ -1,7 +1,3 @@
-from encodings.aliases import aliases
-from operator import and_
-from os import name
-
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, desc
 from sqlalchemy.orm import aliased
@@ -21,7 +17,7 @@ class LaborContractDao:
                             data_scope_sql: ColumnElement,
                             is_page: bool = False) -> PageModel | list[list[dict[str, Any]]]:
         user = aliased(SysUser, name='user')
-        query = (select(OaLaborContract,SysUser.nick_name.label('admin_name'),user.nick_name.label('user_name'),OaEnterprise.title.label('enterprise_name'))
+        query = (select(OaLaborContract,SysUser.nick_name.label('user_name'),user.nick_name.label('admin_name'),OaEnterprise.title.label('enterprise_name'))
                  .join(SysUser, OaLaborContract.uid == SysUser.user_id, isouter=True)
                  .join(user, user.user_id == OaLaborContract.admin_id, isouter=True)
                  .join(OaEnterprise, OaLaborContract.enterprise_id == OaEnterprise.id, isouter=True)
@@ -56,7 +52,6 @@ class LaborContractDao:
         await db.commit()
         await db.refresh(db_model)
         return db_model
-        pass
 
     @classmethod
     async def update(cls, db: AsyncSession, model: OaLaborContractBaseModel):
@@ -77,11 +72,15 @@ class LaborContractDao:
 
     @classmethod
     async def get_info_by_id(cls, db: AsyncSession, id: int):
-        query = (select(OaLaborContract)
+        user = aliased(SysUser, name='user')
+        query = (select(OaLaborContract,SysUser.nick_name.label('user_name'),user.nick_name.label('admin_name'),OaEnterprise.title.label('enterprise_name'))
+                 .join(SysUser, OaLaborContract.uid == SysUser.user_id, isouter=True)
+                 .join(user, user.user_id == OaLaborContract.admin_id, isouter=True)
+                 .join(OaEnterprise, OaLaborContract.enterprise_id == OaEnterprise.id, isouter=True)
         .where(
             OaLaborContract.id == id))
-        info = await db.scalar(query)
-        return info
+        info = await db.execute(query)
+        return info.mappings().first()
 
     @classmethod
     async def del_by_id(cls, db: AsyncSession, id: int):

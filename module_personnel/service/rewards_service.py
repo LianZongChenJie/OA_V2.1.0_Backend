@@ -27,9 +27,9 @@ class RewardsService:
                 row.update(row['OaRewards'].to_dict())
                 row.pop('OaRewards')
                 if row['status'] == 1:
-                    row['statusStr'] = '已执行'
-                else:
                     row['statusStr'] = '未执行'
+                else:
+                    row['statusStr'] = '已执行'
                 if row['types'] == 1:
                     row['typesStr'] = '奖励'
                 elif row['types'] == 2:
@@ -77,7 +77,18 @@ class RewardsService:
             info = await RewardsDao.get_info_by_id(query_db, id)
             if not info:
                 raise ServiceException(message="未找到该数据")
-            return info
+            info = dict(info)
+            info.update(info['OaRewards'].to_dict())
+            info.pop('OaRewards')
+            if info['status'] == 1:
+                info['statusStr'] = '未执行'
+            else:
+                info['statusStr'] = '已执行'
+            if info['types'] == 1:
+                info['typesStr'] = '奖励'
+            elif info['types'] == 2:
+                info['typesStr'] = '惩罚'
+            return ModelConverter.convert_to_camel_case(info)
         except Exception as e:
             await query_db.rollback()
             raise e

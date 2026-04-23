@@ -14,7 +14,7 @@ class OaRewardsBaseModel(BaseModel):
     types_name: str | None = Field(None, description='奖罚类型名称')
     rewards_cate: int | None= Field(default=None, description='奖罚项目')
     rewards_cate_name: str | None = Field(None, description='奖罚项目名称')
-    rewards_time: int | None= Field(default=None, description='奖罚日期')
+    rewards_time: int | str |None= Field(default=None, description='奖罚日期')
     rewards_time_str: str | None = Field(None, description='奖罚日期（字符串格式）')
     cost: Decimal = Field(default=None, description='金额')
     cost_str: str | None = Field(None, description='金额字符串')

@@ -28,7 +28,6 @@ class RewardsDao:
                             OaRewards.types == query_object.types if query_object.types else True,
                             OaRewards.rewards_cate == query_object.rewards_cate if query_object.rewards_cate else True,
                             OaRewards.uid == query_object.uid if query_object.uid else True,
-                            OaRewards.cate == query_object.cate if query_object.cate else True,
                             OaRewards.remark.like('%' + query_object.remark + '%') if query_object.remark else True,
                             OaRewards.check_time.between(
                                 int(datetime.strptime(query_object.begin_time, "%Y-%m-%d %H:%M:%S").timestamp()),
@@ -64,11 +63,12 @@ class RewardsDao:
 
     @classmethod
     async def get_info_by_id(cls, db: AsyncSession, id: int):
-        query = (select(OaRewards)
-        .where(
+        query = (select(OaRewards,SysRewardsCate.title.label('cate_name'))
+                 .join(SysRewardsCate, OaRewards.rewards_cate == SysRewardsCate.id)
+                 .where(
             OaRewards.id == id))
-        link_info = await db.scalar(query)
-        return link_info
+        link_info = await db.execute(query)
+        return link_info.mappings().first()
 
     @classmethod
     async def get_info_by_uid(cls, db: AsyncSession, model: OaRewardsBaseModel) -> OaRewards | None:

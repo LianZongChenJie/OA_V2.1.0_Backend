@@ -74,7 +74,15 @@ class CareService:
         try:
             info = await CareDao.get_info_by_id(query_db, id)
             if not info:
-                raise ServiceException(message="未找到该数据")
+                return CrudResponseModel(is_success=False, message="未找到该数据")
+            info = dict(info)
+            info.update(info['OaCare'].to_dict())
+            info.pop('OaCare')
+            if info['status'] == 1:
+                info['status_str'] = '未执行'
+            elif info['status'] == 2:
+                info['status_str'] = '已执行'
+            info = ModelConverter.convert_to_camel_case(info)
             return info
         except Exception as e:
             await query_db.rollback()

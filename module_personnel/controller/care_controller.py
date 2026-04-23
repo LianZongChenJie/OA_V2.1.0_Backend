@@ -69,7 +69,7 @@ async def add_care(
 async def update_care(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
-    model: OaCareBaseModel,
+    model: Annotated[OaCareBaseModel, Body()],
 )->Response:
     result =  await CareService.update_service(query_db, model)
     return ResponseUtil.success(msg=result.message)
@@ -87,7 +87,7 @@ async def get_detail(
     id: int,
 ) -> Response:
     result =  await CareService.get_info_service(query_db, id)
-    return ResponseUtil.success(data=ModelConverter.time_format(ModelConverter.to_dict(result)))
+    return ResponseUtil.success(data=result)
 
 @care_controller.delete(
     "/delete/{id}",

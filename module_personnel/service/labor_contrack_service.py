@@ -97,7 +97,26 @@ class LaborContractService:
             info = await LaborContractDao.get_info_by_id(query_db, id)
             if not info:
                 raise ServiceException(message="未找到该数据")
-            return info
+            info = dict(info)
+            info.update(info['OaLaborContract'].to_dict())
+            info.pop('OaLaborContract')
+            if info['cate'] == 1:
+                info['cate_name'] = '劳动合同'
+            elif info['cate'] == 2:
+                info['cate_name'] = '劳务合同'
+            elif info['cate'] == 3:
+                info['cate_name'] = '保密协议'
+            if info['types'] == 1:
+                info['types_name'] = '新签合同'
+            elif info['types'] == 2:
+                info['types_name'] = '续签合同'
+            elif info['types'] == 3:
+                info['types_name'] = '变更合同'
+            if info['status'] == 1:
+                info['status_name'] = '正常'
+            elif info['status'] == 2:
+                info['status_name'] = '已到期'
+            return ModelConverter.convert_to_camel_case(info)
         except Exception as e:
             await query_db.rollback()
             raise e

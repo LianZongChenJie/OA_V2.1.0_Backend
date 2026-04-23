@@ -87,7 +87,7 @@ async def get_detail(
     id: int,
 ) -> Response:
     result =  await LaborContractService.get_info_service(query_db, id)
-    return ResponseUtil.success(data=ModelConverter.time_format(ModelConverter.to_dict(result)))
+    return ResponseUtil.success(data=result)
 
 @labor_contrack_controller.delete(
     "/delete/{id}",

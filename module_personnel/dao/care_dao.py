@@ -65,11 +65,15 @@ class CareDao:
 
     @classmethod
     async def get_info_by_id(cls, db: AsyncSession, id: int):
-        query = (select(OaCare)
+        user = aliased(SysUser, name='user')
+        query = (select(OaCare, SysUser.nick_name.label('user_name'),user.nick_name.label('admin_name'),SysCareCate.title.label('cate_name'))
+                 .join(SysUser, OaCare.uid == SysUser.user_id, isouter=True)
+                 .join(user, user.user_id == OaCare.admin_id, isouter=True)
+                 .join(SysCareCate, OaCare.care_cate == SysCareCate.id, isouter=True)
         .where(
             OaCare.id == id))
-        link_info = await db.scalar(query)
-        return link_info
+        link_info = await db.execute(query)
+        return link_info.mappings().first()
 
     @classmethod
     async def get_info_by_uid(cls, db: AsyncSession, model: OaCareBaseModel) -> OaCare | None:
