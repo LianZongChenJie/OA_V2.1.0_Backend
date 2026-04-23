@@ -71,11 +71,16 @@ class UserService:
                     'rows': [{**row[0], 'dept': row[1], 'post': row[2]} for row in query_result.rows],
                 }
             )
+            # 设置部门领导
         else:
             user_list_result = []
             if query_result:
                 user_list_result = [{**row[0], 'dept': row[1]} for row in query_result]
-
+        for row in user_list_result.rows:
+            if row.dept and str(row.user_id) == row.dept.leader_id:
+                row.is_leader = True
+            else:
+                row.is_leader = False
         return user_list_result
 
     @classmethod
