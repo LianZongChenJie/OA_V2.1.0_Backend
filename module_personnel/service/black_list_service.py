@@ -9,6 +9,8 @@ from module_personnel.entity.vo.black_list_vo import OaBlacklistBaseModel, OaBla
 from common.vo import PageModel, CrudResponseModel
 from datetime import datetime
 
+from utils.camel_converter import ModelConverter
+
 
 class BlackListService:
     @classmethod
@@ -18,9 +20,14 @@ class BlackListService:
                                                                                              list[dict[str, Any]]:
         query_list = await BlackListDao.get_page_list(query_db, query_object, data_scope_sql, is_page)
         if is_page:
-            result_list = PageModel[OaBlacklistBaseModel](**{
-                **query_list.model_dump(by_alias=True)
-            })
+            row_list = []
+            for row in query_list.rows:
+                row = dict(row)
+                row.update(row['OaBlacklist'].to_dict())
+                row.pop('OaBlacklist')
+                row_list.append(ModelConverter.convert_to_camel_case(row))
+            query_list.rows = row_list
+            result_list = query_list
         else:
             result_list = []
             if query_list:

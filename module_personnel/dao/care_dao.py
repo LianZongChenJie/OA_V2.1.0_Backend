@@ -1,9 +1,13 @@
 from operator import and_
+from os import name
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, desc
+from sqlalchemy.orm import aliased
 from sqlalchemy.sql import ColumnElement, func,or_
 from common.vo import PageModel
+from module_admin.entity.do.care_cate_do import SysCareCate
+from module_admin.entity.do.user_do import SysUser
 from utils.page_util import PageUtil
 from module_personnel.entity.vo.care_vo import OaCareBaseModel, OaCarePageQueryModel
 from module_personnel.entity.do.care_do import OaCare
@@ -15,7 +19,11 @@ class CareDao:
     async def get_page_list(cls, db: AsyncSession, query_object: OaCarePageQueryModel,
                             data_scope_sql: ColumnElement,
                             is_page: bool = False) -> PageModel | list[list[dict[str, Any]]]:
-        query = (select(OaCare)
+        user = aliased(SysUser, name='user')
+        query = (select(OaCare, SysUser.nick_name.label('user_name'),user.nick_name.label('admin_name'),SysCareCate.title.label('cate_name'))
+                 .join(SysUser, OaCare.uid == SysUser.user_id, isouter=True)
+                 .join(user, user.user_id == OaCare.admin_id, isouter=True)
+                 .join(SysCareCate, OaCare.care_cate == SysCareCate.id, isouter=True)
                      .where(
                             OaCare.delete_time == 0,
                             OaCare.status == query_object.status if query_object.status else True,
@@ -28,7 +36,7 @@ class CareDao:
 
                         data_scope_sql,
             ).order_by(desc(OaCare.create_time)))
-        page_list: PageModel | list[list[dict[str, Any]]] = await PageUtil.paginate(
+        page_list: PageModel | list[list[dict[str, Any]]] = await PageUtil.paginate_dict(
             db, query, query_object.page_num, query_object.page_size, is_page
         )
         return page_list

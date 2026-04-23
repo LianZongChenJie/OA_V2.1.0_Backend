@@ -4,10 +4,12 @@ from typing import Annotated
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import ColumnElement
 
+from common.annotation.log_annotation import Log
 from common.aspect.data_scope import DataScopeDependency
 from common.aspect.db_seesion import DBSessionDependency
 from common.aspect.interface_auth import UserInterfaceAuthDependency
 from common.aspect.pre_auth import PreAuthDependency, CurrentUserDependency
+from common.enums import BusinessType
 from common.router import APIRouterPro
 from module_personnel.entity.do.care_do import OaCare
 from module_personnel.entity.vo.care_vo import OaCareBaseModel, OaCarePageQueryModel
@@ -45,6 +47,7 @@ async def get_page_list(
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:personnel:care:add')],
 )
+@Log(title='人事管理-员工关怀-新增',business_type=BusinessType.INSERT)
 async def add_care(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
@@ -62,6 +65,7 @@ async def add_care(
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:personnel:care:update')],
 )
+@Log(title='人事管理-员工关怀-编辑',business_type=BusinessType.UPDATE)
 async def update_care(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
@@ -92,6 +96,7 @@ async def get_detail(
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:personnel:care:delete')],
 )
+@Log(title='人事管理-员工关怀-删除',business_type=BusinessType.DELETE)
 async def delete_care(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],

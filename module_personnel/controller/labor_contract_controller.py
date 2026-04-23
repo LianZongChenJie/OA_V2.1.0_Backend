@@ -4,10 +4,12 @@ from typing import Annotated
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import ColumnElement
 
+from common.annotation.log_annotation import Log
 from common.aspect.data_scope import DataScopeDependency
 from common.aspect.db_seesion import DBSessionDependency
 from common.aspect.interface_auth import UserInterfaceAuthDependency
 from common.aspect.pre_auth import PreAuthDependency, CurrentUserDependency
+from common.enums import BusinessType
 from common.router import APIRouterPro
 from module_personnel.entity.do.labor_contract_do import OaLaborContract
 from module_personnel.entity.vo.lable_contract_vo import OaLaborContractBaseModel, OaLaborContractPageQueryModel
@@ -46,6 +48,7 @@ async def get_page_list(
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:personnel:contract:add')],
 )
+@Log(title='人事管理-员工合同-新增',business_type=BusinessType.INSERT)
 async def add_labor_contract(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],

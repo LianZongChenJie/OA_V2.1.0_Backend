@@ -1,9 +1,14 @@
+from encodings.aliases import aliases
 from operator import and_
+from os import name
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, desc
+from sqlalchemy.orm import aliased
 from sqlalchemy.sql import ColumnElement, func,or_
 from common.vo import PageModel
+from module_admin.entity.do.user_do import SysUser
+from module_basicdata.entity.do.public.enterprise_do import OaEnterprise
 from utils.page_util import PageUtil
 from module_personnel.entity.vo.lable_contract_vo import OaLaborContractBaseModel, OaLaborContractPageQueryModel
 from module_personnel.entity.do.labor_contract_do import OaLaborContract
@@ -15,7 +20,11 @@ class LaborContractDao:
     async def get_page_list(cls, db: AsyncSession, query_object: OaLaborContractPageQueryModel,
                             data_scope_sql: ColumnElement,
                             is_page: bool = False) -> PageModel | list[list[dict[str, Any]]]:
-        query = (select(OaLaborContract)
+        user = aliased(SysUser, name='user')
+        query = (select(OaLaborContract,SysUser.nick_name.label('admin_name'),user.nick_name.label('user_name'),OaEnterprise.title.label('enterprise_name'))
+                 .join(SysUser, OaLaborContract.uid == SysUser.user_id, isouter=True)
+                 .join(user, user.user_id == OaLaborContract.admin_id, isouter=True)
+                 .join(OaEnterprise, OaLaborContract.enterprise_id == OaEnterprise.id, isouter=True)
                      .where(
                             OaLaborContract.cate == query_object.cate if query_object.cate else True,
                             OaLaborContract.properties == query_object.properties if query_object.properties else True,
@@ -29,7 +38,7 @@ class LaborContractDao:
 
                         data_scope_sql,
             ).order_by(desc(OaLaborContract.create_time)))
-        page_list: PageModel | list[list[dict[str, Any]]] = await PageUtil.paginate(
+        page_list: PageModel | list[list[dict[str, Any]]] = await PageUtil.paginate_dict(
             db, query, query_object.page_num, query_object.page_size, is_page
         )
         return page_list

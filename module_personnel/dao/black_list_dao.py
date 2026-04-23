@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, desc, delete
 from sqlalchemy.sql import ColumnElement, func,or_
 from common.vo import PageModel
+from module_admin.entity.do.user_do import SysUser
 from utils.page_util import PageUtil
 from module_personnel.entity.vo.black_list_vo import OaBlacklistBaseModel, OaBlacklistPageQueryModel
 from module_personnel.entity.do.black_list_do import OaBlacklist
@@ -15,7 +16,8 @@ class BlackListDao:
     async def get_page_list(cls, db: AsyncSession, query_object: OaBlacklistPageQueryModel,
                             data_scope_sql: ColumnElement,
                             is_page: bool = False) -> PageModel | list[list[dict[str, Any]]]:
-        query = (select(OaBlacklist)
+        query = (select(OaBlacklist, SysUser.nick_name.label("admin_name"))
+                 .join(SysUser, OaBlacklist.admin_id == SysUser.id, isouter=True)
                      .where(
                         and_(
                             OaBlacklist.delete_time == 0,
@@ -26,7 +28,7 @@ class BlackListDao:
                         ),
                         data_scope_sql,
             ).order_by(desc(OaBlacklist.create_time)))
-        page_list: PageModel | list[list[dict[str, Any]]] = await PageUtil.paginate(
+        page_list: PageModel | list[list[dict[str, Any]]] = await PageUtil.paginate_dict(
             db, query, query_object.page_num, query_object.page_size, is_page
         )
         return page_list

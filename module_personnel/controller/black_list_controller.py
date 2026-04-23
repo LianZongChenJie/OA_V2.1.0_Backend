@@ -4,10 +4,12 @@ from typing import Annotated
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import ColumnElement
 
+from common.annotation.log_annotation import Log
 from common.aspect.data_scope import DataScopeDependency
 from common.aspect.db_seesion import DBSessionDependency
 from common.aspect.interface_auth import UserInterfaceAuthDependency
 from common.aspect.pre_auth import PreAuthDependency, CurrentUserDependency
+from common.enums import BusinessType
 from common.router import APIRouterPro
 from module_personnel.entity.do.black_list_do import OaBlacklist
 from module_personnel.entity.vo.black_list_vo import OaBlacklistBaseModel, OaBlacklistPageQueryModel
@@ -47,6 +49,7 @@ async def get_page_list(
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:personnel:blackList:add')],
 )
+@Log(title='人事管理-人员黑名单',business_type=BusinessType.INSERT)
 async def add_black_list(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
@@ -64,6 +67,7 @@ async def add_black_list(
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:personnel:blackList:update')],
 )
+@Log(title='人事管理-人员黑名单',business_type=BusinessType.UPDATE)
 async def update_black_list(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
@@ -94,6 +98,7 @@ async def get_detail(
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:personnel:blackList:delete')],
 )
+@Log(title='人事管理-人员黑名单',business_type=BusinessType.DELETE)
 async def delete_black_list(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],

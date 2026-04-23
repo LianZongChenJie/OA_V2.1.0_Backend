@@ -9,6 +9,8 @@ from sqlalchemy.sql import ColumnElement
 from module_personnel.entity.vo.lable_contract_vo import OaLaborContractPageQueryModel, OaLaborContractBaseModel
 from common.vo import PageModel, CrudResponseModel
 from datetime import datetime
+
+from utils.camel_converter import ModelConverter
 from utils.timeformat import int_time
 
 
@@ -20,9 +22,30 @@ class LaborContractService:
                                                                                              list[dict[str, Any]]:
         query_list = await LaborContractDao.get_page_list(query_db, query_object, data_scope_sql, is_page)
         if is_page:
-            result_list = PageModel[OaLaborContractBaseModel](**{
-                **query_list.model_dump(by_alias=True)
-            })
+            row_list = []
+            for row in query_list.rows:
+                row = dict(row)
+                row.update(row['OaLaborContract'].to_dict())
+                row.pop('OaLaborContract')
+                if row['cate'] == 1:
+                    row['cate_name'] = '劳动合同'
+                elif row['cate'] == 2:
+                    row['cate_name'] = '劳务合同'
+                elif row['cate'] == 3:
+                    row['cate_name'] = '保密协议'
+                if row['types'] == 1:
+                    row['types_name'] = '新签合同'
+                elif row['types'] == 2:
+                    row['types_name'] = '续签合同'
+                elif row['types'] == 3:
+                    row['types_name'] = '变更合同'
+                if row['status'] == 1:
+                    row['status_name'] = '正常'
+                elif row['status'] == 2:
+                    row['status_name'] = '已到期'
+                row_list.append(ModelConverter.convert_to_camel_case(row))
+            query_list.rows = row_list
+            result_list = query_list
         else:
             result_list = []
             if query_list:

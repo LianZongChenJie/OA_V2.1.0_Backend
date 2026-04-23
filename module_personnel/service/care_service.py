@@ -8,6 +8,8 @@ from sqlalchemy.sql import ColumnElement
 from module_personnel.entity.vo.care_vo import OaCareBaseModel, OaCarePageQueryModel
 from common.vo import PageModel, CrudResponseModel
 from datetime import datetime
+
+from utils.camel_converter import ModelConverter
 from utils.timeformat import int_time
 
 
@@ -19,9 +21,19 @@ class CareService:
                                                                                              list[dict[str, Any]]:
         query_list = await CareDao.get_page_list(query_db, query_object, data_scope_sql, is_page)
         if is_page:
-            result_list = PageModel[OaCareBaseModel](**{
-                **query_list.model_dump(by_alias=True)
-            })
+            row_list = []
+            for row in query_list.rows:
+                row = dict(row)
+                row.update(row['OaCare'].to_dict())
+                row.pop('OaCare')
+                if row['status'] == 1:
+                    row['status_str'] = '未执行'
+                elif row['status'] == 2:
+                    row['status_str'] = '已执行'
+                row = ModelConverter.convert_to_camel_case(row)
+                row_list.append(row)
+                query_list.rows = row_list
+            result_list = query_list
         else:
             result_list = []
             if query_list:
