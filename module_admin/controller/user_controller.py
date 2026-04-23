@@ -115,13 +115,15 @@ async def add_system_user(
         await RoleService.check_role_data_scope_services(
             query_db, ','.join([str(item) for item in add_user.role_ids]), role_data_scope_sql
         )
+    is_leader = add_user.is_leader
+    delattr(add_user, 'is_leader')
     add_user.password = PwdUtil.get_password_hash(add_user.password)
     add_user.create_by = current_user.user.user_name
     add_user.create_time = datetime.now()
     add_user.update_by = current_user.user.user_name
     add_user.update_time = datetime.now()
     add_user_result = await UserService.add_user_services(query_db, add_user)
-    if add_user.is_leader:
+    if is_leader:
         user = await UserService.get_user_by_user_name(query_db, add_user.user_name)
         if user:
             await DeptService.set_leader(query_db, add_user.dept_id, user.user_id,add_user.user_name, True)

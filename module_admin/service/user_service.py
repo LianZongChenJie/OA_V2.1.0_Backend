@@ -162,6 +162,7 @@ class UserService:
         :return: 新增用户校验结果
         """
         add_user = UserModel(**page_object.model_dump(by_alias=True))
+        delattr(add_user, 'is_leader')
         if not await cls.check_user_name_unique_services(query_db, page_object):
             raise ServiceException(message=f'新增用户{page_object.user_name}失败，登录账号已存在')
         if page_object.phonenumber and not await cls.check_phonenumber_unique_services(query_db, page_object):
