@@ -28,6 +28,31 @@ class ProjectService:
     """
 
     @classmethod
+    def _parse_customer_id(cls, customer_id: int | str | None) -> int:
+        """
+        解析客户ID，支持单个ID或逗号分隔的多个ID
+        
+        :param customer_id: 客户ID（可以是整数或逗号分隔的字符串）
+        :return: 返回第一个客户ID或0
+        """
+        if customer_id is None:
+            return 0
+        
+        if isinstance(customer_id, int):
+            return customer_id
+        
+        if isinstance(customer_id, str):
+            # 如果是逗号分隔的字符串，取第一个ID
+            id_list = [id_str.strip() for id_str in customer_id.split(',') if id_str.strip()]
+            if id_list:
+                try:
+                    return int(id_list[0])
+                except (ValueError, TypeError):
+                    return 0
+        
+        return 0
+
+    @classmethod
     async def get_project_list_services(
             cls, query_db: AsyncSession, query_object: ProjectPageQueryModel,
             current_user_id: int, auth_dids: str = '', son_dids: str = '',
@@ -192,7 +217,7 @@ class ProjectService:
                 'code': page_object.code if page_object.code is not None else '',
                 'amount': page_object.amount if page_object.amount is not None else 0.00,
                 'cate_id': page_object.cate_id if page_object.cate_id is not None else 0,
-                'customer_id': page_object.customer_id if page_object.customer_id is not None else 0,
+                'customer_id': cls._parse_customer_id(page_object.customer_id),
                 'contract_id': page_object.contract_id if page_object.contract_id is not None else 0,
                 'admin_id': page_object.admin_id,
                 'director_uid': page_object.director_uid if page_object.director_uid is not None else 0,
@@ -245,6 +270,9 @@ class ProjectService:
 
                 if 'contract_id' in edit_project and edit_project['contract_id'] is None:
                     edit_project['contract_id'] = 0
+
+                if 'customer_id' in edit_project:
+                    edit_project['customer_id'] = cls._parse_customer_id(edit_project['customer_id'])
 
                 if 'start_time' in edit_project and isinstance(edit_project['start_time'], str):
                     from datetime import datetime as dt
@@ -482,7 +510,7 @@ class ProjectService:
     @classmethod
     async def _update_project_stages(cls, query_db: AsyncSession, project_id: int, stages: list, current_time: int):
         """
-        更新项目阶段
+        更新项目阶段（先删除后添加）
 
         :param query_db: orm 对象
         :param project_id: 项目ID
@@ -490,14 +518,12 @@ class ProjectService:
         :param current_time: 当前时间戳
         :return:
         """
-        existing_steps = await ProjectStepDao.get_steps_by_project_id(query_db, project_id)
-        existing_step_ids = {step.id for step in existing_steps}
+        # 先删除该项目的所有阶段
+        await ProjectStepDao.delete_steps_by_project_id(query_db, project_id)
 
-        submitted_step_ids = set()
-
+        # 重新添加所有阶段
         for index, stage_data in enumerate(stages):
             if isinstance(stage_data, dict):
-                step_id = stage_data.get('id')
                 start_time = stage_data.get('startTime', 0)
                 end_time = stage_data.get('endTime', 0)
                 
@@ -515,19 +541,32 @@ class ProjectService:
                     except (ValueError, TypeError):
                         end_time = 0
                 
+                # 使用前端传来的 isCurrent 值，如果没有则默认为 0
+                is_current_value = stage_data.get('isCurrent', 0)
+                # 兼容布尔值和整数
+                if isinstance(is_current_value, bool):
+                    is_current_value = 1 if is_current_value else 0
+                elif not isinstance(is_current_value, int):
+                    try:
+                        is_current_value = int(is_current_value) if is_current_value else 0
+                    except (ValueError, TypeError):
+                        is_current_value = 0
+                
                 step_data_dict = {
+                    'project_id': project_id,
                     'title': stage_data.get('name') or stage_data.get('title', ''),
                     'director_uid': stage_data.get('directorUid', 0),
                     'uids': stage_data.get('memberUids') or stage_data.get('uids', ''),
                     'sort': stage_data.get('sort', index + 1),
-                    'is_current': 1 if index == 0 else 0,
+                    'is_current': is_current_value,
                     'start_time': start_time,
                     'end_time': end_time,
                     'remark': stage_data.get('remark', ''),
+                    'create_time': current_time,
                     'update_time': current_time,
+                    'delete_time': 0,
                 }
             elif hasattr(stage_data, 'model_dump'):
-                step_id = getattr(stage_data, 'id', None)
                 data_dict = stage_data.model_dump(by_alias=False)
                 start_time = data_dict.get('start_time', 0)
                 end_time = data_dict.get('end_time', 0)
@@ -546,19 +585,31 @@ class ProjectService:
                     except (ValueError, TypeError):
                         end_time = 0
                 
+                # 使用前端传来的 isCurrent 值
+                is_current_value = data_dict.get('is_current', 0) or data_dict.get('isCurrent', 0)
+                if isinstance(is_current_value, bool):
+                    is_current_value = 1 if is_current_value else 0
+                elif not isinstance(is_current_value, int):
+                    try:
+                        is_current_value = int(is_current_value) if is_current_value else 0
+                    except (ValueError, TypeError):
+                        is_current_value = 0
+                
                 step_data_dict = {
+                    'project_id': project_id,
                     'title': data_dict.get('title') or data_dict.get('name', ''),
                     'director_uid': data_dict.get('director_uid', 0),
                     'uids': data_dict.get('uids') or data_dict.get('member_uids', ''),
                     'sort': data_dict.get('sort', index + 1),
-                    'is_current': 1 if index == 0 else 0,
+                    'is_current': is_current_value,
                     'start_time': start_time,
                     'end_time': end_time,
                     'remark': data_dict.get('remark', ''),
+                    'create_time': current_time,
                     'update_time': current_time,
+                    'delete_time': 0,
                 }
             else:
-                step_id = getattr(stage_data, 'id', None)
                 start_time = getattr(stage_data, 'start_time', 0) or getattr(stage_data, 'startTime', 0)
                 end_time = getattr(stage_data, 'end_time', 0) or getattr(stage_data, 'endTime', 0)
                 
@@ -576,27 +627,31 @@ class ProjectService:
                     except (ValueError, TypeError):
                         end_time = 0
                 
+                # 使用前端传来的 isCurrent 值
+                is_current_value = getattr(stage_data, 'is_current', None) or getattr(stage_data, 'isCurrent', 0)
+                if is_current_value is None:
+                    is_current_value = 0
+                if isinstance(is_current_value, bool):
+                    is_current_value = 1 if is_current_value else 0
+                elif not isinstance(is_current_value, int):
+                    try:
+                        is_current_value = int(is_current_value) if is_current_value else 0
+                    except (ValueError, TypeError):
+                        is_current_value = 0
+                
                 step_data_dict = {
+                    'project_id': project_id,
                     'title': getattr(stage_data, 'title', '') or getattr(stage_data, 'name', ''),
                     'director_uid': getattr(stage_data, 'director_uid', 0) or getattr(stage_data, 'directorUid', 0),
                     'uids': getattr(stage_data, 'uids', '') or getattr(stage_data, 'memberUids', '') or getattr(stage_data, 'member_uids', ''),
                     'sort': getattr(stage_data, 'sort', index + 1),
-                    'is_current': 1 if index == 0 else 0,
+                    'is_current': is_current_value,
                     'start_time': start_time,
                     'end_time': end_time,
                     'remark': getattr(stage_data, 'remark', ''),
+                    'create_time': current_time,
                     'update_time': current_time,
+                    'delete_time': 0,
                 }
 
-            if step_id and step_id in existing_step_ids:
-                await ProjectStepDao.update_step(query_db, step_id, step_data_dict)
-                submitted_step_ids.add(step_id)
-            else:
-                step_data_dict['project_id'] = project_id
-                step_data_dict['create_time'] = current_time
-                step_data_dict['delete_time'] = 0
-                await ProjectStepDao.add_step(query_db, step_data_dict)
-
-        deleted_step_ids = existing_step_ids - submitted_step_ids
-        for step_id in deleted_step_ids:
-            await ProjectStepDao.delete_step(query_db, step_id)
+            await ProjectStepDao.add_step(query_db, step_data_dict)
