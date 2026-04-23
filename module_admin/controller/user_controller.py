@@ -121,6 +121,10 @@ async def add_system_user(
     add_user.update_by = current_user.user.user_name
     add_user.update_time = datetime.now()
     add_user_result = await UserService.add_user_services(query_db, add_user)
+    if add_user.is_leader:
+        user = await UserService.get_user_by_user_name(query_db, add_user.user_name)
+        if user:
+            await DeptService.set_leader(query_db, add_user.dept_id, user.user_id,add_user.user_name, True)
     logger.info(add_user_result.message)
 
     return ResponseUtil.success(msg=add_user_result.message)
@@ -151,8 +155,10 @@ async def edit_system_user(
         await RoleService.check_role_data_scope_services(
             query_db, ','.join([str(item) for item in edit_user.role_ids]), role_data_scope_sql
         )
-        if edit_user.is_leader:
-            await DeptService.set_leader(query_db, edit_user.dept_id, edit_user.user_id)
+    if edit_user.is_leader:
+        await DeptService.set_leader(query_db, edit_user.dept_id, edit_user.user_id, edit_user.user_name, True)
+    else:
+        await DeptService.set_leader(query_db, edit_user.dept_id, edit_user.user_id, edit_user.user_name, False)
     edit_user.update_by = current_user.user.user_name
     edit_user.update_time = datetime.now()
     edit_user_result = await UserService.edit_user_services(query_db, edit_user)

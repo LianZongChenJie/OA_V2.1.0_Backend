@@ -682,3 +682,7 @@ class UserService:
         user_role = await UserDao.get_user_role_detail(query_db, page_object)
 
         return user_role
+
+    @classmethod
+    async def get_user_by_user_name(cls,db:AsyncSession,user_name):
+        return await UserDao.get_user_by_name(db,user_name)
