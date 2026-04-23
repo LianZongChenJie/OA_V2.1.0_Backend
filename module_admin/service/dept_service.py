@@ -8,6 +8,7 @@ from common.constant import CommonConstant
 from common.vo import CrudResponseModel
 from exceptions.exception import ServiceException, ServiceWarning
 from module_admin.dao.dept_dao import DeptDao
+from module_admin.dao.user_dao import UserDao
 from module_admin.entity.do.dept_do import SysDept
 from module_admin.entity.vo.dept_vo import DeleteDeptModel, DeptModel, DeptTreeModel
 from utils.common_util import CamelCaseUtil
@@ -285,17 +286,36 @@ class DeptService:
             await DeptDao.update_dept_children_dao(query_db, update_children)
 
     @classmethod
-    async def set_leader(cls,db: AsyncSession, dept_id:int, user_id:int, user_name:str) -> None:
+    async def set_leader(cls,db: AsyncSession, dept_id:int, user_id:int, user_name:str, is_leader=False) -> None:
         """
         将员工设置为部门领导
         :param db:
         :param dept_id:
         :param user_id:
         :param user_name:
+        :param is_leader:
         :return:
         """
         try:
-            await DeptDao.set_leader(db, dept_id, user_id, user_name)
+            dept = await DeptDao.get_dept_by_id(db, dept_id)
+            leader_list = dept.leader.split(',') if dept.leader else []
+            leader_id_list = dept.leader_id.split(',') if dept.leader_id else []
+
+            if is_leader:
+                if str(user_id) not in leader_id_list:
+                    leader_id_list.append(str(user_id))
+                    dept.leader_id = ','.join(leader_id_list)
+                if str(user_name) not in leader_list:
+                    leader_list.append(str(user_name))
+                    dept.leader = ','.join(leader_list)
+            else:
+                if str(user_id) in leader_id_list:
+                    leader_id_list.remove(str(user_id))
+                    dept.leader_id = ','.join(leader_id_list)
+                if user_name in leader_list:
+                    leader_list.remove(str(user_name))
+                    dept.leader = ','.join(leader_list)
+            await DeptDao.set_leader(db, dept_id, dept.leader_id, dept.leader)
         except Exception as e:
             await db.rollback()
 
