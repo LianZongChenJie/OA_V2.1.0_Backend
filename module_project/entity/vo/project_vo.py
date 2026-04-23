@@ -70,7 +70,7 @@ class ProjectModel(BaseModel):
     code: str | None = Field(default=None, description='项目编号')
     amount: float | None = Field(default=None, description='项目金额')
     cate_id: int | None = Field(default=None, description='分类 ID')
-    customer_id: int | None = Field(default=None, description='关联客户 ID')
+    customer_id: int | str | None = Field(default=None, description='关联客户 ID（支持单个ID或多个ID逗号分隔）')
     contract_id: int | None = Field(default=None, description='关联合同协议 ID')
     admin_id: int | None = Field(default=None, description='创建人')
     director_uid: int | None = Field(default=None, description='项目负责人')

@@ -320,6 +320,13 @@ class ProjectDao:
 
         # 获取当前阶段信息
         step_info = await cls._get_current_step_info(db, project.id)
+        
+        # 当 status=4（已关闭）时，step 显示为空
+        if project.status == 4:
+            step_info = {
+                'step': ''
+            }
+        
         project_dict.update(step_info)
 
         return project_dict
@@ -407,17 +414,18 @@ class ProjectDao:
     @classmethod
     async def _get_current_step_info(cls, db: AsyncSession, project_id: int) -> dict[str, Any]:
         """
-        获取当前阶段信息（返回sort值最大的最新阶段）
+        获取当前阶段信息（查询 is_current=1 且 delete_time=0 的记录）
 
         :param db: orm 对象
         :param project_id: 项目 ID
         :return: 当前阶段信息
         """
-        # 查询最新阶段（sort值最大的阶段）
+        # 查询当前阶段（is_current=1 且 delete_time=0）
         step_query = select(OaProjectStep).where(
             OaProjectStep.project_id == project_id,
+            OaProjectStep.is_current == 1,
             OaProjectStep.delete_time == 0
-        ).order_by(OaProjectStep.sort.desc())
+        )
         current_step = (await db.execute(step_query)).scalars().first()
 
         if current_step:
