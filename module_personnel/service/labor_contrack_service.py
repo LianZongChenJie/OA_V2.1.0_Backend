@@ -32,6 +32,8 @@ class LaborContractService:
                 elif row['cate'] == 2:
                     row['cate_name'] = '劳务合同'
                 elif row['cate'] == 3:
+                    row['cate_name'] = '实习协议'
+                elif row['cate'] == 4:
                     row['cate_name'] = '保密协议'
                 if row['types'] == 1:
                     row['types_name'] = '新签合同'
@@ -89,6 +91,10 @@ class LaborContractService:
             model.start_time = int_time(model.start_time)
             model.end_time = int_time(model.end_time)
             model.trial_end_time = int_time(model.trial_end_time)
+            if model.trial_salary is None or model.trial_salary == '':
+                model.trial_salary = decimal.Decimal(0)
+            if model.worker_salary is None or model.worker_salary == '':
+                model.worker_salary = decimal.Decimal(0)
             await LaborContractDao.update(query_db, model)
             await query_db.commit()
             return CrudResponseModel(is_success=True, message='修改成功')
