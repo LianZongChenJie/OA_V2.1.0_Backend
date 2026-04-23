@@ -544,7 +544,12 @@ class CheckService:
                     node_dict = node.to_dict()
                     node_list.append(node_dict)
                 for node in node_list:
-                    check_user_info = await UserDao.get_user_name_id_avatar_by_user_id(db, [node['check_uids']])
+                    if node['check_uids'] is None or node['check_uids'] == '':
+                        check_ids = []
+                    else:
+                        check_ids = [int(id) for id in node['check_uids'].split(',')]
+
+                    check_user_info = await UserDao.get_user_name_id_avatar_by_user_id(db, check_ids)
                     check_user_info = [dict(obj) for obj in check_user_info]
                     for user_info in check_user_info:
                         user_info['check_time'] = 0
