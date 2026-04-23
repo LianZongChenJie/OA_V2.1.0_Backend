@@ -43,6 +43,14 @@ class LaborContractService:
                     row['status_name'] = '正常'
                 elif row['status'] == 2:
                     row['status_name'] = '已到期'
+                if row['renewal_pid'] == 0:
+                    row['renewal_status'] = '未续签'
+                else:
+                    row['renewal_status'] = '已续签'
+                if row['change_pid'] == 0:
+                    row['change_status'] = '未变更'
+                else:
+                    row['change_status'] = '已变更'
                 row_list.append(ModelConverter.convert_to_camel_case(row))
             query_list.rows = row_list
             result_list = query_list
@@ -116,6 +124,14 @@ class LaborContractService:
                 info['status_name'] = '正常'
             elif info['status'] == 2:
                 info['status_name'] = '已到期'
+            if info['renewal_pid'] == 0:
+                info['renewal_status'] = '未续签'
+            else:
+                info['renewal_status'] = '已续签'
+            if info['change_pid'] == 0:
+                info['change_status'] = '未变更'
+            else:
+                info['change_status'] = '已变更'
             return ModelConverter.convert_to_camel_case(info)
         except Exception as e:
             await query_db.rollback()
