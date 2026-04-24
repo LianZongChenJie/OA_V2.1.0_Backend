@@ -270,3 +270,57 @@ class ContractService:
         else:
             raise ServiceException(message='传入合同 id 为空')
 
+    @classmethod
+    async def archive_contract_services(
+            cls, request: Request, query_db: AsyncSession, contract_id: int, current_user_id: int
+    ) -> CrudResponseModel:
+        """
+        归档销售合同 service
+
+        :param request: Request 对象
+        :param query_db: orm 对象
+        :param contract_id: 销售合同 ID
+        :param current_user_id: 当前用户 ID（归档人）
+        :return: 归档结果
+        """
+        from module_contract.dao.contract_dao import ContractDao
+        
+        try:
+            # 检查合同是否存在
+            existing_contract = await ContractDao.get_contract_detail_by_id(query_db, contract_id)
+            if not existing_contract:
+                raise ServiceException(message='销售合同不存在')
+            
+            contract_info = existing_contract.get('contract_info')
+            if not contract_info:
+                raise ServiceException(message='销售合同不存在')
+            
+            # 检查是否已经归档
+            if contract_info.archive_time and contract_info.archive_time > 0:
+                raise ServiceException(message='该合同已归档，无需重复操作')
+            
+            # 检查是否已中止或作废
+            if contract_info.stop_time and contract_info.stop_time > 0:
+                raise ServiceException(message='该合同已中止，无法归档')
+            
+            if contract_info.void_time and contract_info.void_time > 0:
+                raise ServiceException(message='该合同已作废，无法归档')
+            
+            # 执行归档
+            archive_time = int(datetime.now().timestamp())
+            result = await ContractDao.archive_contract(query_db, contract_id, current_user_id, archive_time)
+            
+            if result > 0:
+                from utils.log_util import logger
+                logger.info(f'销售合同归档成功 - ID: {contract_id}, 归档人: {current_user_id}')
+                return CrudResponseModel(is_success=True, message='归档成功')
+            else:
+                raise ServiceException(message='归档失败')
+        except ServiceException:
+            raise
+        except Exception as e:
+            await query_db.rollback()
+            from utils.log_util import logger
+            logger.error(f'销售合同归档失败: {str(e)}', exc_info=True)
+            raise e
+

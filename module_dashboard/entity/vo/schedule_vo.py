@@ -25,6 +25,8 @@ class OaScheduleBaseModel(BaseModel):
     delete_time: int | None = Field(None, description='删除时间')
     create_time: int | None = Field(None, description='创建时间')
     update_time: int | None = Field(None, description='更新时间')
+    project_name: str | None = Field(None, description='关联项目名称')
+    task_title: str | None = Field(None, description='关联任务标题')
 
 
 
