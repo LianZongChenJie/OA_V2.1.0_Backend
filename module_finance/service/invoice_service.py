@@ -187,7 +187,7 @@ class InvoiceService:
     async def income_add(cls, db: AsyncSession, data_list: list[OaInvoiceIncome], userId: int):
         try:
             invoice = await InvoiceDao.get_info_by_id(db, data_list[0].invoice_id)
-            invoice : OaInvoiceBaseModel =  OaInvoiceBaseModel.model_validate(invoice)
+            invoice : OaInvoiceBaseModel =  OaInvoiceBaseModel.model_validate(invoice['OaInvoice'])
             old_amount = invoice.amount
             enter_time = int(datetime.now().timestamp())
             create_time = int(datetime.now().timestamp())
