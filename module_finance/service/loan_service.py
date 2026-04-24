@@ -27,9 +27,14 @@ class OaLoanService:
                                                                                              list[dict[str, Any]]:
         query_list = await LoanDao.get_page_list(query_db, query_object, data_scope_sql, is_page)
         if is_page:
-            result_list = PageModel[OaLoanBaseModel](**{
-                **query_list.model_dump(by_alias=True)
-            })
+            row_list = []
+            for row in query_list.rows:
+                row = dict(row)
+                row.update(row['OaLoan'].to_dict())
+                row.pop('OaLoan')
+                row_list.append(ModelConverter.convert_to_camel_case(row))
+            query_list.rows = row_list
+            result_list =  query_list
         else:
             result_list = []
             if query_list:
@@ -78,10 +83,18 @@ class OaLoanService:
             AsyncSession, id: int) -> dict[str, Any]:
         try:
             info = await LoanDao.get_info_by_id(query_db, id)
-            records = await FlowRecordDao.get_records_by_action_id(query_db, info.id, info.check_flow_id)
+            if not info:
+                raise ServiceException(message="未找到该数据")
+            records = await FlowRecordDao.get_records_by_action_id(query_db, info['OaLoan'].id, info['OaLoan'].check_flow_id)
             detail = {}
-            detail.update(info.to_dict())
-            detail['records'] = records
+            info = dict(info)
+            info.update(info['OaLoan'].to_dict())
+            info.pop('OaLoan')
+            detail.update(info)
+            record_list = []
+            for record in records:
+                record_list.append(record.to_dict())
+            detail['records'] = record_list
             if not detail:
                 raise ServiceException(message="未找到该数据")
             return ModelConverter.convert_to_camel_case(detail)

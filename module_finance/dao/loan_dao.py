@@ -1,7 +1,10 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, desc
+from sqlalchemy.orm import aliased
 from sqlalchemy.sql import ColumnElement, func,or_
 from common.vo import PageModel
+from module_admin.entity.do.dept_do import SysDept
+from module_admin.entity.do.user_do import SysUser
 from utils.page_util import PageUtil
 from module_finance.entity.vo.loan_vo import OaLoanBaseModel, OaLoanPageQueryModel
 from module_finance.entity.do.loan_do import OaLoan
@@ -15,7 +18,17 @@ class LoanDao:
                             is_page: bool = False) -> PageModel | list[list[dict[str, Any]]]:
 
         # 构建基础查询
-        query = select(OaLoan)
+        pay = aliased(SysUser, name='pay')
+        admin = aliased(SysUser, name='admin')
+        dept = aliased(SysDept, name='dept')
+        query = (select(OaLoan,
+                        pay.nick_name.label('pay_name'),
+                        admin.nick_name.label('admin_name'),
+                        dept.dept_name.label('dept_name'),
+                        )
+        .join(pay, OaLoan.admin_id == pay.user_id)
+        .join(admin, OaLoan.pay_admin_id == admin.user_id)
+         .join(dept, OaLoan.did == dept.dept_id))
 
         # 构建条件列表
         conditions = []
@@ -73,7 +86,7 @@ class LoanDao:
         query = query.order_by(desc(OaLoan.create_time))
 
         # 分页查询
-        page_list: PageModel | list[list[dict[str, Any]]] = await PageUtil.paginate(
+        page_list: PageModel | list[list[dict[str, Any]]] = await PageUtil.paginate_dict(
             db, query, query_object.page_num, query_object.page_size, is_page
         )
         return page_list
@@ -101,11 +114,21 @@ class LoanDao:
 
     @classmethod
     async def get_info_by_id(cls, db: AsyncSession, id: int):
-        query = (select(OaLoan)
+        pay = aliased(SysUser, name='pay')
+        admin = aliased(SysUser, name='admin')
+        dept = aliased(SysDept, name='dept')
+        query = (select(OaLoan,
+                        pay.nick_name.label('pay_name'),
+                        admin.nick_name.label('admin_name'),
+                        dept.dept_name.label('dept_name'),
+                        )
+        .join(pay, OaLoan.admin_id == pay.user_id)
+        .join(admin, OaLoan.pay_admin_id == admin.user_id)
+         .join(dept, OaLoan.did == dept.dept_id)
         .where(
             OaLoan.id == id))
-        info = await db.scalar(query)
-        return info
+        info = await db.execute(query)
+        return info.mappings().first()
     @classmethod
     async def del_by_id(cls, db: AsyncSession, id: int):
         result = await db.execute(update(OaLoan).values(delete_time=int(datetime.now().timestamp())).where(OaLoan.id == id))
