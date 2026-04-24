@@ -2,8 +2,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Any
 
 from exceptions.exception import ServiceException
-from module_basicdata.dao.public.flow_cate_dao import FlowCateDao
-from module_basicdata.dao.public.flow_step_dao import OaFlowStepDao
 from module_finance.dao.expense_dao import ExpenseDao
 from module_finance.dao.expense_interfix_dao import ExpenseInterfixDao
 from module_finance.dao.loan_dao import LoanDao
@@ -13,9 +11,7 @@ from module_finance.entity.vo.expense_vo import OaExpenseBaseModel, \
     OaExpenseDetailModel, OaExpensePageQueryModel
 from common.vo import PageModel, CrudResponseModel
 from datetime import datetime
-
-from module_personnel.entity.vo.flow_record_vo import OaFlowRecordBaseModel
-from utils.camel_converter import ResponseConverter
+from utils.camel_converter import ResponseConverter, ModelConverter
 from utils.timeformat import int_time
 from decimal import Decimal
 
@@ -29,9 +25,14 @@ class OaExpenseService:
                                                                                              list[dict[str, Any]]:
         query_list = await ExpenseDao.get_page_list(query_db, query_object, data_scope_sql, is_page)
         if is_page:
-            result_list = PageModel[OaExpenseBaseModel](**{
-                **query_list.model_dump(by_alias=True)
-            })
+            row_list = []
+            for row in query_list.rows:
+                row = dict(row)
+                row.update(row['OaExpense'].to_dict())
+                row.pop('OaExpense')
+                row_list.append(ModelConverter.convert_to_camel_case(row))
+            query_list.rows = row_list
+            result_list = query_list
         else:
             result_list = []
             if query_list:
@@ -41,22 +42,25 @@ class OaExpenseService:
     @classmethod
     async def add_service(cls, query_db: AsyncSession, model_detail: OaExpenseDetailModel) -> CrudResponseModel:
         try:
-            model = model_detail.info
+            interfix = model_detail.interfix
+            model = model_detail
+            delattr(model_detail, 'interfix')
+            delattr(model_detail, 'flow_records')
             model.create_time = int(datetime.now().timestamp())
             model.income_month = int_time(model.income_month)
             model.expense_time = int_time(model.expense_time)
-            if model.loan_id:
-                loan = await LoanDao.get_info_by_id(query_db, model.loan_id)
-                model.cost = model.cost - loan.cost
+            if model.id:
+                expense = await ExpenseDao.get_info_by_id(query_db, model.loan_id)
+                model.cost = model.cost - expense.cost
                 if model.cost < 0:
                     model.cost = Decimal(0)
                     model.expense_time = int_time(model.expense_time)
             model = await ExpenseDao.add(query_db, model)
-            for item in model_detail.interfix:
+            for item in interfix:
                 item.create_time = int(datetime.now().timestamp())
                 item.admin_id = model.admin_id
                 item.exid = model.id
-            await ExpenseInterfixDao.add(query_db, model_detail.interfix)
+            await ExpenseInterfixDao.add(query_db, interfix)
             await query_db.commit()
             return CrudResponseModel(is_success=True, message='新增成功')
         except Exception as e:
@@ -67,7 +71,13 @@ class OaExpenseService:
     @classmethod
     async def update_service(cls, query_db: AsyncSession, model_detail: OaExpenseDetailModel) -> CrudResponseModel:
         try:
-            model = model_detail.info
+            expense = await ExpenseDao.get_info_by_id(query_db, model_detail.id)
+            if expense['OaExpense'].check_status != 0 and expense['OaExpense'].check_status != 4:
+                return CrudResponseModel(is_success=False, message='请先撤销申请再编辑')
+            interfix  = model_detail.interfix
+            delattr(model_detail, 'interfix')
+            delattr(model_detail, 'flow_records')
+            model = model_detail
             model.update_time = int(datetime.now().timestamp())
             model.income_month = int_time(model.income_month)
             model.expense_time = int_time(model.expense_time)
@@ -79,11 +89,11 @@ class OaExpenseService:
                     model.expense_time = int_time(model.expense_time)
             await ExpenseInterfixDao.delete_by_exid(query_db, model.id)
             await ExpenseDao.update(query_db, model)
-            for item in model_detail.interfix:
+            for item in interfix:
                 item.create_time = int(datetime.now().timestamp())
                 item.admin_id = model.admin_id
                 item.exid = model.id
-            await ExpenseInterfixDao.add(query_db, model_detail.interfix)
+            await ExpenseInterfixDao.add(query_db, interfix)
             await query_db.commit()
             return CrudResponseModel(is_success=True, message='修改成功')
         except Exception as e:
@@ -97,12 +107,23 @@ class OaExpenseService:
             AsyncSession, id: int) -> dict[str, Any]:
         try:
             info = await ExpenseDao.get_info_by_id(query_db, id)
-            records = await FlowRecordDao.get_records_by_action_id(query_db, info.id, info.check_flow_id)
-            inter = await ExpenseInterfixDao.get_list_by_exid(query_db, info.id)
+            if not info:
+                raise ServiceException(message="未找到该数据")
+            records = await FlowRecordDao.get_records_by_action_id(query_db, info['OaExpense'].id, info['OaExpense'].check_flow_id)
+            inter = await ExpenseInterfixDao.get_list_by_exid(query_db, info['OaExpense'].id)
             detail = {}
-            detail.update(info.to_dict())
-            detail['records'] = records
-            detail['inter'] = inter
+            info = dict(info)
+            info.update(info['OaExpense'].to_dict())
+            info.pop('OaExpense')
+            detail.update(info)
+            record_list = []
+            for record in records:
+                record_list.append(ModelConverter.convert_to_camel_case(record.to_dict()))
+            detail['records'] = record_list
+            inter_list = []
+            for item in inter:
+                inter_list.append(ModelConverter.convert_to_camel_case(item.to_dict()))
+            detail['inter'] = inter_list
             if not detail:
                 raise ServiceException(message="未找到该数据")
             detail = ResponseConverter.convert_to_camel_and_format_time(detail, cls.time_fields)
@@ -116,8 +137,10 @@ class OaExpenseService:
     async def del_by_id(cls, db: AsyncSession, id: int):
         try:
             expense = await ExpenseDao.get_info_by_id(db, id)
-            if expense.check_status != 0 or expense.check_status != 4:
-                raise CrudResponseModel(is_success=False, message='请先撤销申请再删除')
+            if not expense:
+                return CrudResponseModel(is_success=False, message='未找到该数据')
+            if expense['OaExpense'].check_status != 0 and expense['OaExpense'].check_status != 4:
+                return CrudResponseModel(is_success=False, message='请先撤销申请再删除')
             await ExpenseDao.del_by_id(db, id)
             return CrudResponseModel(is_success=True, message='删除成功')
         except Exception as e:
@@ -168,6 +191,9 @@ class OaExpenseService:
     @classmethod
     async def pay_expense(cls, db: AsyncSession, data: OaExpenseBaseModel, userId: int):
         try:
+            expense = await ExpenseDao.get_info_by_id(db, data.id)
+            if expense['OaExpense'].check_status !=2 and expense['OaExpense'].pay_status !=0:
+                return CrudResponseModel(is_success=False, message='当前状态不支持打款操作')
             await ExpenseDao.pay_expense(db, data, userId)
             await db.commit()
             return CrudResponseModel(is_success=True, message='打款成功')
@@ -175,35 +201,38 @@ class OaExpenseService:
             await db.rollback()
             return CrudResponseModel(is_success=False, message='打款失败')
 
-    @classmethod
-    async def back_expense(cls, db: AsyncSession, data: OaExpenseBaseModel, userId: int):
-        try:
-            await ExpenseDao.back_expense(db, data, userId)
-            await db.commit()
-            return CrudResponseModel(is_success=True, message='还款成功')
-        except Exception as e:
-            await db.rollback()
-            return CrudResponseModel(is_success=False, message='还款失败')
+    # @classmethod
+    # async def back_expense(cls, db: AsyncSession, data: OaExpenseBaseModel, userId: int):
+    #     try:
+    #         expense = await ExpenseDao.get_info_by_id(db, data.id)
+    #         if expense.check_status !=2 or expense.pay_status !=1:
+    #             return CrudResponseModel(is_success=False,message='当前状态不支持还款！')
+    #         await ExpenseDao.back_expense(db, data, userId)
+    #         await db.commit()
+    #         return CrudResponseModel(is_success=True, message='还款成功')
+    #     except Exception as e:
+    #         await db.rollback()
+    #         return CrudResponseModel(is_success=False, message='还款失败')
 
-    @classmethod
-    async def add_record(cls, db: AsyncSession, change: OaFlowRecordBaseModel, model: OaExpenseBaseModel, userId: int):
-        try:
-            flow_cate = await FlowCateDao.get_flow_cate_info(db, change.check_flow_id)
-            step = await OaFlowStepDao.get_info_by_flow_id(db, change.check_flow_id)
-            record = OaFlowRecordBaseModel()
-            record.action_id = change.id
-            record.check_table = flow_cate.check_table
-            record.flow_id = change.check_flow_id
-            record.check_files = model.file_ids
-            record.check_uid = userId
-            record.check_status = model.check_status
-            record.step_id = step.id if step is not None else 0
-            record.content = model.remark
-            record.check_time = int(datetime.now().timestamp())
-            await FlowRecordDao.add(db, record)
-        except Exception as e:
-            await db.rollback()
-            raise e
+    # @classmethod
+    # async def add_record(cls, db: AsyncSession, change: OaFlowRecordBaseModel, model: OaExpenseBaseModel, userId: int):
+    #     try:
+    #         flow_cate = await FlowCateDao.get_flow_cate_info(db, change.check_flow_id)
+    #         step = await OaFlowStepDao.get_info_by_flow_id(db, change.check_flow_id)
+    #         record = OaFlowRecordBaseModel()
+    #         record.action_id = change.id
+    #         record.check_table = flow_cate.check_table
+    #         record.flow_id = change.check_flow_id
+    #         record.check_files = model.file_ids
+    #         record.check_uid = userId
+    #         record.check_status = model.check_status
+    #         record.step_id = step.id if step is not None else 0
+    #         record.content = model.remark
+    #         record.check_time = int(datetime.now().timestamp())
+    #         await FlowRecordDao.add(db, record)
+    #     except Exception as e:
+    #         await db.rollback()
+    #         raise e
 
     @classmethod
     async def set_check_uid(cls, query_db: AsyncSession, query_object: OaExpenseBaseModel, userId: int):

@@ -1,7 +1,10 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, desc
+from sqlalchemy.orm import aliased
 from sqlalchemy.sql import ColumnElement, func,or_
 from common.vo import PageModel
+from module_admin.entity.do.dept_do import SysDept
+from module_admin.entity.do.user_do import SysUser
 from utils.page_util import PageUtil
 from module_finance.entity.vo.expense_vo import OaExpenseBaseModel, OaExpensePageQueryModel
 from module_finance.entity.do.expense_do import OaExpense
@@ -15,7 +18,17 @@ class ExpenseDao:
                             is_page: bool = False) -> PageModel | list[list[dict[str, Any]]]:
 
         # 构建基础查询
-        query = select(OaExpense)
+        pay = aliased(SysUser, name='pay')
+        admin = aliased(SysUser, name='admin')
+        dept = aliased(SysDept, name='dept')
+        query = (select(OaExpense,
+                        pay.nick_name.label('pay_name'),
+                        admin.nick_name.label('admin_name'),
+                        dept.dept_name.label('dept_name'),
+                        )
+                 .join(pay, OaExpense.admin_id == pay.user_id, isouter=True)
+                 .join(admin, OaExpense.pay_admin_id == admin.user_id, isouter=True)
+                 .join(dept, OaExpense.did == dept.dept_id, isouter=True))
 
         # 构建条件列表
         conditions = []
@@ -73,7 +86,7 @@ class ExpenseDao:
         query = query.order_by(desc(OaExpense.create_time))
 
         # 分页查询
-        page_list: PageModel | list[list[dict[str, Any]]] = await PageUtil.paginate(
+        page_list: PageModel | list[list[dict[str, Any]]] = await PageUtil.paginate_dict(
             db, query, query_object.page_num, query_object.page_size, is_page
         )
         return page_list
@@ -102,11 +115,22 @@ class ExpenseDao:
 
     @classmethod
     async def get_info_by_id(cls, db: AsyncSession, id: int):
-        query = (select(OaExpense)
-        .where(
+        pay = aliased(SysUser, name='pay')
+        admin = aliased(SysUser, name='admin')
+        dept = aliased(SysDept, name='dept')
+        query = (select(OaExpense,
+                        pay.nick_name.label('pay_name'),
+                        admin.nick_name.label('admin_name'),
+                        dept.dept_name.label('dept_name'),
+                        )
+                 .join(pay, OaExpense.admin_id == pay.user_id, isouter=True)
+                 .join(admin, OaExpense.pay_admin_id == admin.user_id, isouter=True)
+                 .join(dept, OaExpense.did == dept.dept_id, isouter=True)
+
+    .where(
             OaExpense.id == id))
-        info = await db.scalar(query)
-        return info
+        info = await db.execute(query)
+        return info.mappings().first()
     @classmethod
     async def del_by_id(cls, db: AsyncSession, id: int):
         result = await db.execute(update(OaExpense).values(delete_time=int(datetime.now().timestamp())).where(OaExpense.id == id))

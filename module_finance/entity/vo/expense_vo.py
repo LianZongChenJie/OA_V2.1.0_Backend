@@ -3,7 +3,7 @@ from pydantic.alias_generators import to_camel
 
 from module_finance.entity.vo.expense_interfix_vo import OaExpenseInterfixBaseModel
 from module_personnel.entity.vo.flow_record_vo import OaFlowRecordBaseModel
-from utils.timeformat import format_timestamp, int_time
+from utils.timeformat import format_timestamp
 from decimal import Decimal
 
 
@@ -80,7 +80,6 @@ class OaExpensePageQueryModel(OaExpenseQueryModel):
     page_num: int = Field(1, description="页码")
     page_size: int = Field(20, description="每页大小")
 
-class OaExpenseDetailModel(BaseModel):
-    info: OaExpenseBaseModel = Field(..., description="报销详情")
+class OaExpenseDetailModel(OaExpenseBaseModel):
     interfix: list[OaExpenseInterfixBaseModel] | None = Field([], description="费用明细")
     flow_records: list[OaFlowRecordBaseModel] | None = Field([], description="流水记录")

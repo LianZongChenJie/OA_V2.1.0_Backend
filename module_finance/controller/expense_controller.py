@@ -71,8 +71,8 @@ async def add(
     query_object: Annotated[OaExpenseDetailModel, Body()],
     current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
 ) -> Response:
-    query_object.info.admin_id = current_user.user.user_id
-    query_object.info.did = current_user.user.dept.dept_id
+    query_object.admin_id = current_user.user.user_id
+    query_object.did = current_user.user.dept.dept_id
     result = await OaExpenseService.add_service(query_db, query_object)
     return ResponseUtil.success(msg=result.message)
 
@@ -90,9 +90,9 @@ async def update_expense(
     model: Annotated[OaExpenseDetailModel, Body()],
     current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
 )->Response:
-    model.info.admin_id = current_user.user.user_id
-    model.info.did = current_user.user.dept.dept_id
-    result = await OaExpenseService().update_service(query_db, model)
+    model.admin_id = current_user.user.user_id
+    model.did = current_user.user.dept.dept_id
+    result = await OaExpenseService.update_service(query_db, model)
     return ResponseUtil.success(msg=result.message)
 
 @finance_expense_controller.get(

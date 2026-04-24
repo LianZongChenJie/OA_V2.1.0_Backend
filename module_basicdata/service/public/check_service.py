@@ -577,7 +577,8 @@ class CheckService:
                 detail['nodes'] = node_list
                 # 当前审核节点
                 step = await OaFlowStepDao.get_step_by_action_id_flow_id_sort(db,action_id, flow_id, detail['check_step_sort'])
-                step = step.to_dict()
+                if step:
+                    step = step.to_dict()
                 detail['step'] = step
             return ModelConverter.convert_to_camel_case(detail)
 
