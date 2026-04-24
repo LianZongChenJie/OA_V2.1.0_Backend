@@ -27,9 +27,9 @@ class LaborContractDao:
                             OaLaborContract.status == query_object.status if query_object.status else True,
                             OaLaborContract.types == query_object.types if query_object.types else True,
                             OaLaborContract.uid == query_object.uid if query_object.uid else True,
-                            OaLaborContract.check_time.between(
-                                int(datetime.strptime(query_object.begin_time, "%Y-%m-%d %H:%M:%S").timestamp()),
-                                int(datetime.strptime(query_object.end_time, "%Y-%m-%d %H:%M:%S").timestamp()),
+                            OaLaborContract.sign_time.between(
+                                int(datetime.strptime(query_object.begin_time, "%Y-%m-%d").timestamp()),
+                                int(datetime.strptime(query_object.end_time, "%Y-%m-%d").timestamp()),
                             ) if query_object.begin_time and query_object.end_time else True,
 
                         data_scope_sql,

@@ -29,9 +29,9 @@ class RewardsDao:
                             OaRewards.rewards_cate == query_object.rewards_cate if query_object.rewards_cate else True,
                             OaRewards.uid == query_object.uid if query_object.uid else True,
                             OaRewards.thing.like('%' + query_object.thing + '%') if query_object.thing else True,
-                            OaRewards.check_time.between(
-                                int(datetime.strptime(query_object.begin_time, "%Y-%m-%d %H:%M:%S").timestamp()),
-                                int(datetime.strptime(query_object.end_time, "%Y-%m-%d %H:%M:%S").timestamp()),
+                            OaRewards.rewards_time.between(
+                                int(datetime.strptime(query_object.begin_time, "%Y-%m-%d").timestamp()),
+                                int(datetime.strptime(query_object.end_time, "%Y-%m-%d").timestamp()),
                             ) if query_object.begin_time and query_object.end_time else True,
                         data_scope_sql,
             ).order_by(desc(OaRewards.create_time)))
