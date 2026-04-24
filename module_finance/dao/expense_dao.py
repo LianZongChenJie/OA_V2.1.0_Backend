@@ -5,6 +5,7 @@ from sqlalchemy.sql import ColumnElement, func,or_
 from common.vo import PageModel
 from module_admin.entity.do.dept_do import SysDept
 from module_admin.entity.do.user_do import SysUser
+from module_finance.entity.do.loan_do import OaLoan
 from utils.page_util import PageUtil
 from module_finance.entity.vo.expense_vo import OaExpenseBaseModel, OaExpensePageQueryModel
 from module_finance.entity.do.expense_do import OaExpense
@@ -122,10 +123,12 @@ class ExpenseDao:
                         pay.nick_name.label('pay_name'),
                         admin.nick_name.label('admin_name'),
                         dept.dept_name.label('dept_name'),
+                        OaLoan.cost.label('loan_cost'),
                         )
                  .join(pay, OaExpense.admin_id == pay.user_id, isouter=True)
                  .join(admin, OaExpense.pay_admin_id == admin.user_id, isouter=True)
                  .join(dept, OaExpense.did == dept.dept_id, isouter=True)
+                 .join(OaLoan, OaExpense.loan_id == OaLoan.id, isouter=True)
 
     .where(
             OaExpense.id == id))

@@ -12,7 +12,7 @@ from module_finance.entity.vo.expense_vo import OaExpenseBaseModel, \
 from common.vo import PageModel, CrudResponseModel
 from datetime import datetime
 from utils.camel_converter import ResponseConverter, ModelConverter
-from utils.timeformat import int_time
+from utils.timeformat import int_time, int_month, format_month
 from decimal import Decimal
 
 
@@ -30,6 +30,7 @@ class OaExpenseService:
                 row = dict(row)
                 row.update(row['OaExpense'].to_dict())
                 row.pop('OaExpense')
+                row['income_month'] = format_month(row['income_month'])
                 row_list.append(ModelConverter.convert_to_camel_case(row))
             query_list.rows = row_list
             result_list = query_list
@@ -47,11 +48,11 @@ class OaExpenseService:
             delattr(model_detail, 'interfix')
             delattr(model_detail, 'flow_records')
             model.create_time = int(datetime.now().timestamp())
-            model.income_month = int_time(model.income_month)
+            model.income_month = int_month(model.income_month)
             model.expense_time = int_time(model.expense_time)
-            if model.id:
-                expense = await ExpenseDao.get_info_by_id(query_db, model.loan_id)
-                model.cost = model.cost - expense.cost
+            if model.loan_id:
+                loan = await LoanDao.get_info_by_id(query_db, model.loan_id)
+                model.balance_cost = loan['OaLoan'].cost
                 if model.cost < 0:
                     model.cost = Decimal(0)
                     model.expense_time = int_time(model.expense_time)
@@ -83,7 +84,7 @@ class OaExpenseService:
             model.expense_time = int_time(model.expense_time)
             if model.loan_id:
                 loan = await LoanDao.get_info_by_id(query_db, model.loan_id)
-                model.cost = model.cost - loan.cost
+                model.balance_cost = loan['OaLoan'].cost
                 if model.cost < 0:
                     model.cost = Decimal(0)
                     model.expense_time = int_time(model.expense_time)
