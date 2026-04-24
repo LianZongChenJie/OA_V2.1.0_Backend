@@ -26,9 +26,9 @@ class LoanDao:
                         admin.nick_name.label('admin_name'),
                         dept.dept_name.label('dept_name'),
                         )
-        .join(pay, OaLoan.admin_id == pay.user_id)
-        .join(admin, OaLoan.pay_admin_id == admin.user_id)
-         .join(dept, OaLoan.did == dept.dept_id))
+        .join(pay, OaLoan.admin_id == pay.user_id, isouter=True)
+        .join(admin, OaLoan.pay_admin_id == admin.user_id, isouter=True)
+         .join(dept, OaLoan.did == dept.dept_id, isouter=True))
 
         # 构建条件列表
         conditions = []
@@ -122,9 +122,9 @@ class LoanDao:
                         admin.nick_name.label('admin_name'),
                         dept.dept_name.label('dept_name'),
                         )
-        .join(pay, OaLoan.admin_id == pay.user_id)
-        .join(admin, OaLoan.pay_admin_id == admin.user_id)
-         .join(dept, OaLoan.did == dept.dept_id)
+        .join(pay, OaLoan.admin_id == pay.user_id, isouter=True)
+        .join(admin, OaLoan.pay_admin_id == admin.user_id, isouter=True)
+         .join(dept, OaLoan.did == dept.dept_id, isouter=True)
         .where(
             OaLoan.id == id))
         info = await db.execute(query)
