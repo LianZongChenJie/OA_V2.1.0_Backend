@@ -26,9 +26,14 @@ class InvoiceService:
                                                                                              list[dict[str, Any]]:
         query_list = await InvoiceDao.get_page_list(query_db, query_object, data_scope_sql, is_page)
         if is_page:
-            result_list = PageModel[OaInvoiceBaseModel](**{
-                **query_list.model_dump(by_alias=True)
-            })
+            row_list = []
+            for row in query_list.rows:
+                row = dict(row)
+                row.update(row['OaInvoice'].to_dict())
+                row.pop('OaInvoice')
+                row_list.append(row)
+            query_list.rows = ModelConverter.convert_to_camel_case(row_list)
+            result_list = query_list
         else:
             result_list = []
             if query_list:
@@ -59,10 +64,17 @@ class InvoiceService:
             AsyncSession, id: int) -> dict[str, Any]:
         try:
             info = await InvoiceDao.get_info_by_id(query_db, id)
-            records = await FlowRecordDao.get_records_by_action_id(query_db, info.id, info.check_flow_id)
+            records = await FlowRecordDao.get_records_by_action_id(query_db, info['OaInvoice'].id, info['OaInvoice'].check_flow_id)
             detail = OaInvoiceDetailModel(info=None, records=None)
+            info = dict(info)
+            info.update(info['OaInvoice'].to_dict())
+            info.pop('OaInvoice')
+            record_list = []
+            for record in records:
+                record_list.append(record.to_dict())
+            records = record_list
             detail = {}
-            detail.update(info.to_dict())
+            detail.update(info)
             detail['records'] = records
             if not detail:
                 raise ServiceException(message="未找到该数据")
@@ -75,8 +87,8 @@ class InvoiceService:
     @classmethod
     async def del_by_id(cls, db: AsyncSession, id: int):
         try:
-            invoice = await InvoiceDao.get_info_by_id(db, id)
-            if invoice.check_status !=0 or invoice.check_flow_id!=0:
+            info = await InvoiceDao.get_info_by_id(db, id)
+            if info['OaInvoice'].check_status !=0 and info['OaInvoice'].check_status !=4:
                 raise CrudResponseModel(is_success=False, message='请先撤销申请再删除')
             await InvoiceDao.del_by_id(db, id)
             return CrudResponseModel(is_success=True, message='删除成功')
@@ -101,6 +113,9 @@ class InvoiceService:
     @classmethod
     async def payment(cls, db: AsyncSession, data: OaInvoiceBaseModel, userId: int):
         try:
+            info = await InvoiceDao.get_info_by_id(db, data.id)
+            if info['OaInvoice'].check_status !=0 or info['OaInvoice'].check_flow_id !=0:
+                raise CrudResponseModel(is_success=False, message='请先审批通过再打款')
             await InvoiceDao.payment(db, data, userId)
             await db.commit()
             return CrudResponseModel(is_success=True, message='打款成功')
@@ -108,15 +123,15 @@ class InvoiceService:
             await db.rollback()
             return CrudResponseModel(is_success=False, message='打款失败')
 
-    @classmethod
-    async def back_expense(cls, db: AsyncSession, data: OaInvoiceBaseModel, userId: int):
-        try:
-            await InvoiceDao.back_expense(db, data, userId)
-            await db.commit()
-            return CrudResponseModel(is_success=True, message='还款成功')
-        except Exception as e:
-            await db.rollback()
-            return CrudResponseModel(is_success=False, message='还款失败')
+    # @classmethod
+    # async def back_expense(cls, db: AsyncSession, data: OaInvoiceBaseModel, userId: int):
+    #     try:
+    #         await InvoiceDao.back_expense(db, data, userId)
+    #         await db.commit()
+    #         return CrudResponseModel(is_success=True, message='还款成功')
+    #     except Exception as e:
+    #         await db.rollback()
+    #         return CrudResponseModel(is_success=False, message='还款失败')
 
     @classmethod
     async def add_record(cls, db: AsyncSession, change: OaFlowRecordBaseModel, model: OaInvoiceBaseModel, userId: int):
@@ -148,6 +163,9 @@ class InvoiceService:
     @classmethod
     async def open_status(cls, db: AsyncSession, data: OaInvoiceBaseModel):
         try:
+            info = await InvoiceDao.get_info_by_id(db, data.id)
+            if info['OaInvoice'].enter_status !=2 or info['OaInvoice'].enter_status !=0:
+                raise CrudResponseModel(is_success=False, message='仅支持全部回款或未回款！')
             data.open_time = int(datetime.now().timestamp())
             if data.open_status == 2:
                 income_count = await InvoiceDao.income_income_count(db, data.id)

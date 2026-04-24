@@ -63,6 +63,9 @@ class OaInvoice(Base):
     check_copy_uids = Column(String(500), nullable=False, default='', comment='抄送人ID，如:1,2,3')
     check_time = Column(BigInteger, nullable=False, default=0, comment='审核通过时间')
 
+    def to_dict(self):
+        return {c.name: getattr(self, c.name) for c in self.__table__.columns}
+
 
 class OaInvoiceIncome(Base):
     """发票到账记录表实体类"""
@@ -86,3 +89,6 @@ class OaInvoiceIncome(Base):
     create_time = Column(BigInteger, nullable=False, default=0, comment='创建时间')
     update_time = Column(BigInteger, nullable=False, default=0, comment='更新时间')
     status = Column(SmallInteger, nullable=False, default=1, comment='状态：-1删除 0禁用 1正常 6作废')
+
+    def to_dict(self):
+        return {c.name: getattr(self, c.name) for c in self.__table__.columns}

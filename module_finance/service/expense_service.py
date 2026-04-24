@@ -124,7 +124,7 @@ class OaExpenseService:
             inter_list = []
             for item in inter:
                 inter_list.append(ModelConverter.convert_to_camel_case(item.to_dict()))
-            detail['inter'] = inter_list
+            detail['interfix'] = inter_list
             if not detail:
                 raise ServiceException(message="未找到该数据")
             detail = ResponseConverter.convert_to_camel_and_format_time(detail, cls.time_fields)

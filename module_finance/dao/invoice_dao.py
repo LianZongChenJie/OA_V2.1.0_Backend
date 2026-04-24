@@ -1,7 +1,11 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, desc
+from sqlalchemy.orm import aliased
 from sqlalchemy.sql import ColumnElement, func,or_
 from common.vo import PageModel
+from module_admin.entity.do.dept_do import SysDept
+from module_admin.entity.do.user_do import SysUser
+from module_basicdata.entity.do.public.enterprise_do import OaEnterprise
 from utils.page_util import PageUtil
 from module_finance.entity.vo.invoice_vo import OaInvoiceBaseModel, OaInvoicePageQueryModel
 from module_finance.entity.do.invoice_do import OaInvoice, OaInvoiceIncome
@@ -15,7 +19,22 @@ class InvoiceDao:
                             is_page: bool = False) -> PageModel | list[list[dict[str, Any]]]:
 
         # 构建基础查询
-        query = select(OaInvoice)
+        admin = aliased(SysUser, name='admin')
+        open = aliased(SysUser, name='open')
+        dept = aliased(SysDept, name='dept')
+        enter = aliased(OaEnterprise, name='enter')
+        query = (select(OaInvoice,
+                        admin.nick_name.label('admin_name'),
+                        open.nick_name.label('open_name'),
+                        dept.dept_name.label('dept_name'),
+                        enter.title.label('enter_name')
+                        )
+
+        .join(admin, OaInvoice.admin_id == admin.user_id, isouter=True)
+        .join(open, OaInvoice.open_admin_id == open.user_id, isouter=True)
+         .join(dept, OaInvoice.did == dept.dept_id, isouter=True)
+         .join(enter, OaInvoice.invoice_subject == enter.id, isouter=True)
+                 )
 
         # 构建条件列表
         conditions = []
@@ -77,7 +96,7 @@ class InvoiceDao:
         query = query.order_by(desc(OaInvoice.create_time))
 
         # 分页查询
-        page_list: PageModel | list[list[dict[str, Any]]] = await PageUtil.paginate(
+        page_list: PageModel | list[list[dict[str, Any]]] = await PageUtil.paginate_dict(
             db, query, query_object.page_num, query_object.page_size, is_page
         )
         return page_list
@@ -106,11 +125,23 @@ class InvoiceDao:
 
     @classmethod
     async def get_info_by_id(cls, db: AsyncSession, id: int):
-        query = (select(OaInvoice)
-        .where(
-            OaInvoice.id == id))
-        info = await db.scalar(query)
-        return info
+        admin = aliased(SysUser, name='admin')
+        open = aliased(SysUser, name='open')
+        dept = aliased(SysDept, name='dept')
+        enter = aliased(OaEnterprise, name='enter')
+        query = (select(OaInvoice,
+                        admin.nick_name.label('admin_name'),
+                        open.nick_name.label('open_name'),
+                        dept.dept_name.label('dept_name'),
+                        enter.title.label('enter_name')
+                        )
+            .join(admin, OaInvoice.admin_id == admin.user_id, isouter=True)
+            .join(open, OaInvoice.open_admin_id == open.user_id, isouter=True)
+            .join(dept, OaInvoice.did == dept.dept_id, isouter=True)
+            .join(enter, OaInvoice.invoice_subject == enter.id, isouter=True)
+            .where(OaInvoice.id == id))
+        info = await db.execute(query)
+        return info.mappings().first()
     @classmethod
     async def del_by_id(cls, db: AsyncSession, id: int):
         result = await db.execute(update(OaInvoice).values(delete_time=int(datetime.now().timestamp())).where(OaInvoice.id == id))

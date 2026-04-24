@@ -144,23 +144,23 @@ async def delete_invoice(
 #     result =  await InvoiceService.review(query_db, data, userId)
 #     return ResponseUtil.success(msg=result.message)
 
-@finance_invoice_controller.put(
-    "/pay",
-    summary='打款',
-    description='用于打款',
-    response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:invoice:pay')],
-)
-@Log(title='开票管理-打款',business_type=BusinessType.UPDATE)
-async def payment(
-        request: Request,
-        query_db: Annotated[AsyncSession, DBSessionDependency()],
-        data: Annotated[OaInvoiceBaseModel, Body()],
-        current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
-) -> Response:
-    userId = current_user.user.user_id
-    result =  await InvoiceService.payment(query_db, data, userId)
-    return ResponseUtil.success(msg=result.message)
+# @finance_invoice_controller.put(
+#     "/pay",
+#     summary='打款',
+#     description='用于打款',
+#     response_model=None,
+#     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:invoice:pay')],
+# )
+# @Log(title='开票管理-打款',business_type=BusinessType.UPDATE)
+# async def payment(
+#         request: Request,
+#         query_db: Annotated[AsyncSession, DBSessionDependency()],
+#         data: Annotated[OaInvoiceBaseModel, Body()],
+#         current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
+# ) -> Response:
+#     userId = current_user.user.user_id
+#     result =  await InvoiceService.payment(query_db, data, userId)
+#     return ResponseUtil.success(msg=result.message)
 
 @finance_invoice_controller.put(
     "/openStatus",
