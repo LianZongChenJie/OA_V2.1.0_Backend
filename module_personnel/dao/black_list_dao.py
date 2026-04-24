@@ -17,7 +17,7 @@ class BlackListDao:
                             data_scope_sql: ColumnElement,
                             is_page: bool = False) -> PageModel | list[list[dict[str, Any]]]:
         query = (select(OaBlacklist, SysUser.nick_name.label("admin_name"))
-                 .join(SysUser, OaBlacklist.admin_id == SysUser.id, isouter=True)
+                 .join(SysUser, OaBlacklist.admin_id == SysUser.user_id, isouter=True)
                      .where(
                         and_(
                             OaBlacklist.delete_time == 0,
