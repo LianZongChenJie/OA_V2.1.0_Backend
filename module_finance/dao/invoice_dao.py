@@ -23,17 +23,20 @@ class InvoiceDao:
         open = aliased(SysUser, name='open')
         dept = aliased(SysDept, name='dept')
         enter = aliased(OaEnterprise, name='enter')
+        check = aliased(SysUser, name='check')
         query = (select(OaInvoice,
                         admin.nick_name.label('admin_name'),
                         open.nick_name.label('open_name'),
                         dept.dept_name.label('dept_name'),
-                        enter.title.label('enter_name')
+                        enter.title.label('enter_name'),
+                        check.nick_name.label('check_name')
                         )
 
         .join(admin, OaInvoice.admin_id == admin.user_id, isouter=True)
         .join(open, OaInvoice.open_admin_id == open.user_id, isouter=True)
          .join(dept, OaInvoice.did == dept.dept_id, isouter=True)
          .join(enter, OaInvoice.invoice_subject == enter.id, isouter=True)
+         .join(check, func.find_in_set(check.user_id, OaInvoice.check_uids), isouter=True)
                  )
 
         # 构建条件列表

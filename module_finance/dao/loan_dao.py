@@ -21,14 +21,18 @@ class LoanDao:
         pay = aliased(SysUser, name='pay')
         admin = aliased(SysUser, name='admin')
         dept = aliased(SysDept, name='dept')
+        check = aliased(SysUser, name='check')
         query = (select(OaLoan,
                         pay.nick_name.label('pay_name'),
                         admin.nick_name.label('admin_name'),
                         dept.dept_name.label('dept_name'),
+                        check.nick_name.label('check_name')
                         )
         .join(pay, OaLoan.admin_id == pay.user_id, isouter=True)
         .join(admin, OaLoan.pay_admin_id == admin.user_id, isouter=True)
-         .join(dept, OaLoan.did == dept.dept_id, isouter=True))
+         .join(dept, OaLoan.did == dept.dept_id, isouter=True)
+         .join(check, func.find_in_set(check.user_id, OaLoan.check_uids), isouter=True)
+         )
 
         # 构建条件列表
         conditions = []

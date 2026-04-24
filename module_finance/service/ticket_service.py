@@ -26,9 +26,14 @@ class TicketService:
                                                                                              list[dict[str, Any]]:
         query_list = await TicketDao.get_page_list(query_db, query_object, data_scope_sql, is_page)
         if is_page:
-            result_list = PageModel[OaTicketBaseModel](**{
-                **query_list.model_dump(by_alias=True)
-            })
+            row_list = []
+            for row in query_list.rows:
+                row = dict(row)
+                row.update(row['OaTicket'].to_dict())
+                row.pop('OaTicket')
+                row_list.append(row)
+            query_list.rows = row_list
+            result_list = ModelConverter.convert_to_camel_case(query_list)
         else:
             result_list = []
             if query_list:
@@ -39,6 +44,10 @@ class TicketService:
     async def add_service(cls, query_db: AsyncSession, model: OaTicketBaseModel) -> CrudResponseModel:
         try:
             if model.id:
+                ticket = await TicketDao.get_info_by_id(query_db, model.id)
+                ticket = ticket['OaTicket']
+                if ticket.check_status !=0 and ticket.check_last_status !=4:
+                    return CrudResponseModel(is_success=False, message='当前收票发票已审核，请操作审核相关功能！')
                 model.update_time = int(datetime.now().timestamp())
                 model.open_time = int_time(model.open_time)
                 model.pay_time = int_time(model.pay_time)
@@ -46,6 +55,8 @@ class TicketService:
                 return CrudResponseModel(is_success=True, message='修改成功')
             else:
                 model.create_time = int(datetime.now().timestamp())
+                model.open_time = int_time(model.open_time)
+                model.pay_time = int_time(model.pay_time)
                 await TicketDao.add(query_db, model)
                 await query_db.commit()
                 return CrudResponseModel(is_success=True, message='新增成功')
@@ -60,10 +71,16 @@ class TicketService:
             AsyncSession, id: int) -> dict[str, Any]:
         try:
             info = await TicketDao.get_info_by_id(query_db, id)
-            records = await FlowRecordDao.get_records_by_action_id(query_db, info.id, info.check_flow_id)
+            records = await FlowRecordDao.get_records_by_action_id(query_db, info['OaTicket'].id, info['OaTicket'].check_flow_id)
+            info = dict(info)
+            info.update(info['OaTicket'].to_dict())
+            info.pop('OaTicket')
+            record_list = []
+            for record in records:
+                record_list.append(record.to_dict())
             detail = {}
-            detail.update(info.to_dict())
-            detail['records'] = records
+            detail.update(info)
+            detail['records'] = record_list
             if not detail:
                 raise ServiceException(message="未找到该数据")
             return ModelConverter.convert_to_camel_case(detail)
@@ -75,6 +92,10 @@ class TicketService:
     @classmethod
     async def del_by_id(cls, db: AsyncSession, id: int):
         try:
+            ticket = await TicketDao.get_info_by_id(db, id)
+            ticket = ticket['OaTicket']
+            if ticket.check_status !=0 and ticket.check_status !=4:
+                return CrudResponseModel(is_success=False, message='当前收票发票已审核，请操作审核相关功能！')
             await TicketDao.del_by_id(db, id)
             return CrudResponseModel(is_success=True, message='删除成功')
         except Exception as e:
@@ -145,13 +166,16 @@ class TicketService:
     @classmethod
     async def open_status(cls, db: AsyncSession, data: OaTicketBaseModel):
         try:
-            data.open_time = int(datetime.now().timestamp())
-            if data.open_status == 2:
-                income_count = await TicketDao.payment_count(db, data.id)
-                if income_count > 0:
-                    return CrudResponseModel(is_success=False, message='存在付款记录，禁止作废')
+            ticket = await TicketDao.get_info_by_id(db, data.id)
+            ticket = ticket['OaTicket']
+            if ticket.pay_status != 0:
+                return CrudResponseModel(is_success=False, message='当前收票发票已付款，无法作废')
+            if ticket.check_status !=0 and ticket.check_status !=4:
+                return CrudResponseModel(is_success=False, message='当前收票发票已审核，请操作审核相关功能！')
             if data.open_time:
                 data.open_time = int_time(data.open_time)
+            else:
+                data.open_time = int(datetime.now().timestamp())
             await TicketDao.open_status(db, data)
             await db.commit()
             return CrudResponseModel(is_success=True, message='操作成功！')
@@ -166,7 +190,9 @@ class TicketService:
     async def payment_add(cls, db: AsyncSession, data_list: list[OaTicketPayment], userId: int):
         try:
             ticket = await TicketDao.get_info_by_id(db, data_list[0].ticket_id)
-            ticket : OaTicketBaseModel =  OaTicketBaseModel.model_validate(ticket)
+            ticket : OaTicketBaseModel =  OaTicketBaseModel.model_validate(ticket['OaTicket'])
+            if ticket.open_status != 1:
+                return CrudResponseModel(is_success=False, message='当前收票发票已作废，无法付款')
             old_amount = ticket.pay_amount if ticket.pay_amount else 0
             pay_time = int(datetime.now().timestamp())
             create_time = int(datetime.now().timestamp())
@@ -197,6 +223,13 @@ class TicketService:
     @classmethod
     async def payment_del(cls, db: AsyncSession, ids: list[int]):
         try:
+            ticket_id = await TicketDao.get_ticket_by_payment_id(db, ids[0])
+            ticket = await TicketDao.get_info_by_id(db, ticket_id)
+            ticket: OaTicketBaseModel = OaTicketBaseModel.model_validate(ticket['OaTicket'])
+            if ticket.open_status != 1:
+                return CrudResponseModel(is_success=False, message='当前收票发票已作废，无法删除付款')
+            if ticket.pay_status == 0:
+                return CrudResponseModel(is_success=False, message='当前收票未付款，没有付款记录')
             ticket_id = await TicketDao.payment_get_id(db, ids[0])
             await TicketDao.payment_del(db, ids)
             payments = await TicketDao.ticket_get_payments(db,ticket_id)
@@ -207,7 +240,7 @@ class TicketService:
                 if inc.pay_time > pay_time:
                     pay_time = inc.pay_time
             ticket = await TicketDao.get_info_by_id(db, ticket_id)
-            ticket : OaTicketBaseModel =  OaTicketBaseModel.model_validate(ticket)
+            ticket : OaTicketBaseModel =  OaTicketBaseModel.model_validate(ticket['OaTicket'])
             ticket.pay_amount = amount
             ticket.pay_time = pay_time
             if payments:

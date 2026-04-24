@@ -1,7 +1,11 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, desc
+from sqlalchemy.orm import aliased
 from sqlalchemy.sql import ColumnElement, func,or_
 from common.vo import PageModel
+from module_admin.entity.do.dept_do import SysDept
+from module_admin.entity.do.supplier_do import OaSupplier
+from module_admin.entity.do.user_do import SysUser
 from utils.page_util import PageUtil
 from module_finance.entity.vo.ticket_vo import OaTicketBaseModel, OaTicketPageQueryModel
 from module_finance.entity.do.ticket_do import OaTicket,OaTicketPayment
@@ -15,7 +19,21 @@ class TicketDao:
                             is_page: bool = False) -> PageModel | list[list[dict[str, Any]]]:
 
         # 构建基础查询
-        query = select(OaTicket)
+        supplier = aliased(OaSupplier, name='supplier')
+        admin = aliased(SysUser, name='admin')
+        dept = aliased(SysDept, name='dept')
+        check = aliased(SysUser, name='check')
+        query = (select(OaTicket,
+                       supplier.title.label('supplier_name'),
+                       admin.user_name.label('admin_name'),
+                       dept.dept_name.label('dept_name'),
+                       check.user_name.label('check_name'),
+                       )
+                 .join(supplier, supplier.id == OaTicket.supplier_id, isouter=True)
+                 .join(admin, admin.user_id == OaTicket.admin_id, isouter=True)
+                 .join(dept, dept.dept_id == OaTicket.did, isouter=True)
+                 .join(check, func.find_in_set(check.user_id, OaTicket.check_uids), isouter=True)
+                 )
 
         # 构建条件列表
         conditions = []
@@ -77,7 +95,7 @@ class TicketDao:
         query = query.order_by(desc(OaTicket.create_time))
 
         # 分页查询
-        page_list: PageModel | list[list[dict[str, Any]]] = await PageUtil.paginate(
+        page_list: PageModel | list[list[dict[str, Any]]] = await PageUtil.paginate_dict(
             db, query, query_object.page_num, query_object.page_size, is_page
         )
         return page_list
@@ -106,11 +124,24 @@ class TicketDao:
 
     @classmethod
     async def get_info_by_id(cls, db: AsyncSession, id: int):
-        query = (select(OaTicket)
+        supplier = aliased(OaSupplier, name='supplier')
+        admin = aliased(SysUser, name='admin')
+        dept = aliased(SysDept, name='dept')
+        check = aliased(SysUser, name='check')
+        query = (select(OaTicket,
+                        supplier.title.label('supplier_name'),
+                        admin.user_name.label('admin_name'),
+                        dept.dept_name.label('dept_name'),
+                        check.user_name.label('check_name'),
+                        )
+                 .join(supplier, supplier.id == OaTicket.supplier_id, isouter=True)
+                 .join(admin, admin.user_id == OaTicket.admin_id, isouter=True)
+                 .join(dept, dept.dept_id == OaTicket.did, isouter=True)
+                 .join(check, func.find_in_set(check.user_id, OaTicket.check_uids), isouter=True)
         .where(
             OaTicket.id == id))
-        info = await db.scalar(query)
-        return info
+        info = await db.execute(query)
+        return info.mappings().first()
     @classmethod
     async def del_by_id(cls, db: AsyncSession, id: int):
         result = await db.execute(update(OaTicket).values(delete_time=int(datetime.now().timestamp())).where(OaTicket.id == id))
@@ -154,6 +185,12 @@ class TicketDao:
         except Exception as e:
             await db.rollback()
             raise e
+
+    @classmethod
+    async def get_ticket_by_payment_id(cls, db: AsyncSession, paytmen_id: int):
+        result = await db.execute(select(OaTicketPayment.ticket_id).where(OaTicketPayment.id == paytmen_id))
+        await db.commit()
+        return result.scalar().first()
 
 # ---------------------------------- 以下为收票付款记录0_0 ----------------------------------
     @classmethod

@@ -164,8 +164,8 @@ class InvoiceService:
     async def open_status(cls, db: AsyncSession, data: OaInvoiceBaseModel):
         try:
             info = await InvoiceDao.get_info_by_id(db, data.id)
-            if info['OaInvoice'].enter_status !=2 or info['OaInvoice'].enter_status !=0:
-                raise CrudResponseModel(is_success=False, message='仅支持全部回款或未回款！')
+            if info['OaInvoice'].enter_status ==1:
+                return CrudResponseModel(is_success=False, message='仅支持全部回款或未回款！')
             data.open_time = int(datetime.now().timestamp())
             if data.open_status == 2:
                 income_count = await InvoiceDao.income_income_count(db, data.id)
