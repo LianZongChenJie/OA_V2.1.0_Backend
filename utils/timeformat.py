@@ -48,3 +48,13 @@ def int_time(str_time: str, format_str: str = "%Y-%m-%d %H:%M:%S") -> int:
     except Exception as e:
         print(e)
         return 0
+
+def int_month(str_time: str, format_str: str = "%Y-%m") -> int:
+    try:
+        dt = datetime.strptime(str_time, format_str)
+        return int(dt.timestamp())
+    except Exception as e:
+        print(e)
+        return 0
+def format_month(int_time: int, format_str: str = "%Y-%m") -> Optional[str]:
+    return format_timestamp(int_time, format_str)
