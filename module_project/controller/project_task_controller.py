@@ -354,6 +354,8 @@ async def get_project_task_hour_list(
             u.user_name,
             d.dept_name,
             wc.title AS work_title,
+            p.name AS project_name,
+            t.title AS task_title,
             CASE s.labor_type
                 WHEN 1 THEN '案头'
                 WHEN 2 THEN '外勤'
@@ -367,6 +369,8 @@ async def get_project_task_hour_list(
         LEFT JOIN sys_user u ON s.admin_id = u.user_id
         LEFT JOIN sys_dept d ON u.dept_id = d.dept_id
         LEFT JOIN oa_work_cate wc ON s.cid = wc.id
+        LEFT JOIN oa_project_task t ON s.tid = t.id
+        LEFT JOIN oa_project p ON t.project_id = p.id
         WHERE {where_clause}
         ORDER BY s.create_time DESC
         LIMIT :limit OFFSET :offset
@@ -379,6 +383,8 @@ async def get_project_task_hour_list(
         LEFT JOIN sys_user u ON s.admin_id = u.user_id
         LEFT JOIN sys_dept d ON u.dept_id = d.dept_id
         LEFT JOIN oa_work_cate wc ON s.cid = wc.id
+        LEFT JOIN oa_project_task t ON s.tid = t.id
+        LEFT JOIN oa_project p ON t.project_id = p.id
         WHERE {where_clause}
     """)
 
@@ -515,9 +521,19 @@ async def add_task_hour(
     if not hour_data.tid or hour_data.tid <= 0:
         raise ServiceException(message='新增工时必须关联任务ID')
     
+    logger.info(f'新增工时 - 开始处理，任务ID: {hour_data.tid}')
+    
+    # 先物理删除该任务下的所有工时记录
+    from sqlalchemy import text as sql_text
+    delete_sql = sql_text("DELETE FROM oa_schedule WHERE tid = :tid")
+    await query_db.execute(delete_sql, {'tid': hour_data.tid})
+    logger.info(f'新增工时 - 已删除任务 {hour_data.tid} 下的所有工时记录')
+    
     # 验证时间字段
     if not hour_data.start_time or not hour_data.end_time:
         raise ServiceException(message='开始时间和结束时间不能为空')
+    
+    logger.info(f'新增工时 - 原始时间: start_time={hour_data.start_time} (type={type(hour_data.start_time).__name__}), end_time={hour_data.end_time} (type={type(hour_data.end_time).__name__})')
     
     # 设置创建人 ID
     if not hour_data.admin_id:
@@ -526,16 +542,52 @@ async def add_task_hour(
     # 确保 id 为 None（新增时不应该有 id）
     hour_data.id = None
     
-    # 转换时间格式为 Unix 时间戳
-    hour_data.start_time = int_time(hour_data.start_time)
-    hour_data.end_time = int_time(hour_data.end_time)
+    # 转换时间格式为 Unix 时间戳（支持时间戳整数或字符串格式）
+    def convert_to_timestamp(time_value) -> int:
+        """
+        将时间值转换为 Unix 时间戳
+        支持：整数时间戳、字符串时间戳、日期时间字符串
+        """
+        if isinstance(time_value, int):
+            # 已经是时间戳，直接返回
+            return time_value
+        elif isinstance(time_value, str):
+            # 尝试判断是否为纯数字字符串（时间戳）
+            if time_value.isdigit():
+                return int(time_value)
+            # 否则按日期时间字符串解析
+            return int_time(time_value)
+        else:
+            # 其他类型尝试转换
+            try:
+                return int(time_value)
+            except (ValueError, TypeError):
+                return 0
     
-    # 验证时间逻辑
-    if hour_data.start_time >= hour_data.end_time:
-        raise ServiceException(message='结束时间必须大于开始时间')
+    start_time_timestamp = convert_to_timestamp(hour_data.start_time)
+    end_time_timestamp = convert_to_timestamp(hour_data.end_time)
     
-    # 计算工时（小时）
-    hour_data.labor_time = (hour_data.end_time - hour_data.start_time) / 3600
+    logger.info(f'新增工时 - 转换后时间戳: start_time={start_time_timestamp}, end_time={end_time_timestamp}')
+    
+    # 验证时间转换是否成功
+    if start_time_timestamp == 0:
+        raise ServiceException(message=f'开始时间格式不正确: {hour_data.start_time}')
+    
+    if end_time_timestamp == 0:
+        raise ServiceException(message=f'结束时间格式不正确: {hour_data.end_time}')
+    
+    # 验证时间逻辑：结束时间必须大于或等于开始时间
+    if start_time_timestamp > end_time_timestamp:
+        raise ServiceException(message='结束时间不能早于开始时间')
+    
+    # 设置转换后的时间戳
+    hour_data.start_time = start_time_timestamp
+    hour_data.end_time = end_time_timestamp
+    
+    # 自动计算工时（小时），保留两位小数
+    hour_data.labor_time = round((end_time_timestamp - start_time_timestamp) / 3600, 2)
+    
+    logger.info(f'新增工时 - 自动计算工时: {hour_data.labor_time} 小时')
     
     # 设置默认值
     hour_data.create_time = int(datetime.now().timestamp())
@@ -592,41 +644,119 @@ async def add_task_hour(
 @Log(title='任务工时管理', business_type=BusinessType.UPDATE)
 async def adjust_task_hour(
         request: Request,
-        hour_data: Annotated[OaScheduleBaseModel, Body()],
+        update_data: Annotated[dict, Body(description='工时更新数据')],
         query_db: Annotated[AsyncSession, DBSessionDependency()],
         current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
 ) -> Response:
     """
-    编辑任务工时
+    编辑任务工时（使用原生SQL）
     
     :param request: Request 对象
-    :param hour_data: 工时数据
+    :param update_data: 更新数据字典
     :param query_db: 数据库会话
     :param current_user: 当前用户
     :return: 操作结果
     """
-    # 验证必须提供 id
-    if not hour_data.id or hour_data.id <= 0:
-        from exceptions.exception import ServiceException
-        raise ServiceException(message='编辑工时必须提供有效的工时ID')
-
-    # 设置更新时间
+    from sqlalchemy import text
     from datetime import datetime
-    from utils.timeformat import int_time
-
-    hour_data.update_time = int(datetime.now().timestamp())
-    hour_data.start_time = int_time(hour_data.start_time)
-    hour_data.end_time = int_time(hour_data.end_time)
-
-    # 重新计算工时（小时）
-    if hour_data.start_time and hour_data.end_time:
-        hour_data.labor_time = (hour_data.end_time - hour_data.start_time) / 3600
-
-    # 调用 Service 层更新
-    result = await ScheduleService.update_service(query_db, hour_data)
-    logger.info(f'编辑工时 {hour_data.id} 成功')
-
-    return ResponseUtil.success(msg=result.message)
+    
+    try:
+        logger.info(f'收到更新请求: {update_data}')
+        
+        # 验证必填字段
+        if 'id' not in update_data or not update_data['id']:
+            return ResponseUtil.error(msg='工时记录ID不能为空')
+        
+        hour_id = update_data['id']
+        
+        # 检查记录是否存在
+        check_sql = text("SELECT id FROM oa_schedule WHERE id = :id AND delete_time = 0")
+        check_result = await query_db.execute(check_sql, {'id': hour_id})
+        exists = check_result.scalar()
+        logger.info(f'检查记录是否存在: id={hour_id}, exists={exists}')
+        
+        if not exists:
+            return ResponseUtil.error(msg='工时记录不存在')
+        
+        # 构建更新字段
+        update_fields = []
+        params = {'id': hour_id, 'update_time': int(datetime.now().timestamp())}
+        
+        # 需要更新的字段映射（支持驼峰和下划线两种格式 -> 数据库下划线）
+        field_mapping = {
+            # 驼峰格式
+            'title': 'title',
+            'cid': 'cid',
+            'cmid': 'cmid',
+            'ptid': 'ptid',
+            'tid': 'tid',
+            'adminId': 'admin_id',
+            'did': 'did',
+            'startTime': 'start_time',
+            'endTime': 'end_time',
+            'laborTime': 'labor_time',
+            'laborType': 'labor_type',
+            'remark': 'remark',
+            'fileIds': 'file_ids',
+            # 下划线格式
+            'admin_id': 'admin_id',
+            'start_time': 'start_time',
+            'end_time': 'end_time',
+            'labor_time': 'labor_time',
+            'labor_type': 'labor_type',
+            'file_ids': 'file_ids',
+        }
+        
+        # 遍历前端传来的字段
+        for front_key, db_key in field_mapping.items():
+            if front_key in update_data:
+                value = update_data[front_key]
+                logger.info(f'处理字段: {front_key} -> {db_key}, 值={value}, 类型={type(value)}')
+                # 特殊处理：空字符串转为空字符串，None 保持 None
+                if value is None:
+                    update_fields.append(f"{db_key} = NULL")
+                elif isinstance(value, str):
+                    update_fields.append(f"{db_key} = :{db_key}")
+                    params[db_key] = value
+                elif isinstance(value, (int, float)):
+                    update_fields.append(f"{db_key} = :{db_key}")
+                    params[db_key] = value
+                else:
+                    update_fields.append(f"{db_key} = :{db_key}")
+                    params[db_key] = str(value)
+        
+        # 添加更新时间
+        update_fields.append("update_time = :update_time")
+        
+        # 构建 SQL
+        if update_fields:
+            update_sql = f"""
+                UPDATE oa_schedule 
+                SET {', '.join(update_fields)}
+                WHERE id = :id
+            """
+            
+            logger.info(f'执行更新SQL: {update_sql}')
+            logger.info(f'参数: {params}')
+            
+            # 执行更新
+            result = await query_db.execute(text(update_sql), params)
+            await query_db.commit()
+            
+            logger.info(f'更新结果: rowcount={result.rowcount}')
+            
+            if result.rowcount > 0:
+                logger.info(f'修改工时 {hour_id} 成功，影响行数: {result.rowcount}')
+                return ResponseUtil.success(msg='修改成功')
+            else:
+                return ResponseUtil.error(msg='修改失败，未影响任何行')
+        else:
+            return ResponseUtil.error(msg='没有要更新的字段')
+            
+    except Exception as e:
+        await query_db.rollback()
+        logger.error(f'修改工时失败: {str(e)}', exc_info=True)
+        return ResponseUtil.error(msg=f'修改失败：{str(e)}')
 
 
 @project_task_controller.delete(

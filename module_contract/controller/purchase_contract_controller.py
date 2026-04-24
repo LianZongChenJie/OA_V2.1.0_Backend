@@ -1,8 +1,9 @@
 from typing import Annotated
 
-from fastapi import Path, Query, Request, Response
+from fastapi import Path, Query, Request, Response, Body
 from pydantic_validation_decorator import ValidateFields
 from sqlalchemy.ext.asyncio import AsyncSession
+from pydantic import BaseModel, Field
 
 from common.annotation.log_annotation import Log
 from common.aspect.db_seesion import DBSessionDependency
@@ -20,6 +21,7 @@ from module_contract.entity.vo.purchase_vo import (
     PurchasePageQueryModel,
 )
 from module_contract.service.purchase_service import PurchaseService
+from module_contract.service.contract_service import ContractService
 from utils.log_util import logger
 from utils.response_util import ResponseUtil
 
@@ -27,7 +29,7 @@ from utils.response_util import ResponseUtil
 purchase_contract_controller = APIRouterPro(
     prefix='/system/purchase',
     order_num=31,
-    tags=['系统管理 - 采购合同管理'],
+    tags=['1系统管理 - 采购合同管理'],
     dependencies=[PreAuthDependency()]
 )
 
@@ -322,4 +324,78 @@ async def get_purchase_contract_detail(
     logger.info(f'获取 id 为{id}的采购合同信息成功')
 
     return ResponseUtil.success(data=detail_contract_result)
+
+
+@purchase_contract_controller.put(
+    '/archive',
+    summary='统一归档合同接口',
+    description='根据合同类型归档采购或销售合同',
+    response_model=ResponseBaseModel,
+    dependencies=[UserInterfaceAuthDependency('system:purchase:archive')],
+)
+@Log(title='合同归档管理', business_type=BusinessType.UPDATE)
+async def archive_contract_unified(
+        request: Request,
+        contract_type: Annotated[str, Query(description='合同类型：purchase=采购合同, sale=销售合同')],
+        contract_id: Annotated[int, Query(description='需要归档的合同 ID')],
+        query_db: Annotated[AsyncSession, DBSessionDependency()],
+        current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
+) -> Response:
+    """
+    统一归档接口 - 根据类型判断是采购合同还是销售合同
+
+    :param request: Request 对象
+    :param contract_type: 合同类型（purchase/sale）
+    :param contract_id: 合同 ID
+    :param query_db: 数据库会话
+    :param current_user: 当前用户（归档人）
+    :return: 操作结果
+    """
+    if contract_type.lower() == 'purchase':
+        # 采购合同归档
+        archive_result = await PurchaseService.archive_purchase_services(
+            request, query_db, contract_id, current_user.user.user_id
+        )
+    elif contract_type.lower() == 'sale':
+        # 销售合同归档
+        archive_result = await ContractService.archive_contract_services(
+            request, query_db, contract_id, current_user.user.user_id
+        )
+    else:
+        from exceptions.exception import ServiceException
+        raise ServiceException(message=f'不支持的合同类型: {contract_type}，请使用 purchase 或 sale')
+    
+    logger.info(archive_result.message)
+    return ResponseUtil.success(msg=archive_result.message)
+
+
+@purchase_contract_controller.put(
+    '/archive/{id}',
+    summary='归档采购合同接口',
+    description='用于将采购合同转入归档状态',
+    response_model=ResponseBaseModel,
+    dependencies=[UserInterfaceAuthDependency('system:purchase:archive')],
+)
+@Log(title='采购合同管理', business_type=BusinessType.UPDATE)
+async def archive_purchase_contract(
+        request: Request,
+        id: Annotated[int, Path(description='需要归档的采购合同 ID')],
+        query_db: Annotated[AsyncSession, DBSessionDependency()],
+        current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
+) -> Response:
+    """
+    归档采购合同
+
+    :param request: Request 对象
+    :param id: 合同 ID
+    :param query_db: 数据库会话
+    :param current_user: 当前用户（归档人）
+    :return: 操作结果
+    """
+    archive_result = await PurchaseService.archive_purchase_services(
+        request, query_db, id, current_user.user.user_id
+    )
+    logger.info(archive_result.message)
+
+    return ResponseUtil.success(msg=archive_result.message)
 

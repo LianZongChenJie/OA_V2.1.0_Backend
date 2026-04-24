@@ -321,4 +321,28 @@ class PurchaseDao:
         result = await db.execute(query)
         return result.scalar_one_or_none()
 
+    @classmethod
+    async def archive_purchase(cls, db: AsyncSession, purchase_id: int, archive_uid: int, archive_time: int) -> int:
+        """
+        归档采购合同
+
+        :param db: orm 对象
+        :param purchase_id: 采购合同 ID
+        :param archive_uid: 归档人 ID
+        :param archive_time: 归档时间
+        :return: 影响行数
+        """
+        from sqlalchemy import update
+        result = await db.execute(
+            update(OaPurchase)
+            .values(
+                archive_uid=archive_uid,
+                archive_time=archive_time,
+                update_time=archive_time
+            )
+            .where(OaPurchase.id == purchase_id)
+        )
+        await db.commit()
+        return result.rowcount
+
 

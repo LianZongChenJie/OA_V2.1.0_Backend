@@ -556,3 +556,42 @@ class ContractDao:
         result = await db.execute(query)
         count = result.scalar()
         return count
+
+    @classmethod
+    async def get_by_name(cls, db: AsyncSession, contract_data: dict) -> OaContract | None:
+        """
+        根据名称获取合同（用于验重）
+
+        :param db: orm 对象
+        :param contract_data: 合同数据
+        :return: 合同对象
+        """
+        query = select(OaContract).where(
+            OaContract.name == contract_data.get('name'),
+            OaContract.delete_time == 0
+        )
+        result = await db.execute(query)
+        return result.scalar_one_or_none()
+
+    @classmethod
+    async def archive_contract(cls, db: AsyncSession, contract_id: int, archive_uid: int, archive_time: int) -> int:
+        """
+        归档销售合同
+
+        :param db: orm 对象
+        :param contract_id: 销售合同 ID
+        :param archive_uid: 归档人 ID
+        :param archive_time: 归档时间
+        :return: 影响行数
+        """
+        result = await db.execute(
+            update(OaContract)
+            .values(
+                archive_uid=archive_uid,
+                archive_time=archive_time,
+                update_time=archive_time
+            )
+            .where(OaContract.id == contract_id)
+        )
+        await db.commit()
+        return result.rowcount

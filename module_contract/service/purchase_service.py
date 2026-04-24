@@ -198,6 +198,8 @@ class PurchaseService:
         :param purchase_id: 采购合同 ID
         :return: 采购合同详细信息对象
         """
+        from datetime import datetime as dt
+        
         purchase_result = await PurchaseDao.get_by_id(query_db, purchase_id)
         
         if not purchase_result:
@@ -211,9 +213,112 @@ class PurchaseService:
             if hasattr(purchase_result, k)
         }
 
-        # 添加扩展字段（需要从关联表查询）
-        # TODO: 这里可以添加关联表查询逻辑，如分类名称、供应商名称、人员姓名等
+        # 格式化时间字段为字符串
+        def format_timestamp_to_str(timestamp_value: int | None) -> str:
+            """将时间戳转换为日期时间字符串"""
+            if not timestamp_value or timestamp_value == 0:
+                return ''
+            try:
+                return dt.fromtimestamp(timestamp_value).strftime('%Y-%m-%d %H:%M:%S')
+            except Exception:
+                return ''
+        
+        # 添加格式化后的时间字符串字段
+        purchase_data['startTimeStr'] = format_timestamp_to_str(purchase_data.get('start_time'))
+        purchase_data['endTimeStr'] = format_timestamp_to_str(purchase_data.get('end_time'))
+        purchase_data['signTimeStr'] = format_timestamp_to_str(purchase_data.get('sign_time'))
+        purchase_data['createTimeStr'] = format_timestamp_to_str(purchase_data.get('create_time'))
+        purchase_data['updateTimeStr'] = format_timestamp_to_str(purchase_data.get('update_time'))
+        
+        # 查询关联数据
+        # 分类名称
+        if purchase_data.get('cate_id') and purchase_data['cate_id'] > 0:
+            from module_admin.dao.contract_cate_dao import ContractCateDao
+            cate_info = await ContractCateDao.get_contract_cate_detail_by_id(query_db, purchase_data['cate_id'])
+            if cate_info:
+                purchase_data['cateName'] = cate_info.title
+        
+        # 创建人姓名
+        if purchase_data.get('admin_id') and purchase_data['admin_id'] > 0:
+            from module_admin.dao.user_dao import UserDao
+            admin_result = await UserDao.get_user_by_id(query_db, purchase_data['admin_id'])
+            if admin_result and admin_result.get('user_basic_info'):
+                purchase_data['adminName'] = admin_result['user_basic_info'].nick_name or admin_result['user_basic_info'].user_name
+        
+        # 合同制定人姓名
+        if purchase_data.get('prepared_uid') and purchase_data['prepared_uid'] > 0:
+            from module_admin.dao.user_dao import UserDao
+            prepared_result = await UserDao.get_user_by_id(query_db, purchase_data['prepared_uid'])
+            if prepared_result and prepared_result.get('user_basic_info'):
+                purchase_data['preparedName'] = prepared_result['user_basic_info'].nick_name or prepared_result['user_basic_info'].user_name
+        
+        # 合同签订人姓名
+        if purchase_data.get('sign_uid') and purchase_data['sign_uid'] > 0:
+            from module_admin.dao.user_dao import UserDao
+            sign_result = await UserDao.get_user_by_id(query_db, purchase_data['sign_uid'])
+            if sign_result and sign_result.get('user_basic_info'):
+                purchase_data['signName'] = sign_result['user_basic_info'].nick_name or sign_result['user_basic_info'].user_name
+        
+        # 合同保管人姓名
+        if purchase_data.get('keeper_uid') and purchase_data['keeper_uid'] > 0:
+            from module_admin.dao.user_dao import UserDao
+            keeper_result = await UserDao.get_user_by_id(query_db, purchase_data['keeper_uid'])
+            if keeper_result and keeper_result.get('user_basic_info'):
+                purchase_data['keeperName'] = keeper_result['user_basic_info'].nick_name or keeper_result['user_basic_info'].user_name
+        
+        # 部门名称
+        if purchase_data.get('did') and purchase_data['did'] > 0:
+            from module_admin.dao.dept_dao import DeptDao
+            dept_info = await DeptDao.get_dept_by_id(query_db, purchase_data['did'])
+            if dept_info:
+                purchase_data['deptName'] = dept_info.dept_name
         
         result = PurchaseModel(**purchase_data)
         return result
+
+    @classmethod
+    async def archive_purchase_services(
+            cls, request: Request, query_db: AsyncSession, purchase_id: int, current_user_id: int
+    ) -> CrudResponseModel:
+        """
+        归档采购合同 service
+
+        :param request: Request 对象
+        :param query_db: orm 对象
+        :param purchase_id: 采购合同 ID
+        :param current_user_id: 当前用户 ID（归档人）
+        :return: 归档结果
+        """
+        try:
+            # 检查合同是否存在
+            existing_purchase = await PurchaseDao.get_by_id(query_db, purchase_id)
+            if not existing_purchase:
+                raise ServiceException(message='采购合同不存在')
+            
+            # 检查是否已经归档
+            if existing_purchase.archive_time and existing_purchase.archive_time > 0:
+                raise ServiceException(message='该合同已归档，无需重复操作')
+            
+            # 检查是否已中止或作废
+            if existing_purchase.stop_time and existing_purchase.stop_time > 0:
+                raise ServiceException(message='该合同已中止，无法归档')
+            
+            if existing_purchase.void_time and existing_purchase.void_time > 0:
+                raise ServiceException(message='该合同已作废，无法归档')
+            
+            # 执行归档
+            archive_time = int(datetime.now().timestamp())
+            result = await PurchaseDao.archive_purchase(query_db, purchase_id, current_user_id, archive_time)
+            
+            if result > 0:
+                logger.info(f'采购合同归档成功 - ID: {purchase_id}, 归档人: {current_user_id}')
+                return CrudResponseModel(is_success=True, message='归档成功')
+            else:
+                raise ServiceException(message='归档失败')
+        except ServiceException:
+            raise
+        except Exception as e:
+            await query_db.rollback()
+            logger.error(f'采购合同归档失败: {str(e)}', exc_info=True)
+            raise e
 

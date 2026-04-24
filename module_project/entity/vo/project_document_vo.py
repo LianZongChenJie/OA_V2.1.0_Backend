@@ -21,6 +21,13 @@ class ProjectDocumentModel(BaseModel):
     create_time: int | None = Field(default=None, description='创建时间')
     update_time: int | None = Field(default=None, description='更新时间')
     delete_time: int | None = Field(default=None, description='删除时间')
+    
+    # 关联字段
+    project_name: str | None = Field(default=None, description='项目名称')
+    admin_name: str | None = Field(default=None, description='创建人姓名')
+    user_name: str | None = Field(default=None, description='创建人用户名')
+    create_time_str: str | None = Field(default=None, description='创建时间字符串')
+    update_time_str: str | None = Field(default=None, description='更新时间字符串')
 
     @Xss(field_name='title', message='文档标题不能包含脚本字符')
     @NotBlank(field_name='title', message='文档标题不能为空')
