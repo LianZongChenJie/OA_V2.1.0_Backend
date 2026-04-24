@@ -18,6 +18,9 @@ class RewardsDao:
     async def get_page_list(cls, db: AsyncSession, query_object: OaRewardsPageQueryModel,
                             data_scope_sql: ColumnElement,
                             is_page: bool = False) -> PageModel | list[list[dict[str, Any]]]:
+        if query_object.begin_time and query_object.end_time:
+            query_object.begin_time = query_object.begin_time + ' 00:00:00'
+            query_object.end_time = query_object.end_time + ' 23:59:59'
         user = aliased(SysUser, name='user')
         query = (select(OaRewards,SysRewardsCate.title.label('cate_name'),SysUser.nick_name.label('user_name'), user.nick_name.label('admin_name'))
                  .join(SysRewardsCate, OaRewards.rewards_cate == SysRewardsCate.id,isouter=True)\
@@ -30,8 +33,8 @@ class RewardsDao:
                             OaRewards.uid == query_object.uid if query_object.uid else True,
                             OaRewards.thing.like('%' + query_object.thing + '%') if query_object.thing else True,
                             OaRewards.rewards_time.between(
-                                int(datetime.strptime(query_object.begin_time, "%Y-%m-%d").timestamp()),
-                                int(datetime.strptime(query_object.end_time, "%Y-%m-%d").timestamp()),
+                                int(datetime.strptime(query_object.begin_time, "%Y-%m-%d %H:%M:%S").timestamp()),
+                                int(datetime.strptime(query_object.end_time, "%Y-%m-%d %H:%M:%S").timestamp()),
                             ) if query_object.begin_time and query_object.end_time else True,
                         data_scope_sql,
             ).order_by(desc(OaRewards.create_time)))

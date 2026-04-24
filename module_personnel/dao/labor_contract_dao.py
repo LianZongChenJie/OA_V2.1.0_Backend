@@ -16,6 +16,9 @@ class LaborContractDao:
     async def get_page_list(cls, db: AsyncSession, query_object: OaLaborContractPageQueryModel,
                             data_scope_sql: ColumnElement,
                             is_page: bool = False) -> PageModel | list[list[dict[str, Any]]]:
+        if query_object.begin_time and query_object.end_time:
+            query_object.begin_time = query_object.begin_time + ' 00:00:00'
+            query_object.end_time = query_object.end_time + ' 23:59:59'
         user = aliased(SysUser, name='user')
         query = (select(OaLaborContract,SysUser.nick_name.label('user_name'),user.nick_name.label('admin_name'),OaEnterprise.title.label('enterprise_name'))
                  .join(SysUser, OaLaborContract.uid == SysUser.user_id, isouter=True)
@@ -28,8 +31,8 @@ class LaborContractDao:
                             OaLaborContract.types == query_object.types if query_object.types else True,
                             OaLaborContract.uid == query_object.uid if query_object.uid else True,
                             OaLaborContract.sign_time.between(
-                                int(datetime.strptime(query_object.begin_time, "%Y-%m-%d").timestamp()),
-                                int(datetime.strptime(query_object.end_time, "%Y-%m-%d").timestamp()),
+                                int(datetime.strptime(query_object.begin_time, "%Y-%m-%d %H:%M:%S").timestamp()),
+                                int(datetime.strptime(query_object.end_time, "%Y-%m-%d %H:%M:%S").timestamp()),
                             ) if query_object.begin_time and query_object.end_time else True,
 
                         data_scope_sql,

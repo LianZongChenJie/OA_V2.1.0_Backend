@@ -19,6 +19,9 @@ class CareDao:
     async def get_page_list(cls, db: AsyncSession, query_object: OaCarePageQueryModel,
                             data_scope_sql: ColumnElement,
                             is_page: bool = False) -> PageModel | list[list[dict[str, Any]]]:
+        if query_object.begin_time and query_object.end_time:
+            query_object.begin_time = query_object.begin_time + ' 00:00:00'
+            query_object.end_time = query_object.end_time + ' 23:59:59'
         user = aliased(SysUser, name='user')
         query = (select(OaCare, SysUser.nick_name.label('user_name'),user.nick_name.label('admin_name'),SysCareCate.title.label('cate_name'))
                  .join(SysUser, OaCare.uid == SysUser.user_id, isouter=True)
@@ -29,10 +32,10 @@ class CareDao:
                             OaCare.status == query_object.status if query_object.status else True,
                             OaCare.care_cate == query_object.care_cate if query_object.care_cate else True,
                             OaCare.uid == query_object.uid if query_object.uid else True,
-                            OaCare.thing == query_object.thing if query_object.thing else True,
+                            OaCare.thing.like('%' + query_object.thing + '%') if query_object.thing else True,
                             OaCare.care_time.between(
-                                int(datetime.strptime(query_object.begin_time, "%Y-%m-%d").timestamp()),
-                                int(datetime.strptime(query_object.end_time, "%Y-%m-%d").timestamp()),
+                                int(datetime.strptime(query_object.begin_time, "%Y-%m-%d %H:%M:%S").timestamp()),
+                                int(datetime.strptime(query_object.end_time, "%Y-%m-%d %H:%M:%S").timestamp()),
                             ) if query_object.begin_time and query_object.end_time else True,
 
                         data_scope_sql,
