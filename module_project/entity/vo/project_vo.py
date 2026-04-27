@@ -93,6 +93,7 @@ class ProjectModel(BaseModel):
     range_time: str | None = Field(default=None, description='时间范围字符串')
     delay: int | None = Field(default=None, description='延迟天数')
     tasks_total: int | None = Field(default=None, description='任务总数')
+    tasks_ongoing: int | None = Field(default=None, description='进行中任务数')
     tasks_finish: int | None = Field(default=None, description='已完成任务数')
     tasks_unfinish: int | None = Field(default=None, description='未完成任务数')
     tasks_pensent: str | None = Field(default=None, description='任务完成百分比')

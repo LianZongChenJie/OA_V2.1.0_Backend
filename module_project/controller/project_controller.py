@@ -32,7 +32,6 @@ project_controller = APIRouterPro(
     '/list',
     summary='获取项目分页列表接口',
     description='用于获取项目分页列表',
-    response_model=PageResponseModel[ProjectModel],
     dependencies=[UserInterfaceAuthDependency('project:list')],
 )
 async def get_project_list(
@@ -54,7 +53,7 @@ async def get_project_list(
     )
     logger.info('获取成功')
 
-    return ResponseUtil.success(model_content=project_page_query_result)
+    return ResponseUtil.success(dict_content=project_page_query_result)
 
 
 @project_controller.post(

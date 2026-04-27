@@ -32,7 +32,6 @@ seal_cate_controller = APIRouterPro(
     '/list',
     summary='获取印章类别分页列表接口',
     description='用于获取印章类别分页列表',
-    response_model=PageResponseModel[SealCateModel],
     dependencies=[UserInterfaceAuthDependency('system:sealCate:list')],
 )
 async def get_system_seal_cate_list(
@@ -46,7 +45,7 @@ async def get_system_seal_cate_list(
     )
     logger.info('获取成功')
 
-    return ResponseUtil.success(model_content=seal_cate_page_query_result)
+    return ResponseUtil.success(dict_content=seal_cate_page_query_result)
 
 
 @seal_cate_controller.post(

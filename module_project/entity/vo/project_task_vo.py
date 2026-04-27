@@ -42,6 +42,7 @@ class ProjectTaskModel(BaseModel):
     priority_name: str | None = Field(default=None, description='优先级名称')
     status_name: str | None = Field(default=None, description='状态名称')
     work_name: str | None = Field(default=None, description='工作类型名称')
+    assist_admin_names: str | None = Field(default=None, description='协助人员姓名列表（逗号分隔）')
     end_time_str: str | None = Field(default=None, description='结束时间字符串')
     create_time_str: str | None = Field(default=None, description='创建时间字符串')
     update_time_str: str | None = Field(default=None, description='更新时间字符串')
@@ -138,3 +139,14 @@ class DeleteProjectTaskModel(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel)
 
     id: int = Field(description='需要删除的任务 ID')
+
+
+class ChangeStatusProjectTaskModel(BaseModel):
+    """
+    切换任务状态模型
+    """
+
+    model_config = ConfigDict(alias_generator=to_camel)
+
+    id: int = Field(description='任务 ID')
+    status: Literal[1, 2, 3] = Field(description='目标状态：1 待办的，2 进行中，3 已完成')

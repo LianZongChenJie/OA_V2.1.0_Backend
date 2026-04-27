@@ -27,7 +27,7 @@ class SealCateService:
     @classmethod
     async def get_seal_cate_list_services(
             cls, query_db: AsyncSession, query_object: SealCatePageQueryModel, is_page: bool = False
-    ) -> PageModel | list[dict[str, Any]]:
+    ) -> dict | list[dict[str, Any]]:
         """
         获取印章类别列表信息 service
 
@@ -38,7 +38,106 @@ class SealCateService:
         """
         seal_cate_list_result = await SealCateDao.get_seal_cate_list(query_db, query_object, is_page)
 
-        return seal_cate_list_result
+        # 如果是 PageModel 对象，转换为字典
+        if isinstance(seal_cate_list_result, PageModel):
+            seal_cate_dict = {
+                'rows': seal_cate_list_result.rows,
+                'pageNum': seal_cate_list_result.page_num,
+                'pageSize': seal_cate_list_result.page_size,
+                'total': seal_cate_list_result.total,
+                'hasNext': seal_cate_list_result.has_next,
+            }
+        elif isinstance(seal_cate_list_result, dict):
+            seal_cate_dict = seal_cate_list_result
+        else:
+            # 列表类型，直接处理
+            from utils.time_format_util import timestamp_to_datetime
+            formatted_list = []
+            for item in seal_cate_list_result:
+                if isinstance(item, dict):
+                    formatted_item = cls._format_time_fields(item)
+                    camel_item = {
+                        'id': formatted_item.get('id'),
+                        'title': formatted_item.get('title'),
+                        'dids': formatted_item.get('dids'),
+                        'keepUid': formatted_item.get('keepUid'),
+                        'status': formatted_item.get('status'),
+                        'remark': formatted_item.get('remark'),
+                        'createTime': formatted_item.get('createTime'),
+                        'updateTime': formatted_item.get('updateTime'),
+                        'deptNames': formatted_item.get('deptNames'),
+                        'keeperName': formatted_item.get('keeperName'),
+                    }
+                    formatted_list.append(camel_item)
+                else:
+                    formatted_list.append(item)
+            return formatted_list
+
+        # 处理分页数据中的每一行
+        from utils.time_format_util import timestamp_to_datetime
+        formatted_rows = []
+        for row in seal_cate_dict['rows']:
+            if isinstance(row, dict):
+                formatted_row = cls._format_time_fields(row)
+                # 处理部门名称：将数组转换为逗号分隔的字符串
+                dept_names = formatted_row.get('deptNames')
+                if isinstance(dept_names, list):
+                    dept_names_str = ','.join(dept_names) if dept_names else ''
+                else:
+                    dept_names_str = dept_names or ''
+                
+                # 只保留驼峰命名字段
+                camel_row = {
+                    'id': formatted_row.get('id'),
+                    'title': formatted_row.get('title'),
+                    'dids': formatted_row.get('dids'),
+                    'keepUid': formatted_row.get('keepUid'),
+                    'status': formatted_row.get('status'),
+                    'remark': formatted_row.get('remark'),
+                    'createTime': formatted_row.get('createTime'),
+                    'updateTime': formatted_row.get('updateTime'),
+                    'deptNames': dept_names_str,
+                    'keeperName': formatted_row.get('keeperName'),
+                }
+                formatted_rows.append(camel_row)
+        
+        # 构建最终返回结果
+        result = {
+            'rows': formatted_rows,
+            'pageNum': seal_cate_dict.get('pageNum'),
+            'pageSize': seal_cate_dict.get('pageSize'),
+            'total': seal_cate_dict.get('total'),
+            'hasNext': seal_cate_dict.get('hasNext'),
+        }
+        
+        return result
+
+    @classmethod
+    def _format_time_fields(cls, data: dict) -> dict:
+        """
+        格式化字典中的时间字段
+
+        :param data: 原始字典
+        :return: 格式化后的字典
+        """
+        from utils.time_format_util import timestamp_to_datetime
+        
+        formatted = data.copy()
+        
+        # 需要格式化的时间字段列表（包括驼峰和下划线）
+        time_fields = ['create_time', 'update_time', 'createTime', 'updateTime']
+        
+        for field in time_fields:
+            if field in formatted:
+                value = formatted[field]
+                # 如果值为 None、0 或空，设置为空字符串
+                if value is None or value == 0:
+                    formatted[field] = ''
+                else:
+                    # 格式化时间戳为日期时间字符串
+                    formatted[field] = timestamp_to_datetime(value, '%Y-%m-%d %H:%M:%S')
+        
+        return formatted
 
     @classmethod
     async def check_seal_cate_title_unique_services(

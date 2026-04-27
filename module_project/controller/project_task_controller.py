@@ -16,6 +16,7 @@ from module_dashboard.entity.vo.schedule_vo import OaScheduleBaseModel, OaSchedu
 from module_dashboard.service.schedule_service import ScheduleService
 from module_project.entity.vo.project_task_vo import (
     AddProjectTaskModel,
+    ChangeStatusProjectTaskModel,
     DeleteProjectTaskModel,
     EditProjectTaskModel,
     ProjectTaskModel,
@@ -234,6 +235,26 @@ async def get_project_task_list(
     result = await query_db.execute(sql, params)
     rows = result.mappings().all()
     
+    # 收集所有需要查询的协助人员ID
+    all_assist_ids = set()
+    for row in rows:
+        assist_ids_str = row.get('assistAdminIds', '')
+        if assist_ids_str:
+            ids = [int(uid.strip()) for uid in str(assist_ids_str).split(',') if uid.strip() and uid.strip().isdigit()]
+            all_assist_ids.update(ids)
+    
+    # 批量查询协助人员姓名
+    assist_user_map = {}
+    if all_assist_ids:
+        from sqlalchemy import text as sql_text
+        placeholders = ','.join([f':uid_{i}' for i in range(len(all_assist_ids))])
+        user_sql = sql_text(f"SELECT user_id, nick_name, user_name FROM sys_user WHERE user_id IN ({placeholders})")
+        user_params = {f'uid_{i}': uid for i, uid in enumerate(all_assist_ids)}
+        user_result = await query_db.execute(user_sql, user_params)
+        user_rows = user_result.mappings().all()
+        for user_row in user_rows:
+            assist_user_map[user_row['user_id']] = user_row['nick_name'] or user_row['user_name']
+    
     # 转换为字典列表并处理数据类型
     task_list = []
     for row in rows:
@@ -253,6 +274,15 @@ async def get_project_task_list(
         # 处理字符串默认值
         if 'assistAdminIds' not in task_dict or task_dict['assistAdminIds'] is None:
             task_dict['assistAdminIds'] = ""
+        
+        # 处理协助人员姓名列表
+        assist_ids_str = task_dict.get('assistAdminIds', '')
+        if assist_ids_str:
+            assist_ids = [int(uid.strip()) for uid in str(assist_ids_str).split(',') if uid.strip() and uid.strip().isdigit()]
+            assist_names = [assist_user_map.get(uid, f'未知({uid})') for uid in assist_ids]
+            task_dict['assistAdminNames'] = ','.join(assist_names)
+        else:
+            task_dict['assistAdminNames'] = ''
         
         task_list.append(task_dict)
     
@@ -757,6 +787,37 @@ async def adjust_task_hour(
         await query_db.rollback()
         logger.error(f'修改工时失败: {str(e)}', exc_info=True)
         return ResponseUtil.error(msg=f'修改失败：{str(e)}')
+
+
+@project_task_controller.put(
+    '/changeStatus',
+    summary='切换任务状态接口',
+    description='用于切换任务状态：1 待办的 → 2 进行中 → 3 已完成',
+    response_model=ResponseBaseModel,
+    dependencies=[UserInterfaceAuthDependency('project:task:edit')],
+)
+@Log(title='项目任务管理', business_type=BusinessType.UPDATE)
+async def change_project_task_status(
+        request: Request,
+        status_data: Annotated[ChangeStatusProjectTaskModel, Body()],
+        query_db: Annotated[AsyncSession, DBSessionDependency()],
+        current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
+) -> Response:
+    """
+    切换任务状态
+    
+    :param request: Request 对象
+    :param status_data: 状态切换数据（包含任务ID和目标状态）
+    :param query_db: 数据库会话
+    :param current_user: 当前用户
+    :return: 操作结果
+    """
+    result = await ProjectTaskService.change_status_project_task_services(
+        request, query_db, status_data.id, status_data.status
+    )
+    logger.info(result.message)
+
+    return ResponseUtil.success(msg=result.message)
 
 
 @project_task_controller.delete(
