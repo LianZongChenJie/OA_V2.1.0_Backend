@@ -44,10 +44,16 @@ class WorkService:
                     row['period'] = format_date(row['start_date'])
                 elif row['types'] == 2:
                     row['typesName'] = '周报'
-                    row['period'] = format_date(row['start_date']) + '~' + format_date(row['end_date'])
+                    if row['start_date'] and row['end_date']:
+                        row['period'] = format_date(row['start_date']) + '~' + format_date(row['end_date'])
+                    else:
+                        row['period'] = ''
                 elif row['types'] == 3:
                     row['typesName'] = '月报'
-                    row['period'] = format_date(row['start_date']) + '~' + format_date(row['end_date'])
+                    if row['start_date'] and row['end_date']:
+                        row['period'] = format_date(row['start_date']) + '~' + format_date(row['end_date'])
+                    else:
+                        row['period'] = ''
                 else:
                     row['typesName'] = ''
                     row['period'] = ''
