@@ -18,6 +18,19 @@ class InvoiceDao:
                             data_scope_sql: ColumnElement,
                             is_page: bool = False) -> PageModel | list[list[dict[str, Any]]]:
 
+        # 创建子查询获取每个发票的最新回款时间
+        latest_income_subq = (
+            select(
+                OaInvoiceIncome.invoice_id,
+                func.max(OaInvoiceIncome.enter_time).label('latest_enter_time'),
+                # 可选：同时获取最新回款的金额
+                func.max(OaInvoiceIncome.amount).label('latest_amount')
+            )
+            .where(OaInvoiceIncome.status == 1)  # 只统计有效记录
+            .group_by(OaInvoiceIncome.invoice_id)
+            .subquery('latest_income')
+        )
+
         # 构建基础查询
         admin = aliased(SysUser, name='admin')
         open = aliased(SysUser, name='open')
@@ -29,7 +42,11 @@ class InvoiceDao:
                         open.nick_name.label('open_name'),
                         dept.dept_name.label('dept_name'),
                         enter.title.label('enter_name'),
-                        check.nick_name.label('check_name')
+                        check.nick_name.label('check_name'),
+                        # 添加最新回款时间字段
+                        func.coalesce(latest_income_subq.c.latest_enter_time, 0).label('latest_enter_time'),
+                        # 可选：添加最新回款金额
+                        func.coalesce(latest_income_subq.c.latest_amount, 0).label('latest_amount')
                         )
 
         .join(admin, OaInvoice.admin_id == admin.user_id, isouter=True)
@@ -37,6 +54,8 @@ class InvoiceDao:
          .join(dept, OaInvoice.did == dept.dept_id, isouter=True)
          .join(enter, OaInvoice.invoice_subject == enter.id, isouter=True)
          .join(check, func.find_in_set(check.user_id, OaInvoice.check_uids), isouter=True)
+         # 关联最新回款子查询
+         .outerjoin(latest_income_subq, OaInvoice.id == latest_income_subq.c.invoice_id)
                  )
 
         # 构建条件列表
@@ -53,6 +72,11 @@ class InvoiceDao:
             conditions.append(OaInvoice.check_time.between(start_timestamp, end_timestamp))
 
         # 根据不同的查询条件添加特定条件
+        if query_object.invoice_type ==0:
+            conditions.append(OaInvoice.invoice_type == query_object.invoice_type)
+        else:
+            conditions.append(OaInvoice.invoice_type != 0)
+
         if query_object.admin_id:
             conditions.append(OaInvoice.admin_id == query_object.admin_id)
 
@@ -65,6 +89,9 @@ class InvoiceDao:
 
         elif query_object.check_copy_uids:
             conditions.append(func.find_in_set(query_object.check_copy_uids, OaInvoice.check_copy_uids) > 0)
+
+        elif query_object.invoice_type:
+            conditions.append(OaInvoice.invoice_type == query_object.invoice_type)
 
         else:
             # 没有特定条件时，使用 OR 组合
@@ -127,6 +154,12 @@ class InvoiceDao:
         return result.rowcount
 
     @classmethod
+    async def update_by_entity(cls,db: AsyncSession, model: OaInvoice):
+        result= await db.merge(model)
+        await db.commit()
+        return result
+
+    @classmethod
     async def get_info_by_id(cls, db: AsyncSession, id: int):
         admin = aliased(SysUser, name='admin')
         open = aliased(SysUser, name='open')
@@ -164,8 +197,10 @@ class InvoiceDao:
     @classmethod
     async def open_status(cls, db: AsyncSession, query_model: OaInvoiceBaseModel):
         result = await db.execute(update(OaInvoice).values(
+            code = query_model.code,
             open_time=query_model.open_time,
             open_status=query_model.open_status,
+            delivery=query_model.delivery,
             open_admin_id=query_model.open_admin_id
         ).where(OaInvoice.id == query_model.id))
         await db.commit()
@@ -271,4 +306,28 @@ class InvoiceDao:
         result = await db.execute(query)
         count = result.scalar()
         return count
+
+    @classmethod
+    async def get_invoices_incomes_detail(cls, db: AsyncSession, query_model: OaInvoicePageQueryModel, data_scope_sql: ColumnElement,
+                            is_page: bool = False) -> PageModel | list[list[dict[str, Any]]]:
+        query = (select(OaInvoiceIncome,
+                       OaInvoice.invoice_title.label('invoice_title'),
+                       OaInvoice.open_status.label('open_status'),
+                       OaInvoice.create_time.label('apply_time'),
+                        SysUser.nick_name.label('user_name'),
+                        SysDept.dept_name.label('dept_name'))
+        .join(OaInvoice,OaInvoice.id == OaInvoiceIncome.invoice_id, isouter=True)
+        .join(SysUser,SysUser.user_id == OaInvoice.admin_id, isouter=True)
+        .join(SysDept,SysDept.dept_id == OaInvoice.did, isouter=True)
+        .where(
+            OaInvoiceIncome.invoice_id == query_model.id if query_model.id else True,
+            OaInvoice.invoice_title.like(f'%{query_model.invoice_title}%') if query_model.invoice_title else True,
+            OaInvoiceIncome.status == 1,
+            data_scope_sql,
+        ))
+        # 分页查询
+        page_list: PageModel | list[list[dict[str, Any]]] = await PageUtil.paginate_dict(
+            db, query, query_model.page_num, query_model.page_size, is_page
+        )
+        return page_list
 

@@ -164,21 +164,22 @@ class InvoiceService:
     async def open_status(cls, db: AsyncSession, data: OaInvoiceBaseModel):
         try:
             info = await InvoiceDao.get_info_by_id(db, data.id)
-            if info['OaInvoice'].enter_status ==1:
-                return CrudResponseModel(is_success=False, message='仅支持全部回款或未回款！')
-            data.open_time = int(datetime.now().timestamp())
-            if data.open_status == 2:
-                income_count = await InvoiceDao.income_income_count(db, data.id)
-                if income_count > 0:
-                    return CrudResponseModel(is_success=False, message='存在回款记录，禁止作废')
-            if data.open_time:
-                data.open_time = int_time(data.open_time)
+            if info['OaInvoice'].enter_status !=2:
+                return CrudResponseModel(is_success=False, message='仅支持全部回款后执行此操作！')
+            if data.open_status == 1:
+                if data.open_time:
+                    data.open_time = int_time(data.open_time)
+            else:
+                data.code = ''
+                data.open_time = 0
+                data.open_admin_id = 0
+                data.delivery = ''
             await InvoiceDao.open_status(db, data)
             await db.commit()
             return CrudResponseModel(is_success=True, message='操作成功！')
         except Exception as e:
             await db.rollback()
-            # raise e
+            raise e
             return CrudResponseModel(is_success=False, message='操作失败')
 
 # -------------------------- 以上为发票到账记录0_0 ----------------------------------
@@ -187,7 +188,7 @@ class InvoiceService:
     async def income_add(cls, db: AsyncSession, data_list: list[OaInvoiceIncome], userId: int):
         try:
             invoice = await InvoiceDao.get_info_by_id(db, data_list[0].invoice_id)
-            invoice : OaInvoiceBaseModel =  OaInvoiceBaseModel.model_validate(invoice['OaInvoice'])
+            invoice  = invoice['OaInvoice']
             old_amount = invoice.amount
             enter_time = int(datetime.now().timestamp())
             create_time = int(datetime.now().timestamp())
@@ -197,6 +198,7 @@ class InvoiceService:
                 data.enter_time = enter_time
                 data.admin_id =userId
                 data.create_time = create_time
+            amount = amount + invoice.enter_amount
             await InvoiceDao.income_add(db, data_list)
             invoice.enter_amount = amount
             invoice.enter_time = enter_time
@@ -207,7 +209,7 @@ class InvoiceService:
             else:
                 invoice.enter_status = 2
             invoice.update_time = int(datetime.now().timestamp())
-            await InvoiceDao.update(db, invoice)
+            await InvoiceDao.update_by_entity(db, invoice)
             await db.commit()
             return CrudResponseModel(is_success=True, message='操作成功')
         except Exception as e:
@@ -232,10 +234,12 @@ class InvoiceService:
                 if inc.enter_time > enter_time:
                     enter_time = inc.enter_time
             invoice = await InvoiceDao.get_info_by_id(db, invoice_id)
-            invoice : OaInvoiceBaseModel =  OaInvoiceBaseModel.model_validate(invoice)
+            invoice : OaInvoiceBaseModel =  OaInvoiceBaseModel.model_validate(invoice['OaInvoice'])
             invoice.enter_amount = amount
             invoice.enter_time = enter_time
-            if incomes:
+            if invoice.enter_amount == 0:
+                invoice.enter_status = 0
+            elif invoice.enter_amount < 0 and invoice.enter_amount < invoice.amount:
                 invoice.enter_status = 1
             else:
                 invoice.enter_status = 2
@@ -269,4 +273,20 @@ class InvoiceService:
             await db.rollback()
             raise e
 
+    @classmethod
+    async def get_invoice_incomes_details(cls, db: AsyncSession, query_model: OaInvoicePageQueryModel, data_scope_sql: ColumnElement, is_page: bool = False) -> list[list[dict[str, Any]]]:
+        try:
+            details = await InvoiceDao.get_invoices_incomes_detail(db, query_model, data_scope_sql, is_page)
+            if len(details.rows) > 0:
+                row_list = []
+                for row in details.rows:
+                    row = dict(row)
+                    row.update(row['OaInvoiceIncome'].to_dict())
+                    row.pop('OaInvoiceIncome')
+                    row_list.append(ModelConverter.convert_to_camel_case(row))
+                details.rows = ModelConverter.convert_to_camel_case(row_list)
+            return details
+        except Exception as e:
+            await db.rollback()
+            raise e
 

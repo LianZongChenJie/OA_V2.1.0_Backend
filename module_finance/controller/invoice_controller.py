@@ -10,7 +10,7 @@ from common.aspect.interface_auth import UserInterfaceAuthDependency
 from common.aspect.pre_auth import PreAuthDependency, CurrentUserDependency
 from common.enums import BusinessType
 from common.router import APIRouterPro
-from module_finance.entity.do.invoice_do import OaInvoice
+from module_finance.entity.do.invoice_do import OaInvoice, OaInvoiceIncome
 from module_finance.entity.vo.invoice_vo import OaInvoiceBaseModel, OaInvoicePageQueryModel, OaInvoiceDetailModel, \
     OaInvoiceIncomeBaseModel
 from module_finance.service.invoice_service import InvoiceService
@@ -234,4 +234,20 @@ async def get_income_detail(
 )->Response:
     result =  await InvoiceService.income_get_incomes(query_db, invoice_id)
     return ResponseUtil.success(data=result)
+
+@finance_invoice_controller.get(
+    '/income/detail',
+    summary='获取发票汇款记录',
+    description='获取发票汇款记录',
+    response_model=None,
+    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:invoice:update')],
+)
+async def get_incomes_detail(
+        request: Request,
+        query_db: Annotated[AsyncSession, DBSessionDependency()],
+        query_object: Annotated[OaInvoicePageQueryModel, Query()],
+        data_scope_sql: Annotated[ColumnElement, DataScopeDependency(OaInvoiceIncome)],
+)->Response:
+    result =  await InvoiceService.get_invoice_incomes_details(query_db, query_object, data_scope_sql, True)
+    return ResponseUtil.success(model_content=result)
 
