@@ -25,6 +25,40 @@ dashboard_work_controller = APIRouterPro(
     prefix='/oa/work', order_num=4, tags=['个人办公-工作汇报'], dependencies=[PreAuthDependency()]
 )
 
+
+@dashboard_work_controller.get(
+    "/list",
+    summary='获取工作汇报列表',
+    description='用于获取工作汇报分页列表',
+    response_model=None,
+    dependencies=[UserInterfaceAuthDependency('oa:work:list')],
+)
+async def get_work_list(
+        query_db: Annotated[AsyncSession, DBSessionDependency()],
+        query_object: Annotated[OaWorkPageQueryModel, Query()],
+        data_scope_sql: Annotated[ColumnElement, DataScopeDependency(OaWork)],
+        current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
+) -> Response:
+    """
+    获取工作汇报列表
+    send=1: 我发出的汇报
+    send=0: 我接收的汇报
+    """
+    try:
+        if query_object.send == 1:
+            query_object.admin_id = current_user.user.user_id
+        else:
+            query_object.to_uids = str(current_user.user.user_id)
+        result = await WorkService.get_work_list_service(query_db, query_object, data_scope_sql, True)
+        logger.info('获取工作汇报列表成功')
+        return ResponseUtil.success(model_content=result)
+    except ServiceException as e:
+        logger.error(f'获取工作汇报列表失败：{e.message}', exc_info=True)
+        return ResponseUtil.error(msg=e.message or '操作失败')
+    except Exception as e:
+        logger.exception(f'获取工作汇报列表失败：{str(e)}')
+        return ResponseUtil.error(msg=str(e) or '系统内部错误，请联系管理员')
+
 @dashboard_work_controller.get(
     "/datalist",
     summary='获取工作汇报列表',
@@ -49,8 +83,10 @@ async def get_work_list(
         
         if query_object.send == 1:
             result = await WorkService.get_send_list_service(query_db, query_object, data_scope_sql, False)
-        else:
+        elif query_object.send == 0:
             result = await WorkService.get_accept_list_service(query_db, query_object, data_scope_sql, False)
+        else:
+            result = await WorkService.get_send_list_service(query_db, query_object, data_scope_sql, False)
         
         logger.info('获取工作汇报列表成功')
         return ResponseUtil.success(data=result)

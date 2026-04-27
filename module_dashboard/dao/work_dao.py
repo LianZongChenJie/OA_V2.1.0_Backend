@@ -4,6 +4,7 @@ from sqlalchemy.orm import aliased
 from sqlalchemy.sql import ColumnElement, func
 from common.vo import PageModel
 from module_admin.entity.do.oa_admin_do import OaAdmin
+from module_admin.entity.do.user_do import SysUser
 from utils.page_util import PageUtil
 from module_dashboard.entity.vo.work_vo import OaWorkBaseModel, OaWorkPageQueryModel
 from module_dashboard.entity.do.work_do import OaWork
@@ -13,6 +14,58 @@ from datetime import datetime
 
 
 class WorkDao:
+    @classmethod
+    async def get_work_list(cls, db: AsyncSession, query_object: OaWorkPageQueryModel,
+                            data_scope_sql: ColumnElement,
+                            is_page: bool = False) -> PageModel | list[dict[str, Any]]:
+        """
+        获取我发出的汇报列表
+        """
+        copy = aliased(SysUser, name='copy')
+        query = (select(OaWork,
+                       SysUser.nick_name.label('admin_name')
+                       )
+                 .join(SysUser, SysUser.user_id == OaWork.admin_id, isouter=True)
+                 )
+
+
+        conditions = []
+        conditions.append(OaWork.delete_time == 0)
+        if query_object.admin_id:
+            conditions.append(OaWork.admin_id == query_object.admin_id)
+
+        if query_object.to_uids:
+            conditions.append(func.find_in_set(query_object.to_uids, OaWork.to_uids))
+
+        if query_object.types:
+            conditions.append(OaWork.types == query_object.types)
+
+        if query_object.keywords:
+            conditions.append(OaWork.works.like(f'%{query_object.keywords}%'))
+
+        if query_object.diff_time:
+            try:
+                time_range = query_object.diff_time.split('~')
+                if len(time_range) == 2:
+                    start_timestamp = int(datetime.fromisoformat(time_range[0]).timestamp())
+                    end_timestamp = int(datetime.fromisoformat(time_range[1] + ' 23:59:59').timestamp())
+                    conditions.append(OaWork.start_date.between(start_timestamp, end_timestamp))
+            except ValueError:
+                pass
+
+        if data_scope_sql is not None:
+            conditions.append(data_scope_sql)
+
+        if conditions:
+            query = query.where(*conditions)
+
+        query = query.order_by(asc(OaWork.start_date))
+
+        page_list: PageModel | list[dict[str, Any]] = await PageUtil.paginate_dict(
+            db, query, query_object.page_num, query_object.page_size, is_page
+        )
+        return page_list
+
     @classmethod
     async def get_send_list(cls, db: AsyncSession, query_object: OaWorkPageQueryModel,
                             data_scope_sql: ColumnElement,

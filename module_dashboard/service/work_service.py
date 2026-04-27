@@ -3,6 +3,7 @@ from sqlalchemy import select
 from typing import Any
 
 from exceptions.exception import ServiceException
+from module_admin.dao.user_dao import UserDao
 from module_dashboard.dao.work_dao import WorkDao
 from sqlalchemy.sql import ColumnElement
 from module_dashboard.entity.vo.work_vo import OaWorkBaseModel, OaWorkPageQueryModel, OaWorkQueryModel
@@ -15,6 +16,33 @@ from module_admin.entity.do.oa_admin_do import OaAdmin
 
 
 class WorkService:
+    @classmethod
+    async def get_work_list_service(cls, query_db: AsyncSession, query_object: OaWorkPageQueryModel,
+                                    data_scope_sql: ColumnElement, is_page: bool = False) -> PageModel | list[
+        dict[str, Any]]:
+        """
+        获取我发出的汇报列表
+        """
+        query_list = await WorkDao.get_work_list(query_db, query_object, data_scope_sql, is_page)
+
+        if is_page:
+            row_list = []
+            for row in query_list.rows:
+                row = dict(row)
+                row.update(row['OaWork'].to_dict())
+                row.pop('OaWork')
+                copy_uids = []
+                for id in row['to_uids'].split(','):
+                    copy_uids.append(int(id))
+                row['to_names'] = await UserDao.get_nick_name_by_user_id(query_db,copy_uids)
+                row_list.append(ModelConverter.convert_to_camel_case(row))
+            query_list.rows = row_list
+            result_list = query_list
+        else:
+            result_list = []
+            if query_list:
+                result_list = ModelConverter.list_time_format(query_list)
+        return result_list
     @classmethod
     async def get_send_list_service(cls, query_db: AsyncSession, query_object: OaWorkPageQueryModel,
                                     data_scope_sql: ColumnElement, is_page: bool = False) -> PageModel | list[dict[str, Any]]:
