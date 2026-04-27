@@ -11,9 +11,9 @@ from common.vo import PageModel, CrudResponseModel
 from datetime import datetime
 
 from utils.camel_converter import ModelConverter
-from utils.timeformat import int_time
+from utils.timeformat import int_time, format_date
 from module_admin.entity.do.oa_admin_do import OaAdmin
-
+from utils.log_util import logger
 
 class WorkService:
     @classmethod
@@ -35,6 +35,22 @@ class WorkService:
                 for id in row['to_uids'].split(','):
                     copy_uids.append(int(id))
                 row['to_names'] = await UserDao.get_nick_name_by_user_id(query_db,copy_uids)
+                if row['send_time'] != 0:
+                    row['sendStatus'] = '已发送'
+                else:
+                    row['sendStatus'] = '未发送'
+                if row['types'] == 1:
+                    row['typesName'] = '日报'
+                    row['period'] = format_date(row['start_date'])
+                elif row['types'] == 2:
+                    row['typesName'] = '周报'
+                    row['period'] = format_date(row['start_date']) + '~' + format_date(row['end_date'])
+                elif row['types'] == 3:
+                    row['typesName'] = '月报'
+                    row['period'] = format_date(row['start_date']) + '~' + format_date(row['end_date'])
+                else:
+                    row['typesName'] = ''
+                    row['period'] = ''
                 row_list.append(ModelConverter.convert_to_camel_case(row))
             query_list.rows = row_list
             result_list = query_list
@@ -197,6 +213,8 @@ class WorkService:
             
             if model.is_send:
                 update_model.send_time = update_model.update_time
+            else:
+                update_model.send_time = 0
             
             await WorkDao.update(query_db, update_model)
             
