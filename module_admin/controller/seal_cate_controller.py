@@ -135,7 +135,7 @@ async def set_system_seal_cate_status(
     '/{id}',
     summary='获取印章类别详情接口',
     description='用于获取指定印章类别的详细信息',
-    response_model=DataResponseModel[SealCateModel],
+    response_model=None,
     dependencies=[UserInterfaceAuthDependency('system:sealCate:query')],
 )
 async def query_detail_system_seal_cate(
