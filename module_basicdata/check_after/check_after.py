@@ -1,8 +1,9 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from module_finance.dao.expense_dao import ExpenseDao
+from module_finance.dao.invoice_dao import InvoiceDao
 from module_finance.dao.loan_dao import LoanDao
-from module_finance.entity.do.expense_do import OaExpense
+from datetime import datetime
 
 
 class CheckAfter:
@@ -22,7 +23,7 @@ class CheckAfter:
         if check_table == "expense":
             await cls.update_expense(db, id)
         elif check_table == "invoice":
-            pass
+            await cls.update_invoice(db, id)
         else:
             pass
 
@@ -64,4 +65,10 @@ class CheckAfter:
         :param id:
         :return:
         """
-        pass
+        invoice = await InvoiceDao.get_info_by_id(db, id)
+        invoice = invoice['OaInvoice']
+        if invoice.invoice_type == 0:
+            invoice.enter_status = 2
+            invoice.enter_time = int(datetime.now().timestamp())
+            await InvoiceDao.update_by_entity(db, invoice)
+        return
