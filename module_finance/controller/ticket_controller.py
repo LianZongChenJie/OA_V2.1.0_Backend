@@ -224,7 +224,7 @@ async def delete_payment(
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:payment:query')],
 )
-async def get_income_detail(
+async def get_payment_detail(
         request: Request,
         invoice_id: int,
         query_db: Annotated[AsyncSession, DBSessionDependency()],
@@ -232,3 +232,18 @@ async def get_income_detail(
     result =  await TicketService.ticket_get_payment(query_db, invoice_id)
     return ResponseUtil.success(data=result)
 
+@finance_invoice_controller.get(
+    "/payment/list",
+    summary='获取收票付款列表',
+    description='用于获取收票付款列表',
+    response_model=None,
+    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:payment:query')],
+)
+async def get_payment_list(
+        request: Request,
+        query_db: Annotated[AsyncSession, DBSessionDependency()],
+        query_object: Annotated[OaTicketPageQueryModel, Query()],
+        data_scope_sql: Annotated[ColumnElement, DataScopeDependency(OaTicket)],
+) -> Response:
+    result =await TicketService.ticket_get_payment_list(query_db, query_object, data_scope_sql, True)
+    return ResponseUtil.success(model_content=result)

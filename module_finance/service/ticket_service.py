@@ -31,7 +31,7 @@ class TicketService:
                 row = dict(row)
                 row.update(row['OaTicket'].to_dict())
                 row.pop('OaTicket')
-                row_list.append(row)
+                row_list.append(ModelConverter.convert_to_camel_case(row))
             query_list.rows = row_list
             result_list = ModelConverter.convert_to_camel_case(query_list)
         else:
@@ -267,4 +267,20 @@ class TicketService:
         except Exception as e:
             await db.rollback()
             raise e
-
+    @classmethod
+    async def ticket_get_payment_list(cls, db: AsyncSession, query_object: OaTicketBaseModel, data_scope_sql: ColumnElement,
+                            is_page: bool = False):
+        try:
+            query_list = await TicketDao.ticket_get_payment_list(db, query_object, data_scope_sql,is_page)
+            if is_page:
+                row_list = []
+                for row in query_list.rows:
+                    row = dict(row)
+                    row.update(row['OaTicketPayment'].to_dict())
+                    row.pop('OaTicketPayment')
+                    row_list.append(ModelConverter.convert_to_camel_case(row))
+                query_list.rows = row_list
+                return query_list
+        except Exception as e:
+            await db.rollback()
+            raise e

@@ -81,7 +81,7 @@ class OaTicketQueryModel(OaTicketBaseModel):
     """收票查询VO"""
     begin_time: str | None = Field(None, description='查询时间开始时间')
     end_time: str | None = Field(None, description='查询时间结束时间')
-    is_code: bool | None = Field(None, description='是否室有发票付款 1是，0不是')
+    is_ticket: bool | None = Field(None, description='是否室有发票付款 1是，0不是')
 
 class OaTicketPageQueryModel(OaTicketQueryModel):
 

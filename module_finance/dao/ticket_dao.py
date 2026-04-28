@@ -3,8 +3,8 @@ from sqlalchemy import select, update, desc
 from sqlalchemy.orm import aliased
 from sqlalchemy.sql import ColumnElement, func,or_
 from common.vo import PageModel
+from module_admin.entity.do.customer_do import OaCustomer
 from module_admin.entity.do.dept_do import SysDept
-from module_admin.entity.do.supplier_do import OaSupplier
 from module_admin.entity.do.user_do import SysUser
 from utils.page_util import PageUtil
 from module_finance.entity.vo.ticket_vo import OaTicketBaseModel, OaTicketPageQueryModel
@@ -19,17 +19,17 @@ class TicketDao:
                             is_page: bool = False) -> PageModel | list[list[dict[str, Any]]]:
 
         # 构建基础查询
-        supplier = aliased(OaSupplier, name='supplier')
+        customer = aliased(OaCustomer, name='customer')
         admin = aliased(SysUser, name='admin')
         dept = aliased(SysDept, name='dept')
         check = aliased(SysUser, name='check')
         query = (select(OaTicket,
-                       supplier.title.label('supplier_name'),
-                       admin.user_name.label('admin_name'),
+                       customer.name.label('customer_name'),
+                       admin.nick_name.label('admin_name'),
                        dept.dept_name.label('dept_name'),
-                       check.user_name.label('check_name'),
+                       check.nick_name.label('check_name'),
                        )
-                 .join(supplier, supplier.id == OaTicket.supplier_id, isouter=True)
+                 .join(customer, customer.id == OaTicket.supplier_id, isouter=True)
                  .join(admin, admin.user_id == OaTicket.admin_id, isouter=True)
                  .join(dept, dept.dept_id == OaTicket.did, isouter=True)
                  .join(check, func.find_in_set(check.user_id, OaTicket.check_uids), isouter=True)
@@ -62,6 +62,12 @@ class TicketDao:
         elif query_object.check_copy_uids:
             conditions.append(func.find_in_set(query_object.check_copy_uids, OaTicket.check_copy_uids) > 0)
 
+        elif query_object.invoice_type:
+            conditions.append(OaTicket.invoice_type == query_object.invoice_type)
+
+        elif query_object.is_ticket == 1:
+            conditions.append(OaTicket.invoice_type != 0)
+
         else:
             # 没有特定条件时，使用 OR 组合
             or_conditions = []
@@ -78,11 +84,6 @@ class TicketDao:
 
             if or_conditions:
                 conditions.append(or_(*or_conditions))
-        if query_object.is_code is not None:
-            if query_object.is_code == 1:
-                conditions.append(OaTicket.code != '')
-            else:
-                conditions.append(OaTicket.code == '')
         # 添加数据权限条件
         if data_scope_sql is not None:
             conditions.append(data_scope_sql)
@@ -121,20 +122,25 @@ class TicketDao:
         )
         await db.commit()
         return result.rowcount
+    @classmethod
+    async def update_by_entity(cls, db: AsyncSession, model: OaTicket):
+        result = await db.merge(model)
+        await db.commit()
+        return result
 
     @classmethod
     async def get_info_by_id(cls, db: AsyncSession, id: int):
-        supplier = aliased(OaSupplier, name='supplier')
+        customer = aliased(OaCustomer, name='customer')
         admin = aliased(SysUser, name='admin')
         dept = aliased(SysDept, name='dept')
         check = aliased(SysUser, name='check')
         query = (select(OaTicket,
-                        supplier.title.label('supplier_name'),
+                        customer.name.label('customer_name'),
                         admin.user_name.label('admin_name'),
                         dept.dept_name.label('dept_name'),
                         check.user_name.label('check_name'),
                         )
-                 .join(supplier, supplier.id == OaTicket.supplier_id, isouter=True)
+                 .join(customer, customer.id == OaTicket.supplier_id, isouter=True)
                  .join(admin, admin.user_id == OaTicket.admin_id, isouter=True)
                  .join(dept, dept.dept_id == OaTicket.did, isouter=True)
                  .join(check, func.find_in_set(check.user_id, OaTicket.check_uids), isouter=True)
@@ -256,3 +262,34 @@ class TicketDao:
         count = result.scalar()
         return count
 
+    @classmethod
+    async def ticket_get_payment_list(cls, db: AsyncSession, query_object: OaTicketBaseModel, data_scope_sql: ColumnElement,
+                            is_page: bool = False) -> PageModel | list[list[dict[str, Any]]]:
+        query = (select(OaTicketPayment,
+                       OaTicket.code.label('ticket_code'),
+                       OaTicket.invoice_title.label('invoice_title'),
+                       OaTicket.open_time.label('open_time'),
+                       OaCustomer.name.label('customer_name'),
+                       SysDept.dept_name.label('dept_name'),
+                       SysUser.nick_name.label('admin_name'),
+                       )
+                 .join(OaTicket, OaTicket.id == OaTicketPayment.ticket_id, isouter=True)
+                 .join(OaCustomer, OaCustomer.id == OaTicket.invoice_subject, isouter=True)
+                 .join(SysDept, SysDept.dept_id == OaTicket.did, isouter=True)
+                 .join(SysUser, SysUser.user_id == OaTicket.admin_id, isouter=True)
+                 .where(
+                    OaTicketPayment.status == 1,
+                    OaTicket.id == query_object.id if query_object.id else True,
+                    OaTicket.code.like(f'%{query_object.code}%') if query_object.code else True,
+                    OaTicket.invoice_title.like(f'%{query_object.invoice_title}%') if query_object.invoice_title else True,
+                    OaTicket.invoice_subject == query_object.invoice_subject if query_object.invoice_subject else True,
+                    OaTicket.invoice_type !=0 if query_object.is_ticket else True,
+                    OaTicket.invoice_type == query_object.invoice_type if query_object.invoice_type else True,
+                    data_scope_sql
+        )
+                 .order_by(desc(OaTicketPayment.create_time)))
+        # 分页查询
+        page_list: PageModel | list[list[dict[str, Any]]] = await PageUtil.paginate_dict(
+            db, query, query_object.page_num, query_object.page_size, is_page
+        )
+        return page_list
