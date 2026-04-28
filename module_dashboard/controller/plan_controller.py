@@ -14,7 +14,6 @@ from module_dashboard.service.plan_service import PlanService
 from module_admin.entity.vo.user_vo import (
     CurrentUserModel
 )
-from utils.camel_converter import ModelConverter
 from utils.response_util import ResponseUtil
 from common.annotation.log_annotation import Log
 from common.enums import BusinessType
@@ -37,9 +36,9 @@ async def get_page_list(
     query_object: Annotated[OaPlanQueryModel, Query()],
     data_scope_sql: Annotated[ColumnElement, DataScopeDependency(OaPlan)],
 ) -> Response:
-    result = await PlanService.get_page_list_service(query_db, query_object, data_scope_sql, False)
+    result = await PlanService.get_page_list_service(query_db, query_object, data_scope_sql, True)
     logger.info('获取日程安排列表成功')
-    return ResponseUtil.success(data=result)
+    return ResponseUtil.success(model_content=result)
 
 @dashboard_plan_controller.get(
     "/calendar",
@@ -84,7 +83,7 @@ async def add_plan(
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('oa:plan:update')],
 )
-@Log(title='日程安排', business_type=BusinessType.UPDATE)
+@Log(title='编辑日程安排', business_type=BusinessType.UPDATE)
 async def update_plan(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
@@ -133,7 +132,7 @@ async def view_plan(
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('oa:plan:delete')],
 )
-@Log(title='日程安排', business_type=BusinessType.DELETE)
+@Log(title='删除日程安排', business_type=BusinessType.DELETE)
 async def delete_plan(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
@@ -142,3 +141,18 @@ async def delete_plan(
     result = await PlanService.del_by_id(query_db, id)
     logger.info(result.message)
     return ResponseUtil.success(msg=result.message)
+
+@dashboard_plan_controller.get(
+    "/calendar/detail/{id}",
+    summary='获取日历日程安排详情',
+    description='用于获取日历日程安排详情',
+    response_model=None,
+    dependencies=[UserInterfaceAuthDependency('oa:plan:query')],
+)
+async def get_calendar_plan_by_id(
+    request: Request,
+    query_db: Annotated[AsyncSession, DBSessionDependency()],
+    id: int,
+) -> Response:
+    result =  await PlanService.get_calendar_info_service(query_db, id)
+    return ResponseUtil.success(data=result)

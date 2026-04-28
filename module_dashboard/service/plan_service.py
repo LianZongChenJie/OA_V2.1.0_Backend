@@ -21,23 +21,37 @@ class PlanService:
                                                                                              list[dict[str, Any]]:
         query_list = await PlanDao.get_page_list(query_db, query_object, data_scope_sql, is_page)
         if is_page:
-            result_list = PageModel[OaPlanBaseModel](**{
-                **query_list.model_dump(by_alias=True)
-            })
+            row_list = []
+            for row in query_list.rows:
+                row = dict(row)
+                row.update(row['OaPlan'].to_dict())
+                row.pop('OaPlan')
+                if row['type'] == '1':
+                    row['type_str'] = '低优先级'
+                elif row['type'] == '2':
+                    row['type_str'] = '中优先级'
+                elif row['type'] == '3':
+                    row['type_str'] = '高优先级'
+                elif row['type'] == '4':
+                    row['type_str'] = '紧急优先级'
+                row_list.append(ModelConverter.convert_to_camel_case(row))
+            query_list.rows = row_list
+            result_list = query_list
         else:
             result_list = []
             if query_list:
-                result_list = ModelConverter.list_time_format(query_list)
+                result_list = query_list
         return result_list
 
     @classmethod
     async def add_service(cls, query_db: AsyncSession, model: OaPlanBaseModel) -> CrudResponseModel:
-        if model.remind_time:
-            model.remind_type = 1
-            model.remind_time = int_time(model.start_time) - model.remind_time
-        else:
-            model.remind_type = 0
+        # if model.remind_time:
+        #     model.remind_type = 1
+        #     model.remind_time = int_time(model.start_time) - model.remind_time
+        # else:
+        #     model.remind_type = 0
         try:
+            model.remind_time = await cls.get_remind_time(model)
             model.start_time = int_time(model.start_time)
             model.end_time = int_time(model.end_time)
             model.create_time = int(datetime.now().timestamp())
@@ -52,9 +66,10 @@ class PlanService:
     @classmethod
     async def update_service(cls, query_db: AsyncSession, model: OaPlanBaseModel) -> CrudResponseModel:
         try:
-            if model.remind_time:
-                model.remind_type = 1
-                model.remind_time = int_time(model.start_time) - model.remind_time
+            # if model.remind_time:
+            #     model.remind_type = 1
+            #     model.remind_time = int_time(model.start_time) - model.remind_time
+            model.remind_time = await cls.get_remind_time(model)
             model.update_time = int(datetime.now().timestamp())
             model.start_time = int_time(model.start_time)
             model.end_time = int_time(model.end_time)
@@ -85,8 +100,8 @@ class PlanService:
                 'ptid': plan.ptid,
                 'adminId': plan.admin_id,
                 'did': plan.did,
-                'startTime': datetime.fromtimestamp(plan.start_time).strftime('%Y-%m-%d %H:%M') if plan.start_time else '',
-                'endTime': datetime.fromtimestamp(plan.end_time).strftime('%Y-%m-%d %H:%M') if plan.end_time else '',
+                'startTime': datetime.fromtimestamp(plan.start_time).strftime('%Y-%m-%d %H:%M:%S') if plan.start_time else '',
+                'endTime': datetime.fromtimestamp(plan.end_time).strftime('%Y-%m-%d %H:%M:%S') if plan.end_time else '',
                 'startTimeA': datetime.fromtimestamp(plan.start_time).strftime('%Y-%m-%d') if plan.start_time else '',
                 'endTimeA': datetime.fromtimestamp(plan.end_time).strftime('%Y-%m-%d') if plan.end_time else '',
                 'startTimeB': datetime.fromtimestamp(plan.start_time).strftime('%H:%M') if plan.start_time else '',
@@ -136,3 +151,21 @@ class PlanService:
             'remindType': info.get('remindType'),
             'type': info.get('type')
         }
+    @classmethod
+    async def get_remind_time(cls, model: OaPlanBaseModel) -> int:
+        if model.remind_type == 0:
+            return 0
+        elif model.remind_type == 1:
+            return int_time(model.start_time)
+        elif model.remind_type == 2:
+            return int_time(model.start_time) - (5 *60)
+        elif model.remind_type == 3:
+            return int_time(model.start_time) - (10 *60)
+        elif model.remind_type == 4:
+            return int_time(model.start_time) - (30 *60)
+        elif model.remind_type == 5:
+            return int_time(model.start_time) - (60 *60)
+        elif model.remind_type == 6:
+            return int_time(model.start_time) - (24 * 60 * 60)
+        else:
+            return 0

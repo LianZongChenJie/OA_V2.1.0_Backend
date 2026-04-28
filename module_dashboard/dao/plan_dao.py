@@ -46,7 +46,7 @@ class PlanDao:
 
         query = query.order_by(desc(OaPlan.id))
 
-        page_list: PageModel | list[list[dict[str, Any]]] = await PageUtil.paginate(
+        page_list: PageModel | list[list[dict[str, Any]]] = await PageUtil.paginate_dict(
             db, query, query_object.page_num, query_object.page_size, is_page
         )
         return page_list
@@ -105,8 +105,9 @@ class PlanDao:
 
     @classmethod
     async def add(cls, db: AsyncSession, model: OaPlanBaseModel):
-        db_model = OaPlan(**model.model_dump(exclude={"id", "create_time"}, exclude_none=True),
-                                 create_time=model.create_time)
+        db_model = OaPlan(**model.model_dump(exclude={"id", "create_time","update_time"}, exclude_none=True),
+                                 create_time=model.create_time,
+                                 update_time=model.update_time)
         db.add(db_model)
         await db.commit()
         await db.refresh(db_model)
