@@ -5,11 +5,11 @@ from exceptions.exception import ServiceException
 from module_basicdata.dao.public.flow_cate_dao import FlowCateDao
 from module_basicdata.dao.public.flow_step_dao import OaFlowStepDao
 from module_finance.dao.ticket_dao import TicketDao
-from module_finance.entity.do.ticket_do import OaTicketPayment
+from module_finance.entity.do.ticket_do import OaTicketPayment, OaTicket
 from module_personnel.dao.flow_record_dao import FlowRecordDao
 from sqlalchemy.sql import ColumnElement
 from module_finance.entity.vo.ticket_vo import OaTicketBaseModel, \
-    OaTicketPageQueryModel, OaTicketPayMentDetailModel
+    OaTicketPageQueryModel, OaTicketPayMentDetailModel, OaTicketPaymentBaseModel
 from common.vo import PageModel, CrudResponseModel
 from datetime import datetime
 
@@ -187,10 +187,11 @@ class TicketService:
 # -------------------------- 以上为发票到账记录0_0 ----------------------------------
 
     @classmethod
-    async def payment_add(cls, db: AsyncSession, data_list: list[OaTicketPayment], userId: int):
+    async def payment_add(cls, db: AsyncSession, data_list: list[OaTicketPaymentBaseModel], userId: int):
         try:
             ticket = await TicketDao.get_info_by_id(db, data_list[0].ticket_id)
-            ticket : OaTicketBaseModel =  OaTicketBaseModel.model_validate(ticket['OaTicket'])
+            ticket = ticket['OaTicket']
+            ticket_dict = ticket.to_dict()
             if ticket.open_status != 1:
                 return CrudResponseModel(is_success=False, message='当前收票发票已作废，无法付款')
             old_amount = ticket.pay_amount if ticket.pay_amount else 0
@@ -203,16 +204,18 @@ class TicketService:
                 data.admin_id =userId
                 data.create_time = create_time
             await TicketDao.payment_add(db, data_list)
-            ticket.pay_amount = amount
-            ticket.pay_time = pay_time
-            if amount > ticket.amount:
+            ticket_dict['pay_amount'] = amount
+            ticket_dict['pay_time'] = pay_time
+            if amount > ticket_dict['amount']:
                 return CrudResponseModel(is_success=False, message='付款金额不能大于发票金额')
-            if amount < ticket.amount:
-                ticket.pay_status = 1
+            if amount < ticket_dict['pay_amount']:
+                ticket_dict['pay_status'] = 1
             else:
-                ticket.pay_status = 2
-            ticket.update_time = int(datetime.now().timestamp())
-            await TicketDao.update(db, ticket)
+                ticket_dict['pay_status'] = 2
+            update_model = OaTicket(**ticket_dict)
+            update_model.update_time = int(datetime.now().timestamp())
+            update_model.delete_time = 0
+            await TicketDao.update_by_entity(db, update_model)
             await db.commit()
             return CrudResponseModel(is_success=True, message='操作成功')
         except Exception as e:
@@ -225,7 +228,7 @@ class TicketService:
         try:
             ticket_id = await TicketDao.get_ticket_by_payment_id(db, ids[0])
             ticket = await TicketDao.get_info_by_id(db, ticket_id)
-            ticket: OaTicketBaseModel = OaTicketBaseModel.model_validate(ticket['OaTicket'])
+            ticket = ticket['OaTicket']
             if ticket.open_status != 1:
                 return CrudResponseModel(is_success=False, message='当前收票发票已作废，无法删除付款')
             if ticket.pay_status == 0:
@@ -240,7 +243,7 @@ class TicketService:
                 if inc.pay_time > pay_time:
                     pay_time = inc.pay_time
             ticket = await TicketDao.get_info_by_id(db, ticket_id)
-            ticket : OaTicketBaseModel =  OaTicketBaseModel.model_validate(ticket['OaTicket'])
+            ticket = ticket['OaTicket']
             ticket.pay_amount = amount
             ticket.pay_time = pay_time
             if payments:

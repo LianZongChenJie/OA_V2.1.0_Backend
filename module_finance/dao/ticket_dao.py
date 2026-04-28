@@ -7,7 +7,7 @@ from module_admin.entity.do.customer_do import OaCustomer
 from module_admin.entity.do.dept_do import SysDept
 from module_admin.entity.do.user_do import SysUser
 from utils.page_util import PageUtil
-from module_finance.entity.vo.ticket_vo import OaTicketBaseModel, OaTicketPageQueryModel
+from module_finance.entity.vo.ticket_vo import OaTicketBaseModel, OaTicketPageQueryModel, OaTicketPaymentBaseModel
 from module_finance.entity.do.ticket_do import OaTicket,OaTicketPayment
 from typing import Any
 from datetime import datetime
@@ -67,6 +67,8 @@ class TicketDao:
 
         elif query_object.is_ticket == 1:
             conditions.append(OaTicket.invoice_type != 0)
+        elif query_object.is_ticket == 0:
+            conditions.append(OaTicket.invoice_type == 0)
 
         else:
             # 没有特定条件时，使用 OR 组合
@@ -116,12 +118,13 @@ class TicketDao:
             update(OaTicket)
             .values(
                 **model.model_dump(exclude={"id", "update_time",'open_time', 'pay_time'}, exclude_none=True),
-                update_time=model.update_time,  open_time=model.open_time, pay_time=model.pay_time,
+                update_time=model.update_time,  open_time=model.open_time, pay_time=model.pay_time
             )
             .where(OaTicket.id == model.id)
         )
         await db.commit()
         return result.rowcount
+
     @classmethod
     async def update_by_entity(cls, db: AsyncSession, model: OaTicket):
         result = await db.merge(model)
@@ -200,7 +203,7 @@ class TicketDao:
 
 # ---------------------------------- 以下为收票付款记录0_0 ----------------------------------
     @classmethod
-    async def payment_add(cls, db: AsyncSession, data_list: list[OaTicketPayment]):
+    async def payment_add(cls, db: AsyncSession, data_list: list[OaTicketPaymentBaseModel]):
         insert_list = []
         for data in data_list:
             db_model = OaTicketPayment(**data.model_dump(exclude={"id", "create_time"}, exclude_none=True),

@@ -1,3 +1,5 @@
+from email.policy import default
+
 from pydantic import BaseModel, Field, validator, ConfigDict, field_serializer
 from pydantic.alias_generators import to_camel
 from module_personnel.entity.vo.flow_record_vo import OaFlowRecordBaseModel
@@ -81,7 +83,7 @@ class OaTicketQueryModel(OaTicketBaseModel):
     """收票查询VO"""
     begin_time: str | None = Field(None, description='查询时间开始时间')
     end_time: str | None = Field(None, description='查询时间结束时间')
-    is_ticket: bool | None = Field(None, description='是否室有发票付款 1是，0不是')
+    is_ticket: int | None = Field(default=1, description='是否室有发票付款 1是，0不是')
 
 class OaTicketPageQueryModel(OaTicketQueryModel):
 
@@ -104,7 +106,7 @@ class OaTicketPaymentBaseModel(BaseModel):
     ticket_id: int | None = Field(None, description='发票ID')
     amount: Decimal | None = Field(None, description='付款金额')
     admin_id: int | None = Field(None, description='付款登记人')
-    pay_time: int | None = Field(None, description='付款时间')
+    pay_time: int | str |None = Field(None, description='付款时间')
     remarks: str | None = Field(None, description='备注')
     create_time: int | None = Field(None, description='创建时间')
     update_time: int | None = Field(None, description='更新时间')
