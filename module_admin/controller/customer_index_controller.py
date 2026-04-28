@@ -535,20 +535,21 @@ async def revert_customer(
         id_array = [int(id.strip()) for id in ids.split(',') if id.strip()]
         
         current_time = int(datetime.now().timestamp())
-        
-        # 批量更新（取消逻辑删除）
+
+        # 批量更新（取消逻辑删除和废弃状态）
         for customer_id in id_array:
             await query_db.execute(
                 update(OaCustomer)
                 .where(OaCustomer.id == customer_id)
                 .values(
                     delete_time=0,
+                    discard_time=0,  # 同时取消废弃状态
                     update_time=current_time
                 )
             )
-            
-            # TODO: 添加操作日志
-            logger.info(f'客户{customer_id}已还原')
+
+        # TODO: 添加操作日志
+        logger.info(f'客户{customer_id}已还原')
         
         await query_db.commit()
         
