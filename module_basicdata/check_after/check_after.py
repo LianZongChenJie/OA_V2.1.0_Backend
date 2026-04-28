@@ -89,5 +89,7 @@ class CheckAfter:
        ticket = ticket['OaTicket']
        ticket.open_status = 1
        ticket.open_time = int(datetime.now().timestamp())
+       ticket.pay_status = 2
+       ticket.pay_time = int(datetime.now().timestamp())
        await TicketDao.update_by_entity(db, ticket)
        return
