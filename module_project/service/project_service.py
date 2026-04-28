@@ -57,7 +57,7 @@ class ProjectService:
             cls, query_db: AsyncSession, query_object: ProjectPageQueryModel,
             current_user_id: int, auth_dids: str = '', son_dids: str = '',
             is_admin: bool = False, is_project_admin: bool = False, is_page: bool = False
-    ) -> PageModel | list[dict[str, Any]]:
+    ) -> dict | list[dict[str, Any]]:
         """
         获取项目列表信息 service
 
@@ -81,28 +81,24 @@ class ProjectService:
                 query_db, query_object, current_user_id, auth_dids, son_dids, is_admin, is_project_admin, is_page
             )
 
-        # 格式化时间字段并转换为驼峰命名
-        if isinstance(project_list_result, PageModel) and hasattr(project_list_result, 'rows'):
+        # 格式化时间字段
+        if isinstance(project_list_result, dict) and 'rows' in project_list_result:
+            # 分页结果
             formatted_rows = []
-            for row in project_list_result.rows:
+            for row in project_list_result['rows']:
                 if isinstance(row, dict):
-                    # 格式化时间字段
                     formatted_row = cls._format_time_fields(row)
-                    # 转换为驼峰命名
-                    camel_row = CamelCaseUtil.transform_result(formatted_row)
-                    formatted_rows.append(camel_row)
+                    formatted_rows.append(formatted_row)
                 else:
                     formatted_rows.append(row)
-            project_list_result.rows = formatted_rows
+            project_list_result['rows'] = formatted_rows
         elif isinstance(project_list_result, list):
+            # 非分页结果
             formatted_list = []
             for item in project_list_result:
                 if isinstance(item, dict):
-                    # 格式化时间字段
                     formatted_item = cls._format_time_fields(item)
-                    # 转换为驼峰命名
-                    camel_item = CamelCaseUtil.transform_result(formatted_item)
-                    formatted_list.append(camel_item)
+                    formatted_list.append(formatted_item)
                 else:
                     formatted_list.append(item)
             project_list_result = formatted_list

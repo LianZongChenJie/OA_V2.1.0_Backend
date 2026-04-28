@@ -93,7 +93,7 @@ class ProjectDao:
             is_project_admin: bool = False, is_page: bool = False
     ) -> PageModel | list[dict[str, Any]]:
         """
-        根据查询参数获取项目列表信息
+        根据查询参数获取项目列表信息（使用原生SQL）
 
         :param db: orm 对象
         :param query_object: 查询参数对象
@@ -105,59 +105,64 @@ class ProjectDao:
         :param is_page: 是否开启分页
         :return: 项目列表信息对象
         """
-        # 基础条件：未删除
-        conditions = [OaProject.delete_time == 0]
-
+        from sqlalchemy import text
+        from utils.log_util import logger
+        
+        # 构建 WHERE 条件
+        conditions = ["p.delete_time = 0"]
+        params = {}
+        
         # 状态筛选
         if query_object.status_filter is not None:
-            conditions.append(OaProject.status == query_object.status_filter)
-
+            conditions.append("p.status = :status_filter")
+            params['status_filter'] = query_object.status_filter
+        
         # 分类筛选
         if query_object.cate_id_filter is not None:
-            conditions.append(OaProject.cate_id == query_object.cate_id_filter)
-
+            conditions.append("p.cate_id = :cate_id_filter")
+            params['cate_id_filter'] = query_object.cate_id_filter
+        
         # 客户筛选（支持多选）
         if query_object.customer_id_filter:
-            conditions.append(OaProject.customer_id.in_(query_object.customer_id_filter))
-
+            conditions.append("p.customer_id IN :customer_ids")
+            params['customer_ids'] = tuple(query_object.customer_id_filter)
+        
         # 关键词搜索
         if query_object.keywords:
-            conditions.append(
-                or_(
-                    OaProject.name.like(f'%{query_object.keywords}%'),
-                    OaProject.content.like(f'%{query_object.keywords}%')
-                )
-            )
-
+            conditions.append("(p.name LIKE :keywords OR p.content LIKE :keywords)")
+            params['keywords'] = f"%{query_object.keywords}%"
+        
         # 负责人筛选
         if query_object.director_uid_filter:
-            conditions.append(OaProject.director_uid.in_(query_object.director_uid_filter))
-
+            conditions.append("p.director_uid IN :director_uids")
+            params['director_uids'] = tuple(query_object.director_uid_filter)
+        
         # 根据 tab 参数设置查询条件
         current_time = int(datetime.now().timestamp())
-        if query_object.tab == 0:
-            # 全部项目
-            pass
-        elif query_object.tab == 1:
+        if query_object.tab == 1:
             # 进行中的项目
-            conditions.append(OaProject.status == 2)
+            conditions.append("p.status = 2")
         elif query_object.tab == 2:
             # 即将到期的项目（7 天内）
             seven_days_later = current_time + 7 * 86400
-            conditions.append(OaProject.status < 3)
-            conditions.append(OaProject.end_time.between(current_time, seven_days_later))
+            conditions.append("p.status < 3")
+            conditions.append("p.end_time BETWEEN :current_time AND :seven_days_later")
+            params['current_time'] = current_time
+            params['seven_days_later'] = seven_days_later
         elif query_object.tab == 3:
             # 已逾期的项目
-            conditions.append(OaProject.status < 3)
-            conditions.append(OaProject.end_time < current_time)
-
+            conditions.append("p.status < 3")
+            conditions.append("p.end_time < :current_time")
+            params['current_time'] = current_time
+        
         # 数据权限过滤（非管理员且非项目管理员）
         if not is_admin and not is_project_admin:
             permission_conditions = [
-                OaProject.admin_id == user_id,
-                OaProject.director_uid == user_id,
-                ]
-
+                "p.admin_id = :user_id",
+                "p.director_uid = :user_id",
+            ]
+            params['user_id'] = user_id
+            
             # 部门权限
             if auth_dids or son_dids:
                 dept_ids = set()
@@ -165,52 +170,194 @@ class ProjectDao:
                     dept_ids.update([int(d.strip()) for d in auth_dids.split(',') if d.strip()])
                 if son_dids:
                     dept_ids.update([int(d.strip()) for d in son_dids.split(',') if d.strip()])
-
+                
                 if dept_ids:
-                    permission_conditions.append(OaProject.did.in_(dept_ids))
-
+                    permission_conditions.append("p.did IN :dept_ids")
+                    params['dept_ids'] = tuple(dept_ids)
+            
             if permission_conditions:
-                conditions.append(or_(*permission_conditions))
-
-        query = (
-            select(OaProject)
-            .where(*conditions)
-            .order_by(OaProject.create_time.desc())
-            .distinct()
-        )
-
-        project_list: PageModel | list[dict[str, Any]] = await PageUtil.paginate(
-            db, query, query_object.page_num, query_object.page_size, is_page
-        )
-
-        # 为每个项目添加扩展字段
-        if isinstance(project_list, PageModel) and hasattr(project_list, 'rows'):
-            enhanced_rows = []
-            for project in project_list.rows:
-                try:
-                    enhanced_project = await cls._enrich_project_data(db, project)
-                    enhanced_rows.append(enhanced_project)
-                except Exception as e:
-                    # 如果出错，记录日志并返回基础数据
-                    from utils.log_util import logger
-                    logger.error(f" enrich project data error: {str(e)}, project_id: {project.id}")
-                    enhanced_project = cls._get_basic_project_data(project)
-                    enhanced_rows.append(enhanced_project)
-            project_list.rows = enhanced_rows
-        elif isinstance(project_list, list):
-            enhanced_list = []
-            for project in project_list:
-                try:
-                    enhanced_project = await cls._enrich_project_data(db, project)
-                    enhanced_list.append(enhanced_project)
-                except Exception as e:
-                    from utils.log_util import logger
-                    logger.error(f" enrich project data error: {str(e)}, project_id: {project.id}")
-                    enhanced_project = cls._get_basic_project_data(project)
-                    enhanced_list.append(enhanced_project)
-            project_list = enhanced_list
-
-        return project_list
+                conditions.append("(" + " OR ".join(permission_conditions) + ")")
+        
+        where_clause = " AND ".join(conditions)
+        
+        # 分页参数
+        page_num = query_object.page_num if query_object.page_num else 1
+        page_size = query_object.page_size if query_object.page_size else 10
+        offset = (page_num - 1) * page_size
+        
+        # 主查询 SQL
+        sql = text(f"""
+            SELECT 
+                p.id,
+                p.name,
+                p.code,
+                p.amount,
+                p.cate_id AS cateId,
+                p.customer_id AS customerId,
+                p.contract_id AS contractId,
+                p.admin_id AS adminId,
+                p.director_uid AS directorUid,
+                p.did,
+                p.start_time AS startTime,
+                p.end_time AS endTime,
+                p.status,
+                p.content,
+                p.create_time AS createTime,
+                p.update_time AS updateTime,
+                p.delete_time AS deleteTime,
+                p.name AS title,
+                '' AS cate,
+                '' AS cateTitle,
+                '' AS adminName,
+                '' AS directorName,
+                '' AS department,
+                '' AS deptName,
+                CASE p.status
+                    WHEN 0 THEN '未设置'
+                    WHEN 1 THEN '未开始'
+                    WHEN 2 THEN '进行中'
+                    WHEN 3 THEN '已完成'
+                    WHEN 4 THEN '已关闭'
+                    ELSE '未知'
+                END AS statusName,
+                '' AS rangeTime,
+                0 AS delay,
+                0 AS tasksTotal,
+                0 AS tasksOngoing,
+                0 AS tasksFinish,
+                0 AS tasksUnfinish,
+                '0％' AS tasksPensent,
+                '' AS stepDirector,
+                '' AS step
+            FROM oa_project p
+            WHERE {where_clause}
+            ORDER BY p.create_time DESC
+            LIMIT :limit OFFSET :offset
+        """)
+        
+        # 总数查询 SQL
+        count_sql = text(f"""
+            SELECT COUNT(*) as total
+            FROM oa_project p
+            WHERE {where_clause}
+        """)
+        
+        # 添加分页参数
+        params['limit'] = page_size
+        params['offset'] = offset
+        
+        # 执行总数查询
+        count_result = await db.execute(count_sql, params)
+        total = count_result.scalar()
+        
+        # 执行主查询
+        result = await db.execute(sql, params)
+        rows = result.mappings().all()
+        
+        # 转换为字典列表并处理数据
+        project_list = []
+        for row in rows:
+            project_dict = dict(row)
+            
+            # 处理数值类型
+            for key in ['id', 'cateId', 'customerId', 'contractId', 'adminId', 'directorUid', 'did',
+                        'startTime', 'endTime', 'status', 'createTime', 'updateTime', 'deleteTime',
+                        'delay', 'tasksTotal', 'tasksOngoing', 'tasksFinish', 'tasksUnfinish']:
+                if key in project_dict and project_dict[key] is not None:
+                    project_dict[key] = int(project_dict[key])
+            
+            # 处理浮点数
+            if 'amount' in project_dict and project_dict['amount'] is not None:
+                project_dict['amount'] = float(project_dict['amount'])
+            
+            # 处理字符串默认值
+            for str_key in ['code', 'cate', 'cateTitle', 'adminName', 'directorName', 
+                           'department', 'deptName', 'rangeTime', 'stepDirector', 'step', 'tasksPensent']:
+                if str_key not in project_dict or project_dict[str_key] is None:
+                    project_dict[str_key] = ''
+            
+            project_list.append(project_dict)
+        
+        # 为每个项目补充关联数据和任务统计
+        for project_dict in project_list:
+            project_id = project_dict['id']
+            
+            # 查询分类名称
+            if project_dict.get('cateId') and project_dict['cateId'] > 0:
+                from module_basicdata.dao.project.project_cate_dao import ProjectCateDao
+                cate_info = await ProjectCateDao.get_info_by_id(db, project_dict['cateId'])
+                if cate_info:
+                    project_dict['cate'] = cate_info.title
+                    project_dict['cateTitle'] = cate_info.title
+            
+            # 查询创建人姓名
+            if project_dict.get('adminId') and project_dict['adminId'] > 0:
+                from module_admin.dao.user_dao import UserDao
+                admin_result = await UserDao.get_user_by_id(db, project_dict['adminId'])
+                if admin_result and admin_result.get('user_basic_info'):
+                    admin_info = admin_result['user_basic_info']
+                    project_dict['adminName'] = admin_info.nick_name or admin_info.user_name
+            
+            # 查询项目负责人姓名
+            if project_dict.get('directorUid') and project_dict['directorUid'] > 0:
+                from module_admin.dao.user_dao import UserDao
+                director_result = await UserDao.get_user_by_id(db, project_dict['directorUid'])
+                if director_result and director_result.get('user_basic_info'):
+                    director_info = director_result['user_basic_info']
+                    project_dict['directorName'] = director_info.nick_name or director_info.user_name
+            
+            # 查询部门名称
+            if project_dict.get('did') and project_dict['did'] > 0:
+                from module_admin.dao.dept_dao import DeptDao
+                dept_info = await DeptDao.get_dept_by_id(db, project_dict['did'])
+                if dept_info:
+                    project_dict['department'] = dept_info.dept_name
+                    project_dict['deptName'] = dept_info.dept_name
+            
+            # 计算时间范围字符串
+            if project_dict.get('startTime') and project_dict.get('endTime'):
+                from utils.time_format_util import timestamp_to_datetime
+                start_str = timestamp_to_datetime(project_dict['startTime'], '%Y-%m-%d')
+                end_str = timestamp_to_datetime(project_dict['endTime'], '%Y-%m-%d')
+                project_dict['rangeTime'] = f"{start_str} 至 {end_str}"
+            
+            # 计算延迟天数
+            current_timestamp = int(datetime.now().timestamp())
+            if project_dict.get('endTime') and project_dict.get('status') is not None and project_dict['status'] < 3:
+                if current_timestamp > project_dict['endTime']:
+                    delay_days = (current_timestamp - project_dict['endTime']) // 86400
+                    project_dict['delay'] = delay_days
+            
+            # 统计任务数量
+            task_stats = await cls._get_task_statistics(db, project_id)
+            project_dict['tasksTotal'] = task_stats['tasks_total']
+            project_dict['tasksOngoing'] = task_stats['tasks_ongoing']
+            project_dict['tasksFinish'] = task_stats['tasks_finish']
+            project_dict['tasksUnfinish'] = task_stats['tasks_unfinish']
+            project_dict['tasksPensent'] = task_stats['tasks_pensent']
+            
+            # 获取当前阶段信息
+            step_info = await cls._get_current_step_info(db, project_id)
+            if project_dict.get('status') == 4:
+                project_dict['step'] = ''
+            else:
+                project_dict['stepDirector'] = step_info.get('step_director', '')
+                project_dict['step'] = step_info.get('step', '')
+        
+        # 构建返回结果
+        if is_page:
+            has_next = page_num * page_size < total
+            logger.info(f"【项目列表】返回分页结果，总数:{total}, 当前页:{page_num}, 每页:{page_size}, 是否有下一页:{has_next}")
+            return {
+                'rows': project_list,
+                'pageNum': page_num,
+                'pageSize': page_size,
+                'total': total,
+                'hasNext': has_next
+            }
+        else:
+            logger.info(f"【项目列表】返回非分页结果，共{len(project_list)}条记录")
+            return project_list
 
     @classmethod
     async def _enrich_project_data(cls, db: AsyncSession, project: OaProject) -> dict[str, Any]:
@@ -362,6 +509,7 @@ class ProjectDao:
         project_dict['range_time'] = ''
         project_dict['delay'] = 0
         project_dict['tasks_total'] = 0
+        project_dict['tasks_ongoing'] = 0
         project_dict['tasks_finish'] = 0
         project_dict['tasks_unfinish'] = 0
         project_dict['tasks_pensent'] = "0％"
@@ -379,33 +527,53 @@ class ProjectDao:
         :param project_id: 项目 ID
         :return: 任务统计信息
         """
-        # 任务总数
+        from utils.log_util import logger
+        
+        logger.info(f"【任务统计】开始统计项目 {project_id} 的任务")
+        
+        # 任务总数（排除已删除）
         total_query = select(func.count()).select_from(OaProjectTask).where(
             OaProjectTask.project_id == project_id,
             OaProjectTask.delete_time == 0
         )
         tasks_total = (await db.execute(total_query)).scalar() or 0
+        logger.info(f"【任务统计】项目 {project_id} - 总任务数: {tasks_total}")
 
-        # 已完成任务数（status > 2 表示已完成）
+        # 进行中任务数（status = 2，仅进行中）
+        ongoing_query = select(func.count()).select_from(OaProjectTask).where(
+            OaProjectTask.project_id == project_id,
+            OaProjectTask.status == 2,
+            OaProjectTask.delete_time == 0
+        )
+        tasks_ongoing = (await db.execute(ongoing_query)).scalar() or 0
+        logger.info(f"【任务统计】项目 {project_id} - 进行中任务数(status=2): {tasks_ongoing}")
+
+        # 已完成任务数（status = 3，仅已完成）
         finish_query = select(func.count()).select_from(OaProjectTask).where(
             OaProjectTask.project_id == project_id,
-            OaProjectTask.status > 2,
+            OaProjectTask.status == 3,
             OaProjectTask.delete_time == 0
         )
         tasks_finish = (await db.execute(finish_query)).scalar() or 0
+        logger.info(f"【任务统计】项目 {project_id} - 已完成任务数(status=3): {tasks_finish}")
 
-        # 未完成任务数
+        # 未完成任务数（总任务数 - 已完成任务数）
         tasks_unfinish = tasks_total - tasks_finish
+        logger.info(f"【任务统计】项目 {project_id} - 未完成任务数: {tasks_unfinish}")
 
-        # 任务完成百分比
+        # 任务完成百分比（已完成 / 总任务数 * 100）
         if tasks_total > 0:
             percentage = int((tasks_finish / tasks_total) * 100)
             tasks_pensent = f"{percentage}％"
         else:
             tasks_pensent = "0％"
+        
+        logger.info(f"【任务统计】项目 {project_id} - 完成率: {tasks_pensent}")
+        logger.info(f"【任务统计】项目 {project_id} 最终统计结果 - 总数:{tasks_total}, 进行中:{tasks_ongoing}, 已完成:{tasks_finish}, 未完成:{tasks_unfinish}, 完成率:{tasks_pensent}")
 
         return {
             'tasks_total': tasks_total,
+            'tasks_ongoing': tasks_ongoing,
             'tasks_finish': tasks_finish,
             'tasks_unfinish': tasks_unfinish,
             'tasks_pensent': tasks_pensent

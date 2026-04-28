@@ -18,21 +18,86 @@ class SealCateDao:
     """
 
     @classmethod
-    async def get_seal_cate_detail_by_id(cls, db: AsyncSession, seal_cate_id: int) -> SysSealCate | None:
+    async def get_seal_cate_detail_by_id(cls, db: AsyncSession, seal_cate_id: int) -> dict[str, Any] | None:
         """
-        根据印章类别 id 获取印章类别详细信息
+        根据印章类别 id 获取印章类别详细信息（包含关联的部门名称和保管人姓名）
 
         :param db: orm 对象
         :param seal_cate_id: 印章类别 id
-        :return: 印章类别信息对象
+        :return: 印章类别信息字典
         """
-        seal_cate_info = (
-            (await db.execute(select(SysSealCate).where(SysSealCate.id == seal_cate_id)))
-            .scalars()
-            .first()
-        )
-
-        return seal_cate_info
+        from sqlalchemy import text
+        
+        # 使用原生 SQL 查询，直接关联部门和用户表
+        sql = text("""
+            SELECT 
+                s.id,
+                s.title,
+                s.dids,
+                s.keep_uid,
+                s.status,
+                s.remark,
+                s.create_time,
+                s.update_time
+            FROM oa_seal_cate s
+            WHERE s.id = :seal_cate_id AND s.status != -1
+        """)
+        
+        result = await db.execute(sql, {'seal_cate_id': seal_cate_id})
+        row = result.first()
+        
+        if not row:
+            return None
+        
+        # 转换为字典
+        detail = {
+            'id': row.id,
+            'title': row.title,
+            'dids': row.dids,
+            'keepUid': row.keep_uid,
+            'keep_uid': row.keep_uid,
+            'status': row.status,
+            'remark': row.remark,
+            'createTime': row.create_time,
+            'updateTime': row.update_time,
+            'create_time': row.create_time,
+            'update_time': row.update_time,
+            'deptNames': [],
+            'dept_names': [],
+            'keeperName': None,
+            'keeper_name': None,
+        }
+        
+        # 查询应用部门名称
+        if row.dids:
+            dept_ids = [int(d.strip()) for d in str(row.dids).split(',') if d.strip() and d.strip().isdigit()]
+            if dept_ids:
+                dept_sql = text("""
+                    SELECT dept_name 
+                    FROM sys_dept 
+                    WHERE dept_id IN :dept_ids 
+                    ORDER BY dept_id
+                """)
+                dept_result = await db.execute(dept_sql, {'dept_ids': tuple(dept_ids)})
+                dept_names_list = [r[0] for r in dept_result.fetchall()]
+                detail['deptNames'] = dept_names_list
+                detail['dept_names'] = dept_names_list
+        
+        # 查询保管人姓名
+        if row.keep_uid and int(row.keep_uid) > 0:
+            user_sql = text("""
+                SELECT nick_name, user_name 
+                FROM sys_user 
+                WHERE user_id = :user_id
+            """)
+            user_result = await db.execute(user_sql, {'user_id': int(row.keep_uid)})
+            user_row = user_result.first()
+            if user_row:
+                keeper_name = user_row.nick_name or user_row.user_name
+                detail['keeperName'] = keeper_name
+                detail['keeper_name'] = keeper_name
+        
+        return detail
 
     @classmethod
     async def get_seal_cate_detail_by_info(cls, db: AsyncSession, seal_cate: SealCateModel) -> SysSealCate | None:
@@ -121,17 +186,12 @@ class SealCateDao:
                 'title': row.get('title'),
                 'dids': row_dids,
                 'keepUid': row_keep_uid,
-                'keep_uid': row_keep_uid,
                 'status': row.get('status'),
                 'remark': row.get('remark'),
                 'createTime': row.get('createTime') or row.get('create_time'),
                 'updateTime': row.get('updateTime') or row.get('update_time'),
-                'create_time': row.get('createTime') or row.get('create_time'),
-                'update_time': row.get('updateTime') or row.get('update_time'),
                 'deptNames': [],
-                'dept_names': [],
                 'keeperName': None,
-                'keeper_name': None,
             }
         else:
             # ORM 对象
@@ -141,19 +201,14 @@ class SealCateDao:
             result = {
                 'id': row_id,
                 'title': row.title,
-                'dids': row_dids,
+                'dids': row.dids,
                 'keepUid': row_keep_uid,
-                'keep_uid': row_keep_uid,
                 'status': row.status,
                 'remark': row.remark,
                 'createTime': row.create_time,
                 'updateTime': row.update_time,
-                'create_time': row.create_time,
-                'update_time': row.update_time,
                 'deptNames': [],
-                'dept_names': [],
                 'keeperName': None,
-                'keeper_name': None,
             }
 
         # 查询应用部门名称
@@ -166,7 +221,6 @@ class SealCateDao:
                     )
                 ).scalars().all()
                 dept_names_list = list(depts)
-                result['dept_names'] = dept_names_list
                 result['deptNames'] = dept_names_list
 
         # 查询保管人姓名
@@ -178,7 +232,6 @@ class SealCateDao:
             ).first()
             if user:
                 keeper_name = user.nick_name or user.user_name
-                result['keeper_name'] = keeper_name
                 result['keeperName'] = keeper_name
 
         return result

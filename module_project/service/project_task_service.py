@@ -313,3 +313,67 @@ class ProjectTaskService:
         logger.info(f"【Service层】任务详情数据：{task_result}")
 
         return task_result
+
+    @classmethod
+    async def change_status_project_task_services(
+            cls, request: Request, query_db: AsyncSession, task_id: int, new_status: int
+    ) -> CrudResponseModel:
+        """
+        切换任务状态 service
+
+        :param request: Request 对象
+        :param query_db: orm 对象
+        :param task_id: 任务 ID
+        :param new_status: 新状态（1 待办的，2 进行中，3 已完成）
+        :return: 操作结果
+        """
+        try:
+            # 检查任务是否存在
+            task_info = await ProjectTaskDao.get_project_task_detail_by_id(query_db, task_id)
+            if not task_info:
+                raise ServiceException(message='任务不存在')
+
+            current_status = task_info.get('status')
+            
+            # 验证状态转换是否合法
+            if current_status == new_status:
+                raise ServiceException(message='任务已经是该状态')
+            
+            # 如果当前状态是已完成(3)，不允许再切换到其他状态
+            if current_status == 3 and new_status != 3:
+                raise ServiceException(message='已完成的任务不能更改状态')
+            
+            # 如果目标是已完成状态，设置完成时间和完成率
+            current_time = int(datetime.now().timestamp())
+            update_data = {
+                'status': new_status,
+                'update_time': current_time
+            }
+            
+            if new_status == 3:
+                update_data['over_time'] = current_time
+                update_data['done_ratio'] = 100
+            elif new_status == 2:
+                # 切换到进行中，清空完成时间
+                update_data['over_time'] = 0
+                if task_info.get('done_ratio', 0) < 20:
+                    update_data['done_ratio'] = 20
+            elif new_status == 1:
+                # 切换到待办，清空完成时间
+                update_data['over_time'] = 0
+                if task_info.get('done_ratio', 0) > 10:
+                    update_data['done_ratio'] = 10
+
+            await ProjectTaskDao.edit_project_task_dao(query_db, task_id, update_data)
+            await query_db.commit()
+
+            status_name_map = {1: '待办的', 2: '进行中', 3: '已完成'}
+            logger.info(f'任务 {task_id} 状态从 {current_status} 切换到 {new_status} 成功')
+            
+            return CrudResponseModel(is_success=True, message=f'状态已切换为：{status_name_map.get(new_status, "未知")}')
+        except ServiceException:
+            raise
+        except Exception as e:
+            await query_db.rollback()
+            logger.error(f'切换任务状态异常：{str(e)}')
+            raise e
