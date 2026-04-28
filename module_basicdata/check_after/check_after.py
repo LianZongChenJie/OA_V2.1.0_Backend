@@ -5,6 +5,8 @@ from module_finance.dao.invoice_dao import InvoiceDao
 from module_finance.dao.loan_dao import LoanDao
 from datetime import datetime
 
+from module_finance.dao.ticket_dao import TicketDao
+
 
 class CheckAfter:
     """
@@ -24,6 +26,8 @@ class CheckAfter:
             await cls.update_expense(db, id)
         elif check_table == "invoice":
             await cls.update_invoice(db, id)
+        elif check_table == "ticket":
+            await cls.update_ticket(db, id)
         else:
             pass
 
@@ -72,3 +76,18 @@ class CheckAfter:
             invoice.enter_time = int(datetime.now().timestamp())
             await InvoiceDao.update_by_entity(db, invoice)
         return
+
+    @classmethod
+    async def update_ticket(cls,db:AsyncSession, id:int):
+       """
+       更新收票状态
+       :param db:
+       :param id:
+       :return:
+       """
+       ticket = await TicketDao.get_info_by_id(db, id)
+       ticket = ticket['OaTicket']
+       ticket.open_status = 1
+       ticket.open_time = int(datetime.now().timestamp())
+       await TicketDao.update_by_entity(db, ticket)
+       return
