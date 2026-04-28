@@ -20,6 +20,7 @@ from module_personnel.dao.flow_record_dao import FlowRecordDao
 from module_personnel.entity.vo.flow_record_vo import OaFlowRecordBaseModel
 from utils.camel_converter import ModelConverter
 from utils.timeformat import format_timestamp
+from module_basicdata.check_after.check_after import CheckAfter
 
 
 class CheckService:
@@ -76,9 +77,9 @@ class CheckService:
 
         # 当前节点审核详情
         step = await OaFlowStepDao.get_step_by_action_id_flow_id(db, action_id, detail['check_flow_id'], detail['check_step_sort'])
-        step_id = step.id
         if not step:
             return CrudResponseModel(is_success=True, message='审核已结束')
+        step_id = step.id
 
         if query_model.check_status == 1:
             if str(user_id) not in detail['check_uids'].split(','):
@@ -104,6 +105,7 @@ class CheckService:
                     check_status = 2
                     check_uids = ''
                     check_step_sort = detail['check_step_sort'] + 1
+                    await CheckAfter.check_after(db, detail['id'], check_table)
             else:
                 # 查询当前步骤审批记录
                 check_count = await FlowRecordDao.get_count_by_action_id_flow_id_step_id(db, action_id, detail['check_flow_id'], detail['check_step_sort'])
@@ -131,6 +133,7 @@ class CheckService:
                         check_status = 2
                         check_step_sort = detail['check_step_sort'] + 1
                         check_uids = ''
+                        await CheckAfter.check_after(db, action_id, check_table)
 
             if check_status == 1 and check_uids is None:
                 return CrudResponseModel(is_success = False, message="找不到下一步的审批人，该审批流程设置有问题，请联系HR或者管理员")
@@ -383,8 +386,12 @@ class CheckService:
                         check_uids = ','.join(str(uid) for uid in check_uids)
                     else:
                         check_uids = ''
-                    flow_name = check_position.post_name
-                    check_position_id = check_position.post_id
+                    if check_position:
+                        flow_name = check_position.post_name
+                        check_position_id = check_position.post_id
+                    else:
+                        flow_name = ''
+                        check_position_id = flow_step['check_position_id']
                 if flow_step['check_role'] == '4':
                     flow_name = '指定成员'
                     check_position_id = 0
@@ -638,6 +645,7 @@ class CheckService:
             else:
                 check_status = 2
                 check_uids = ''
+                await CheckAfter.check_after(db, action_id, check_table)
         else:
             # 查询当前步骤审批记录
             check_count = await FlowRecordDao.get_count_by_action_id_flow_id_step_id(db, action_id,
@@ -668,6 +676,7 @@ class CheckService:
                 else:
                     check_status = 2
                     check_uids = ''
+                    await CheckAfter.check_after(db, action_id, check_table)
 
         if check_status == 1 and check_uids is None:
             return CrudResponseModel(is_success=False,

@@ -61,6 +61,9 @@ class ExpenseDao:
         elif query_object.check_copy_uids:
             conditions.append(func.find_in_set(query_object.check_copy_uids, OaExpense.check_copy_uids) > 0)
 
+        elif query_object.check_status:
+            conditions.append(OaExpense.check_status == query_object.check_status)
+
         else:
             # 没有特定条件时，使用 OR 组合
             or_conditions = []
@@ -116,6 +119,12 @@ class ExpenseDao:
         )
         await db.commit()
         return result.rowcount
+
+    @classmethod
+    async def update_by_entity(cls, db: AsyncSession, entity: OaExpense):
+        result = await db.merge(entity)
+        await db.commit()
+        return result
 
     @classmethod
     async def get_info_by_id(cls, db: AsyncSession, id: int):

@@ -1,10 +1,12 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import ColumnElement
 
+from common.annotation.log_annotation import Log
 from common.aspect.data_scope import DataScopeDependency
 from common.aspect.db_seesion import DBSessionDependency
 from common.aspect.interface_auth import UserInterfaceAuthDependency
 from common.aspect.pre_auth import PreAuthDependency
+from common.enums import BusinessType
 from common.router import APIRouterPro
 from common.vo import PageResponseModel
 from module_basicdata.entity.do.public.enterprise_do import OaEnterprise
@@ -45,6 +47,7 @@ async def list_page(
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('basicdata:flowCate:add')],
 )
+@Log(title="新增审批类型", business_type=BusinessType.INSERT)
 async def add_enterprise(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
@@ -61,6 +64,7 @@ async def add_enterprise(
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('basicdata:flowCate:del')],
 )
+@Log(title="删除审批类型", business_type=BusinessType.DELETE)
 async def delete_enterprise(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
@@ -77,6 +81,7 @@ async def delete_enterprise(
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('basicdata:flowCate:edit')],
 )
+@Log(title="修改审批类型", business_type=BusinessType.UPDATE)
 async def update_enterprise(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
@@ -94,6 +99,7 @@ async def update_enterprise(
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('basicdata:flowCate:edit')]
 )
+@Log(title="修改审批类型", business_type=BusinessType.UPDATE)
 async def change_status_enterprise(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
