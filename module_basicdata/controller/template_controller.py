@@ -75,6 +75,7 @@ async def add_basicdata_template(
     response_model=ResponseBaseModel,
     dependencies=[UserInterfaceAuthDependency('basicdata:template:update')],
 )
+@Log(title="修改消息模板", business_type=BusinessType.UPDATE)
 async def update_basicdata_template(
     request: Request,
     add_template: TemplateBaseModel,
@@ -112,6 +113,7 @@ async def get_basicdata_template_detail(
     response_model=ResponseBaseModel,
     dependencies=[UserInterfaceAuthDependency('basicdata:template:delete')],
 )
+@Log(title="删除消息模板", business_type=BusinessType.DELETE)
 async def del_basicdata_template(
     request: Request,
     templateId: int,
@@ -130,6 +132,7 @@ async def del_basicdata_template(
     response_model=ResponseBaseModel,
     dependencies=[UserInterfaceAuthDependency('basicdata:template:changeStatus')],
 )
+@Log(title="改变消息模板状态", business_type=BusinessType.UPDATE)
 async def change_status(
     request: Request,
     change_status_template: TemplateBaseModel,
