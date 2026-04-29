@@ -162,10 +162,12 @@ class PlanService:
         elif model.remind_type == 3:
             return int_time(model.start_time) - (10 *60)
         elif model.remind_type == 4:
-            return int_time(model.start_time) - (30 *60)
+            return int_time(model.start_time) - (15 *60)
         elif model.remind_type == 5:
-            return int_time(model.start_time) - (60 *60)
+            return int_time(model.start_time) - (30 *60)
         elif model.remind_type == 6:
+            return int_time(model.start_time) - (60 * 60)
+        elif model.remind_type == 7:
             return int_time(model.start_time) - (24 * 60 * 60)
         else:
             return 0
