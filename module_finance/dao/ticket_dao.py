@@ -199,7 +199,7 @@ class TicketDao:
     async def get_ticket_by_payment_id(cls, db: AsyncSession, paytmen_id: int):
         result = await db.execute(select(OaTicketPayment.ticket_id).where(OaTicketPayment.id == paytmen_id))
         await db.commit()
-        return result.scalar().first()
+        return result.mappings().one_or_none()
 
 # ---------------------------------- 以下为收票付款记录0_0 ----------------------------------
     @classmethod

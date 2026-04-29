@@ -227,7 +227,9 @@ class TicketService:
     async def payment_del(cls, db: AsyncSession, ids: list[int]):
         try:
             ticket_id = await TicketDao.get_ticket_by_payment_id(db, ids[0])
-            ticket = await TicketDao.get_info_by_id(db, ticket_id)
+            ticket = await TicketDao.get_info_by_id(db, ticket_id['ticket_id'])
+            if not ticket:
+                return CrudResponseModel(is_success=False, message='数据不存在')
             ticket = ticket['OaTicket']
             if ticket.open_status != 1:
                 return CrudResponseModel(is_success=False, message='当前收票发票已作废，无法删除付款')
@@ -251,7 +253,7 @@ class TicketService:
             else:
                 ticket.pay_status = 0
             ticket.update_time = int(datetime.now().timestamp())
-            await TicketDao.update(db, ticket)
+            await TicketDao.update_by_entity(db, ticket)
             return CrudResponseModel(is_success=True, message='操作成功')
         except Exception as e:
             await db.rollback()
