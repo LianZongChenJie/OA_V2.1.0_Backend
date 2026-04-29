@@ -123,6 +123,5 @@ class CareDao:
             .values(status=model.status, update_time=model.update_time)
             .where(OaCare.id == model.id)
         )
-        await db.commit()
         return result.rowcount
 

@@ -127,7 +127,6 @@ class RewardsService:
             
             model.update_time = int(datetime.now().timestamp())
             await RewardsDao.change_status(query_db, model)
-            await query_db.commit()
             return CrudResponseModel(is_success=True, message='状态修改成功')
         except Exception as e:
             await query_db.rollback()

@@ -120,4 +120,3 @@ class RewardsDao:
         )
         await db.commit()
         return result.rowcount
-
