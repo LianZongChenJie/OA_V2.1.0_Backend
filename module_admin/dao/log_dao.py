@@ -115,7 +115,7 @@ class OperationLogDao:
     @classmethod
     async def get_year_log(cls, db: AsyncSession):
         """
-        获取访问记录数据（简化版）
+        获取访问记录数据
         :param db:
         :return:
         """
@@ -152,6 +152,37 @@ class OperationLogDao:
         data_three[now.strftime('%Y-%m-%d')] = today_count
         return data_three
 
+    @classmethod
+    async def get_last_day_log_count(cls, db: AsyncSession):
+        """
+        获取访问记录数据
+        :param db:
+        :return:
+        """
+        """
+                获取访问记录数据
+                :param db:
+                :return:
+                """
+        now = datetime.now()
+        # 获取前一天的日期
+        yesterday = now - timedelta(days=1)
+
+        # 前一天的开始时间（00:00:00）
+        yesterday_start = format_timestamp(
+            int(yesterday.replace(hour=0, minute=0, second=0, microsecond=0).timestamp()))
+
+        # 前一天的结束时间（23:59:59）
+        yesterday_end = format_timestamp(
+            int(yesterday.replace(hour=23, minute=59, second=59, microsecond=999999).timestamp()))
+        # 查询今天访问量
+        today_stmt = select(func.count()).select_from(SysOperLog).where(
+            and_(
+                SysOperLog.oper_time >= yesterday_start,
+                SysOperLog.oper_time <= yesterday_end
+            )
+        )
+        return await db.scalar(today_stmt) or 0
 
 class LoginLogDao:
     """
@@ -237,3 +268,20 @@ class LoginLogDao:
         :return:
         """
         await db.execute(delete(SysLogininfor))
+
+class OaAdminLogCountDao:
+    """
+    操作日志统计数据库操作层
+    """
+
+    @classmethod
+    async def add(cls, db: AsyncSession, count: int) -> SysLogininfor:
+        add_model = OaAdminLogCount()
+        add_model.year = int(datetime.now().strftime('%Y'))
+        add_model.date = datetime.now().strftime('%Y-%m-%d')
+        add_model.num = count
+        add_model.create_time = int(datetime.now().timestamp())
+        db.add(add_model)
+        await db.commit()
+        await db.refresh(add_model)
+        return add_model
