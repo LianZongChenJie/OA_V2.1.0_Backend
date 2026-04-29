@@ -1,15 +1,15 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import ColumnElement
 
+from common.annotation.log_annotation import Log
 from common.aspect.data_scope import DataScopeDependency
 from common.aspect.db_seesion import DBSessionDependency
 from common.aspect.interface_auth import UserInterfaceAuthDependency
 from common.aspect.pre_auth import PreAuthDependency
+from common.enums import BusinessType
 from common.router import APIRouterPro
 from common.vo import PageResponseModel
-from module_basicdata.entity.do.public.enterprise_do import OaEnterprise
 from module_basicdata.entity.do.public.lnks_do import OaLinks
-from module_basicdata.entity.vo.public.enterprise_vo import OaEnterpriseBaseModel, OaEnterprisePageModel
 from fastapi import File, Form, Path, Query, Request, Response, UploadFile
 from typing import Annotated
 
@@ -24,8 +24,8 @@ link_controller = APIRouterPro(
 
 @link_controller.get(
     "/list",
-    summary='获取审批类型分页列表接口',
-    description='用于获取审批类型分页列表',
+    summary='获取在线工具分页列表接口',
+    description='用于获取在线工具分页列表',
     response_model=PageResponseModel[OaLinksBaseModel],
     dependencies=[UserInterfaceAuthDependency('basicdata:links:list')],
 )
@@ -40,11 +40,12 @@ async def list_page(
 
 @link_controller.post(
     "/add",
-    summary='新增审批类型接口',
-    description='用于新增审批类型',
+    summary='新增在线工具接口',
+    description='用于新增在线工具',
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('basicdata:links:add')],
 )
+@Log(title="新增在线工具", business_type=BusinessType.INSERT)
 async def add_link(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
@@ -56,11 +57,12 @@ async def add_link(
 
 @link_controller.delete(
     "/delete/{id}",
-    summary='删除审批类型接口',
-    description='用于删除审批类型',
+    summary='删除在线工具接口',
+    description='用于删除在线工具',
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('basicdata:links:del')],
 )
+@Log(title="删除在线工具", business_type=BusinessType.DELETE)
 async def delete_link(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
@@ -72,11 +74,12 @@ async def delete_link(
 
 @link_controller.put(
     "/update",
-    summary='修改审批类型接口',
-    description='用于修改审批类型',
+    summary='修改在线工具接口',
+    description='用于修改在线工具',
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('basicdata:links:edit')],
 )
+@Log(title="修改在线工具", business_type=BusinessType.UPDATE)
 async def update_link(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
@@ -88,8 +91,8 @@ async def update_link(
 
 @link_controller.get(
     "/detail/{id}",
-    summary='获取审批类型详情接口',
-    description='用于获取审批类型详情',
+    summary='获取在线工具详情接口',
+    description='用于获取在线工具详情',
     response_model=OaLinksBaseModel,
     dependencies=[UserInterfaceAuthDependency('basicdata:links:detail')],
 )
