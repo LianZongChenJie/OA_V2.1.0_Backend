@@ -20,68 +20,82 @@ class ScheduleService:
                                     data_scope_sql: ColumnElement, is_page: bool = False):
         try:
             query_list = await ScheduleDao.get_page_list(query_db, query_object, data_scope_sql, is_page)
-            if is_page:
-                # 处理分页结果
-                processed_rows = []
+            if is_page:# 处理分页结果
+                row_list = []
                 for row in query_list.rows:
-                    if row and len(row) > 0:
-                        schedule_obj = row[0]  # 可能是 OaSchedule 对象或字典
-                        
-                        # 判断是字典还是 ORM 对象
-                        if isinstance(schedule_obj, dict):
-                            # 如果已经是字典，直接使用
-                            schedule_dict = {
-                                'id': schedule_obj.get('id'),
-                                'title': schedule_obj.get('title'),
-                                'cid': schedule_obj.get('cid'),
-                                'cmid': schedule_obj.get('cmid'),
-                                'ptid': schedule_obj.get('ptid'),
-                                'tid': schedule_obj.get('tid'),
-                                'admin_id': schedule_obj.get('admin_id'),
-                                'did': schedule_obj.get('did'),
-                                'start_time': schedule_obj.get('start_time'),
-                                'end_time': schedule_obj.get('end_time'),
-                                'labor_time': float(schedule_obj.get('labor_time', 0)) if schedule_obj.get('labor_time') else 0.0,
-                                'labor_type': schedule_obj.get('labor_type'),
-                                'remark': schedule_obj.get('remark'),
-                                'file_ids': schedule_obj.get('file_ids'),
-                                'delete_time': schedule_obj.get('delete_time'),
-                                'create_time': schedule_obj.get('create_time'),
-                                'update_time': schedule_obj.get('update_time'),
-                            }
-                        else:
-                            # 如果是 ORM 对象，转换为字典
-                            schedule_dict = {
-                                'id': schedule_obj.id,
-                                'title': schedule_obj.title,
-                                'cid': schedule_obj.cid,
-                                'cmid': schedule_obj.cmid,
-                                'ptid': schedule_obj.ptid,
-                                'tid': schedule_obj.tid,
-                                'admin_id': schedule_obj.admin_id,
-                                'did': schedule_obj.did,
-                                'start_time': schedule_obj.start_time,
-                                'end_time': schedule_obj.end_time,
-                                'labor_time': float(schedule_obj.labor_time) if schedule_obj.labor_time else 0.0,
-                                'labor_type': schedule_obj.labor_type,
-                                'remark': schedule_obj.remark,
-                                'file_ids': schedule_obj.file_ids,
-                                'delete_time': schedule_obj.delete_time,
-                                'create_time': schedule_obj.create_time,
-                                'update_time': schedule_obj.update_time,
-                            }
-                        processed_rows.append(schedule_dict)
-                
-                # 直接返回字典，避免 Pydantic 验证问题
-                result_dict = {
-                    'rows': processed_rows,
-                    'pageNum': query_list.page_num,
-                    'pageSize': query_list.page_size,
-                    'total': query_list.total,
-                    'hasNext': query_list.has_next,
-                }
-                logger.info(f'分页查询成功，共 {len(processed_rows)} 条记录')
-                return result_dict
+                    row = dict(row)
+                    row.update(row['OaSchedule'].to_dict())
+                    row.pop('OaSchedule')
+                    if row['labor_type'] == 1:
+                        row['labor_name'] = '案头'
+                    elif row['labor_type'] == 2:
+                        row['labor_name'] = '外勤'
+                    row_list.append(ModelConverter.convert_to_camel_case(row))
+                query_list.rows = row_list
+                return query_list
+            # else:
+            #     return [row[0].to_dict() for row in query_list
+                # processed_rows = []
+                # for row in query_list.rows:
+                #     if row and len(row) > 0:
+                #         schedule_obj = row[0]  # 可能是 OaSchedule 对象或字典
+                #
+                #         # 判断是字典还是 ORM 对象
+                #         if isinstance(schedule_obj, dict):
+                #             # 如果已经是字典，直接使用
+                #             schedule_dict = {
+                #                 'id': schedule_obj.get('id'),
+                #                 'title': schedule_obj.get('title'),
+                #                 'cid': schedule_obj.get('cid'),
+                #                 'cmid': schedule_obj.get('cmid'),
+                #                 'ptid': schedule_obj.get('ptid'),
+                #                 'tid': schedule_obj.get('tid'),
+                #                 'admin_id': schedule_obj.get('admin_id'),
+                #                 'did': schedule_obj.get('did'),
+                #                 'start_time': schedule_obj.get('start_time'),
+                #                 'end_time': schedule_obj.get('end_time'),
+                #                 'labor_time': float(schedule_obj.get('labor_time', 0)) if schedule_obj.get('labor_time') else 0.0,
+                #                 'labor_type': schedule_obj.get('labor_type'),
+                #                 'remark': schedule_obj.get('remark'),
+                #                 'file_ids': schedule_obj.get('file_ids'),
+                #                 'delete_time': schedule_obj.get('delete_time'),
+                #                 'create_time': schedule_obj.get('create_time'),
+                #                 'update_time': schedule_obj.get('update_time'),
+                #             }
+                #         else:
+                #             # 如果是 ORM 对象，转换为字典
+                #             schedule_dict = {
+                #                 'id': schedule_obj.id,
+                #                 'title': schedule_obj.title,
+                #                 'cid': schedule_obj.cid,
+                #                 'cmid': schedule_obj.cmid,
+                #                 'ptid': schedule_obj.ptid,
+                #                 'tid': schedule_obj.tid,
+                #                 'admin_id': schedule_obj.admin_id,
+                #                 'did': schedule_obj.did,
+                #                 'start_time': schedule_obj.start_time,
+                #                 'end_time': schedule_obj.end_time,
+                #                 'labor_time': float(schedule_obj.labor_time) if schedule_obj.labor_time else 0.0,
+                #                 'labor_type': schedule_obj.labor_type,
+                #                 'remark': schedule_obj.remark,
+                #                 'file_ids': schedule_obj.file_ids,
+                #                 'delete_time': schedule_obj.delete_time,
+                #                 'create_time': schedule_obj.create_time,
+                #                 'update_time': schedule_obj.update_time,
+                #             }
+                #         processed_rows.append(schedule_dict)
+                #
+                # # 直接返回字典，避免 Pydantic 验证问题
+                # result_dict = {
+                #     'rows': processed_rows,
+                #     'pageNum': query_list.page_num,
+                #     'pageSize': query_list.page_size,
+                #     'total': query_list.total,
+                #     'hasNext': query_list.has_next,
+                # }
+                # logger.info(f'分页查询成功，共 {len(processed_rows)} 条记录')
+                # return result_dict
+                #
             else:
                 result_list = []
                 if query_list:
@@ -155,14 +169,15 @@ class ScheduleService:
             calendar_item = {
                 'backgroundColor': SchedulePriority(int(item['cid'])).back_ground_colors,
                 'borderColor': SchedulePriority(int(item['cid'])).border_color,
-                'end': item['end_time'],
-                'start': item['start_time'],
+                'end': item['endTime'],
+                'start': item['startTime'],
                 'title': item['title'],
                 'id': item['id'],
-                'laborTime': item['labor_time']
+                'laborTime': item['laborTime']
             }
             calendar_list.append(calendar_item)
-        return calendar_list
+        data_list.rows = calendar_list
+        return data_list
 
     @classmethod
     async def get_calendar_info_service(cls, query_db: AsyncSession, id: int) -> dict[str, Any]:

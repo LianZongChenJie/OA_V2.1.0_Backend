@@ -3,10 +3,12 @@ from typing import Annotated
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import ColumnElement
 
+from common.annotation.log_annotation import Log
 from common.aspect.data_scope import DataScopeDependency
 from common.aspect.db_seesion import DBSessionDependency
 from common.aspect.interface_auth import UserInterfaceAuthDependency
 from common.aspect.pre_auth import PreAuthDependency, CurrentUserDependency
+from common.enums import BusinessType
 from common.router import APIRouterPro
 from module_dashboard.entity.do.schedule_do import OaSchedule
 from module_dashboard.entity.vo.schedule_vo import OaSchedulePageQueryModel, OaScheduleBaseModel
@@ -35,7 +37,7 @@ async def get_page_list(
     data_scope_sql: Annotated[ColumnElement, DataScopeDependency(OaSchedule)],
 ) -> Response:
     result =  await ScheduleService.get_page_list_service(query_db,query_object,data_scope_sql,True)
-    return ResponseUtil.success(data=result)
+    return ResponseUtil.success(model_content=result)
 
 @dashboard_schedule_controller.post(
     "/add",
@@ -44,6 +46,7 @@ async def get_page_list(
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:schedule:add')],
 )
+@Log(title="新增工作记录", business_type=BusinessType.INSERT)
 async def add_schedule(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
@@ -61,6 +64,7 @@ async def add_schedule(
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:schedule:update')],
 )
+@Log(title="更新工作记录", business_type=BusinessType.UPDATE)
 async def update_schedule(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
@@ -91,6 +95,7 @@ async def get_schedule_by_id(
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:schedule:delete')],
 )
+@Log(title="删除工作记录", business_type=BusinessType.DELETE)
 async def delete_schedule(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
@@ -114,7 +119,7 @@ async def get_calendar_list(
     data_scope_sql: Annotated[ColumnElement, DataScopeDependency(OaSchedule)],
 ) -> Response:
     result =  await ScheduleService.get_calendar_list_service(query_db,query_object,data_scope_sql,True)
-    return ResponseUtil.success(data=result)
+    return ResponseUtil.success(model_content=result)
 
 @dashboard_schedule_controller.get(
     "/calendar/detail/{id}",
@@ -129,4 +134,4 @@ async def get_calendar_schedule_by_id(
     id: int,
 ) -> Response:
     result =  await ScheduleService.get_calendar_info_service(query_db, id)
-    return ResponseUtil.success(data=result)
+    return ResponseUtil.success(model_content=result)

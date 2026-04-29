@@ -19,7 +19,15 @@ class ScheduleDao:
                             is_page: bool = False) -> PageModel | list[list[dict[str, Any]]]:
 
         # 构建基础查询
-        query = select(OaSchedule,SysUser,SysDept, OaWorkCate).join(SysUser, OaSchedule.admin_id == SysUser.user_id, isouter=True).join(SysDept, SysUser.dept_id == SysDept.dept_id,isouter=True ).join(OaWorkCate, OaSchedule.cid == OaWorkCate.id,isouter=True )
+        query = (select(OaSchedule,
+                       SysUser.nick_name.label('user_name'),
+                       SysDept.dept_name.label('dept_name'),
+                       OaWorkCate.title.label('cate_name'),
+                       )
+                 .join(SysUser, OaSchedule.admin_id == SysUser.user_id, isouter=True)
+                 .join(SysDept, SysUser.dept_id == SysDept.dept_id,isouter=True )
+                 .join(OaWorkCate, OaSchedule.cid == OaWorkCate.id,isouter=True )
+                 )
 
         # 构建条件列表
         conditions = []
@@ -37,8 +45,8 @@ class ScheduleDao:
             except Exception as e:
                 logger.warning(f'解析时间范围失败：{str(e)}')
         elif query_object.begin_time and query_object.end_time:
-            start_timestamp = int(datetime.strptime(query_object.begin_time, "%Y-%m-%d %H:%M:%S").timestamp())
-            end_timestamp = int(datetime.strptime(query_object.end_time, "%Y-%m-%d %H:%M:%S").timestamp())
+            start_timestamp = int(datetime.strptime(query_object.begin_time, "%Y-%m-%d").timestamp())
+            end_timestamp = int(datetime.strptime(query_object.end_time, "%Y-%m-%d").timestamp())
             conditions.append(OaSchedule.start_time.between(start_timestamp, end_timestamp))
 
         # 关键词搜索（标题或备注）
@@ -71,7 +79,7 @@ class ScheduleDao:
         query = query.order_by(desc(OaSchedule.create_time))
 
         # 分页查询
-        page_list: PageModel | list[list[dict[str, Any]]] = await PageUtil.paginate(
+        page_list: PageModel | list[list[dict[str, Any]]] = await PageUtil.paginate_dict(
             db, query, query_object.page_num if query_object.page_num else 1, 
             query_object.page_size if query_object.page_size else 20, 
             is_page
