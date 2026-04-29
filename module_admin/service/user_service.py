@@ -299,6 +299,8 @@ class UserService:
             post_ids_list = [row.post_id for row in query_user.get('user_post_info')]
             role_ids = ','.join([str(row.role_id) for row in query_user.get('user_role_info')])
             role_ids_list = [row.role_id for row in query_user.get('user_role_info')]
+            if not query_user.get('user_basic_info'):
+                raise ServiceException(message="用户不存在！")
             if query_user.get('user_basic_info') and str(query_user.get('user_basic_info').user_id) == query_user.get('user_dept_info').leader_id:
                 query_user.get('user_basic_info').is_leader = True
             else:
