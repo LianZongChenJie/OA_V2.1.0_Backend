@@ -74,7 +74,6 @@ class BasicCustomerDao:
                 await db.execute(
                     select(OaBasicCustomer)
                     .where(
-                        OaBasicCustomer.status == model.types,
                         OaBasicCustomer.title == model.title if model.title else True
                     )
                     .order_by(desc(OaBasicCustomer.create_time))

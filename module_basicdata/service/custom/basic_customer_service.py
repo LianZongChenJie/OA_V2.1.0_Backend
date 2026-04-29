@@ -31,7 +31,7 @@ class BasicCustomerService:
     @classmethod
     async def add_service(cls, query_db: AsyncSession, model: OaBasicCustomerBaseModel) -> CrudResponseModel:
         if not await cls.check_name_unique_services(query_db, model):
-            raise ServiceException(message=f'新增客户等级{model.title}失败，等级名称已存在')
+            raise ServiceException(message=f'新增客户常规数据{model.title}失败，常规数据名称已存在')
         try:
             model.create_time = int(datetime.now().timestamp())
             model.status = 1
@@ -46,7 +46,7 @@ class BasicCustomerService:
     @classmethod
     async def update_service(cls, query_db: AsyncSession, model: OaBasicCustomerBaseModel):
         if not await cls.check_name_unique_services(query_db, model):
-            raise ServiceException(message=f'新增客户等级{model.title}失败，等级名称已存在')
+            raise ServiceException(message=f'新增客户常规数据{model.title}失败，常规数据名称已存在')
         try:
             model.update_time = int(datetime.now().timestamp())
             await BasicCustomerDao.update(query_db, model)

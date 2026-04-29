@@ -1,10 +1,12 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import ColumnElement
 
+from common.annotation.log_annotation import Log
 from common.aspect.data_scope import DataScopeDependency
 from common.aspect.db_seesion import DBSessionDependency
 from common.aspect.interface_auth import UserInterfaceAuthDependency
 from common.aspect.pre_auth import PreAuthDependency
+from common.enums import BusinessType
 from common.router import APIRouterPro
 from common.vo import PageResponseModel
 from fastapi import File, Form, Path, Query, Request, Response, UploadFile
@@ -44,6 +46,7 @@ async def list_page(
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('basicdata:customer:basic:add')],
 )
+@Log(title="新增常规数据", business_type=BusinessType.INSERT)
 async def add_industry(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
@@ -60,7 +63,8 @@ async def add_industry(
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('basicdata:customer:basic:del')],
 )
-async def change_status_industry(
+@Log(title="修改常规数据", business_type=BusinessType.UPDATE)
+async def change_status(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
     model: OaBasicCustomerBaseModel,
@@ -76,6 +80,7 @@ async def change_status_industry(
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('basicdata:customer:basic:edit')],
 )
+@Log(title="修改常规数据", business_type=BusinessType.UPDATE)
 async def update_industry(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
