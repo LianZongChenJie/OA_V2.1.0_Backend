@@ -104,3 +104,19 @@ async def delete_care(
 ) -> Response:
     result =  await CareService.del_by_id(query_db, id)
     return ResponseUtil.success(msg=result.message)
+
+@care_controller.put(
+    "/changeStatus",
+    summary='改变员工关怀状态',
+    description='用于设置员工关怀的启用/禁用状态',
+    response_model=None,
+    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:personnel:care:changeStatus')],
+)
+@Log(title='人事管理-员工关怀-状态变更',business_type=BusinessType.UPDATE)
+async def change_status(
+    request: Request,
+    query_db: Annotated[AsyncSession, DBSessionDependency()],
+    model: Annotated[OaCareBaseModel, Body()],
+) -> Response:
+    result = await CareService.change_status_service(query_db, model)
+    return ResponseUtil.success(msg=result.message)

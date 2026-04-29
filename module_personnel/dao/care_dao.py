@@ -19,9 +19,6 @@ class CareDao:
     async def get_page_list(cls, db: AsyncSession, query_object: OaCarePageQueryModel,
                             data_scope_sql: ColumnElement,
                             is_page: bool = False) -> PageModel | list[list[dict[str, Any]]]:
-        if query_object.begin_time and query_object.end_time:
-            query_object.begin_time = query_object.begin_time + ' 00:00:00'
-            query_object.end_time = query_object.end_time + ' 23:59:59'
         user = aliased(SysUser, name='user')
         query = (select(OaCare, SysUser.nick_name.label('user_name'),user.nick_name.label('admin_name'),SysCareCate.title.label('cate_name'))
                  .join(SysUser, OaCare.uid == SysUser.user_id, isouter=True)
@@ -33,13 +30,14 @@ class CareDao:
                             OaCare.care_cate == query_object.care_cate if query_object.care_cate else True,
                             OaCare.uid == query_object.uid if query_object.uid else True,
                             OaCare.thing.like('%' + query_object.thing + '%') if query_object.thing else True,
-                            OaCare.care_time.between(
-                                int(datetime.strptime(query_object.begin_time, "%Y-%m-%d %H:%M:%S").timestamp()),
-                                int(datetime.strptime(query_object.end_time, "%Y-%m-%d %H:%M:%S").timestamp()),
-                            ) if query_object.begin_time and query_object.end_time else True,
-
                         data_scope_sql,
             ).order_by(desc(OaCare.create_time)))
+        
+        if query_object.begin_time and query_object.end_time:
+            begin_timestamp = int(datetime.strptime(query_object.begin_time + ' 00:00:00', "%Y-%m-%d %H:%M:%S").timestamp())
+            end_timestamp = int(datetime.strptime(query_object.end_time + ' 23:59:59', "%Y-%m-%d %H:%M:%S").timestamp())
+            query = query.where(OaCare.care_time.between(begin_timestamp, end_timestamp))
+        
         page_list: PageModel | list[list[dict[str, Any]]] = await PageUtil.paginate_dict(
             db, query, query_object.page_num, query_object.page_size, is_page
         )
@@ -109,6 +107,22 @@ class CareDao:
     @classmethod
     async def del_by_id(cls, db: AsyncSession, id: int):
         result = await db.execute(update(OaCare).values(delete_time=int(datetime.now().timestamp())).where(OaCare.id == id))
+        await db.commit()
+        return result.rowcount
+
+    @classmethod
+    async def get_info_by_id_only(cls, db: AsyncSession, id: int):
+        query = select(OaCare).where(OaCare.id == id)
+        result = await db.execute(query)
+        return result.scalars().first()
+
+    @classmethod
+    async def change_status(cls, db: AsyncSession, model: OaCareBaseModel):
+        result = await db.execute(
+            update(OaCare)
+            .values(status=model.status, update_time=model.update_time)
+            .where(OaCare.id == model.id)
+        )
         await db.commit()
         return result.rowcount
 

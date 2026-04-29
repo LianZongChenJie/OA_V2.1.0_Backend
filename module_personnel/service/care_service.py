@@ -112,3 +112,18 @@ class CareService:
         except Exception as e:
             await db.rollback()
             raise e
+
+    @classmethod
+    async def change_status_service(cls, query_db: AsyncSession, model: OaCareBaseModel) -> CrudResponseModel:
+        try:
+            info = await CareDao.get_info_by_id_only(query_db, model.id)
+            if not info:
+                raise ServiceException(message="未找到该数据")
+            
+            model.update_time = int(datetime.now().timestamp())
+            await CareDao.change_status(query_db, model)
+            await query_db.commit()
+            return CrudResponseModel(is_success=True, message='状态修改成功')
+        except Exception as e:
+            await query_db.rollback()
+            raise e

@@ -117,3 +117,18 @@ class RewardsService:
         except Exception as e:
             await db.rollback()
             raise e
+
+    @classmethod
+    async def change_status_service(cls, query_db: AsyncSession, model: OaRewardsBaseModel) -> CrudResponseModel:
+        try:
+            info = await RewardsDao.get_info_by_id_only(query_db, model.id)
+            if not info:
+                raise ServiceException(message="未找到该数据")
+            
+            model.update_time = int(datetime.now().timestamp())
+            await RewardsDao.change_status(query_db, model)
+            await query_db.commit()
+            return CrudResponseModel(is_success=True, message='状态修改成功')
+        except Exception as e:
+            await query_db.rollback()
+            raise e

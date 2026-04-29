@@ -104,3 +104,19 @@ async def delete_change(
 ) -> Response:
     result =  await RewardsService.del_by_id(query_db, id)
     return ResponseUtil.success(msg=result.message)
+
+@personnel_rewards_controller.put(
+    "/changeStatus",
+    summary='改变奖罚管理状态',
+    description='用于设置奖罚管理的启用/禁用状态',
+    response_model=None,
+    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:personnel:rewards:changeStatus')],
+)
+@Log(title='奖罚管理-状态变更', business_type=BusinessType.UPDATE)
+async def change_status(
+    request: Request,
+    query_db: Annotated[AsyncSession, DBSessionDependency()],
+    model: Annotated[OaRewardsBaseModel, Body()],
+) -> Response:
+    result = await RewardsService.change_status_service(query_db, model)
+    return ResponseUtil.success(msg=result.message)

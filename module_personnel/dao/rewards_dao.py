@@ -18,9 +18,6 @@ class RewardsDao:
     async def get_page_list(cls, db: AsyncSession, query_object: OaRewardsPageQueryModel,
                             data_scope_sql: ColumnElement,
                             is_page: bool = False) -> PageModel | list[list[dict[str, Any]]]:
-        if query_object.begin_time and query_object.end_time:
-            query_object.begin_time = query_object.begin_time + ' 00:00:00'
-            query_object.end_time = query_object.end_time + ' 23:59:59'
         user = aliased(SysUser, name='user')
         query = (select(OaRewards,SysRewardsCate.title.label('cate_name'),SysUser.nick_name.label('user_name'), user.nick_name.label('admin_name'))
                  .join(SysRewardsCate, OaRewards.rewards_cate == SysRewardsCate.id,isouter=True)\
@@ -32,12 +29,14 @@ class RewardsDao:
                             OaRewards.rewards_cate == query_object.rewards_cate if query_object.rewards_cate else True,
                             OaRewards.uid == query_object.uid if query_object.uid else True,
                             OaRewards.thing.like('%' + query_object.thing + '%') if query_object.thing else True,
-                            OaRewards.rewards_time.between(
-                                int(datetime.strptime(query_object.begin_time, "%Y-%m-%d %H:%M:%S").timestamp()),
-                                int(datetime.strptime(query_object.end_time, "%Y-%m-%d %H:%M:%S").timestamp()),
-                            ) if query_object.begin_time and query_object.end_time else True,
-                        data_scope_sql,
+                            data_scope_sql,
             ).order_by(desc(OaRewards.create_time)))
+        
+        if query_object.begin_time and query_object.end_time:
+            begin_timestamp = int(datetime.strptime(query_object.begin_time + ' 00:00:00', "%Y-%m-%d %H:%M:%S").timestamp())
+            end_timestamp = int(datetime.strptime(query_object.end_time + ' 23:59:59', "%Y-%m-%d %H:%M:%S").timestamp())
+            query = query.where(OaRewards.rewards_time.between(begin_timestamp, end_timestamp))
+        
         page_list: PageModel | list[list[dict[str, Any]]] = await PageUtil.paginate_dict(
             db, query, query_object.page_num, query_object.page_size, is_page
         )
@@ -103,6 +102,22 @@ class RewardsDao:
     @classmethod
     async def del_by_id(cls, db: AsyncSession, id: int):
         result = await db.execute(update(OaRewards).values(delete_time=int(datetime.now().timestamp())).where(OaRewards.id == id))
+        await db.commit()
+        return result.rowcount
+
+    @classmethod
+    async def get_info_by_id_only(cls, db: AsyncSession, id: int):
+        query = select(OaRewards).where(OaRewards.id == id)
+        result = await db.execute(query)
+        return result.scalars().first()
+
+    @classmethod
+    async def change_status(cls, db: AsyncSession, model: OaRewardsBaseModel):
+        result = await db.execute(
+            update(OaRewards)
+            .values(status=model.status, update_time=model.update_time)
+            .where(OaRewards.id == model.id)
+        )
         await db.commit()
         return result.rowcount
 
