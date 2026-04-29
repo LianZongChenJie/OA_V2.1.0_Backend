@@ -10,6 +10,8 @@ from common.vo import PageResponseModel
 from fastapi import File, Form, Path, Query, Request, Response, UploadFile
 from typing import Annotated
 
+from common.annotation.log_annotation import Log
+from common.enums import BusinessType
 from module_basicdata.entity.do.custom.custome_source_do import OaCustomerSource
 from module_basicdata.entity.vo.custom.customer_source_vo import OaCustomerSourceBaseModel, OaCustomerSourcePageQueryModel
 from module_basicdata.service.custom.customer_source_service import CustomerSourceService
@@ -23,8 +25,8 @@ source_controller = APIRouterPro(
 
 @source_controller.get(
     "/list",
-    summary='行业类型分页列表接口',
-    description='用于获取行业类型分页列表',
+    summary='客户来源分页列表接口',
+    description='用于获取客户来源分页列表',
     response_model=PageResponseModel[OaCustomerSourceBaseModel],
     dependencies=[UserInterfaceAuthDependency('basicdata:customer:source:list')],
 )
@@ -39,12 +41,13 @@ async def list_page(
 
 @source_controller.post(
     "/add",
-    summary='新增行业类型接口',
-    description='用于新增行业类型',
+    summary='新增客户来源接口',
+    description='用于新增客户来源',
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('basicdata:finance:cost_cate:add')],
 )
-async def add_industry(
+@Log(title="新增客户来源", business_type=BusinessType.INSERT)
+async def add_customer(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
     model: OaCustomerSourceBaseModel,
@@ -55,12 +58,13 @@ async def add_industry(
 
 @source_controller.put(
     "/changeStatus",
-    summary='修改行业类型状态接口',
-    description='用于修改行业类型状态',
+    summary='修改客户来源状态接口',
+    description='用于修改客户来源状态',
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('basicdata:finance:cost_cate:del')],
 )
-async def change_status_industry(
+@Log(title="修改客户来源状态", business_type=BusinessType.UPDATE)
+async def change_status_customer(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
     model: OaCustomerSourceBaseModel,
@@ -71,12 +75,13 @@ async def change_status_industry(
 
 @source_controller.put(
     "/update",
-    summary='修改行业类型接口',
-    description='用于修改行业类型',
+    summary='修改客户来源接口',
+    description='用于修改客户来源',
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('basicdata:finance:cost_cate:edit')],
 )
-async def update_industry(
+@Log(title="修改客户来源", business_type=BusinessType.UPDATE)
+async def update_customer(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
     model: OaCustomerSourceBaseModel,
@@ -87,12 +92,12 @@ async def update_industry(
 
 @source_controller.get(
     "/detail/{id}",
-    summary='获取行业类型详情接口',
-    description='用于获取行业类型详情',
+    summary='获取客户来源详情接口',
+    description='用于获取客户来源详情',
     response_model=OaCustomerSourceBaseModel,
     dependencies=[UserInterfaceAuthDependency('basicdata:finance:cost_cate:detail')],
 )
-async def get_industry_info(
+async def get_customer_info(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
     id: Annotated[int, Path()],

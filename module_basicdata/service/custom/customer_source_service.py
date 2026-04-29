@@ -31,7 +31,7 @@ class CustomerSourceService:
     @classmethod
     async def add_service(cls, query_db: AsyncSession, model: OaCustomerSourceBaseModel) -> CrudResponseModel:
         if not await cls.check_name_unique_services(query_db, model):
-            raise ServiceException(message=f'新增客户等级{model.title}失败，等级名称已存在')
+            raise ServiceException(message=f'新增客户来源{model.title}失败，来源名称已存在')
         try:
             model.create_time = int(datetime.now().timestamp())
             model.status = 1
@@ -45,7 +45,7 @@ class CustomerSourceService:
     @classmethod
     async def update_service(cls, query_db: AsyncSession, model: OaCustomerSourceBaseModel):
         if not await cls.check_name_unique_services(query_db, model):
-            raise ServiceException(message=f'新增客户等级{model.title}失败，等级名称已存在')
+            raise ServiceException(message=f'新增客户来源{model.title}失败，来源名称已存在')
         try:
             model.update_time = int(datetime.now().timestamp())
             await CustomerSourceDao.update(query_db, model)
@@ -87,7 +87,7 @@ class CustomerSourceService:
         :param page_object: 用户对象
         :return: 校验结果
         """
-        title = -1 if page_object.name is None else page_object.title
+        title = -1 if page_object.title is None else page_object.title
         model = await CustomerSourceDao.get_info_by_title(query_db, OaCustomerSourceBaseModel(title=page_object.title))
         if model and model.id == page_object.id:
             return CommonConstant.UNIQUE
