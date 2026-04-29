@@ -2,6 +2,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, desc, or_, and_
 from sqlalchemy.sql import ColumnElement, func
 from common.vo import PageModel
+from module_admin.entity.do.user_do import SysUser
 from utils.page_util import PageUtil
 from module_dashboard.entity.vo.plan_vo import OaPlanQueryModel, OaPlanBaseModel
 from module_dashboard.entity.do.plan_do import OaPlan
@@ -15,10 +16,9 @@ class PlanDao:
                             data_scope_sql: ColumnElement,
                             is_page: bool = False) -> PageModel | list[list[dict[str, Any]]]:
 
-        from module_admin.entity.do.oa_admin_do import OaAdmin
 
-        query = select(OaPlan, OaAdmin.name.label('create_admin')).join(
-            OaAdmin, OaAdmin.id == OaPlan.admin_id, isouter=True
+        query = select(OaPlan, SysUser.nick_name.label('admin_name')).join(
+            SysUser, SysUser.user_id == OaPlan.admin_id, isouter=True
         )
 
         conditions = []
@@ -56,7 +56,6 @@ class PlanDao:
                                 data_scope_sql: ColumnElement,
                                 is_page: bool = False) -> list[dict[str, Any]]:
 
-        from module_admin.entity.do.oa_admin_do import OaAdmin
 
         conditions = []
         conditions.append(OaPlan.delete_time == 0)
@@ -69,7 +68,7 @@ class PlanDao:
             end_timestamp = int(datetime.strptime(query_object.end_time + ' 23:59:59', "%Y-%m-%d %H:%M:%S").timestamp())
             conditions.append(and_(
                 OaPlan.start_time <= end_timestamp,
-                OaPlan.end_time >= start_timestamp
+                OaPlan.start_time >= start_timestamp
             ))
 
         if data_scope_sql is not None:
@@ -128,10 +127,9 @@ class PlanDao:
 
     @classmethod
     async def get_info_by_id(cls, db: AsyncSession, id: int):
-        from module_admin.entity.do.oa_admin_do import OaAdmin
 
-        query = (select(OaPlan, OaAdmin.name.label('create_admin'))
-        .join(OaAdmin, OaAdmin.id == OaPlan.admin_id, isouter=True)
+        query = (select(OaPlan, SysUser.nick_name.label('admin_name'))
+        .join(SysUser, SysUser.user_id == OaPlan.admin_id, isouter=True)
         .where(
             OaPlan.id == id))
         result = await db.execute(query)
