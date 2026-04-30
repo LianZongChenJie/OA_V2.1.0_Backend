@@ -4,6 +4,7 @@ from sqlalchemy.sql import ColumnElement
 from typing import Any
 
 from common.vo import PageModel
+from module_admin.entity.do.user_do import SysUser
 from module_basicdata.entity.do.public.template_do import OaTemplate
 
 from datetime import datetime, time
@@ -27,7 +28,10 @@ class OaTemplateDao:
         :return: 用模板表信息对象
         """
         query = (
-            select(OaTemplate)
+            select(OaTemplate,
+                   SysUser.nick_name.label('admin_name'),
+                   )
+            .join(SysUser, OaTemplate.admin_id == SysUser.user_id, isouter=True)
             .where(
                 OaTemplate.status == '1'
                 if query_object
@@ -43,7 +47,7 @@ class OaTemplateDao:
             )
             .order_by(OaTemplate.create_time.desc())
         )
-        template_list: PageModel | list[list[dict[str, Any]]] = await PageUtil.paginate(
+        template_list: PageModel | list[list[dict[str, Any]]] = await PageUtil.paginate_dict(
             db, query, query_object.page_num, query_object.page_size, is_page
         )
 

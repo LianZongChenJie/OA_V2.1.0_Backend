@@ -34,26 +34,4 @@ class OaTemplate(Base):
 
     def to_dict(self):
         """转换为字典"""
-        return {
-            'id': self.id,
-            'title': self.title,
-            'name': self.name,
-            'types': self.types,
-            'check_types': self.check_types,
-            'remark': self.remark,
-            'msg_link': self.msg_link,
-            'msg_title_0': self.msg_title_0,
-            'msg_content_0': self.msg_content_0,
-            'msg_title_1': self.msg_title_1,
-            'msg_content_1': self.msg_content_1,
-            'msg_title_2': self.msg_title_2,
-            'msg_content_2': self.msg_content_2,
-            'msg_title_3': self.msg_title_3,
-            'msg_content_3': self.msg_content_3,
-            'email_link': self.email_link,
-            'status': self.status,
-            'admin_id': self.admin_id,
-            'create_time': self.create_time,
-            'update_time': self.update_time,
-            'delete_time': self.delete_time
-        }
+        return {c.name: getattr(self, c.name) for c in self.__table__.columns}

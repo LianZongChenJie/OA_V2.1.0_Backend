@@ -6,8 +6,11 @@ from datetime import datetime
 from common.constant import CommonConstant
 from common.vo import CrudResponseModel, PageModel
 from exceptions.exception import ServiceException
+from module_admin.dao.dept_dao import DeptDao
+from module_admin.entity.do.dept_do import SysDept
 from module_basicdata.dao.public.template_dao import OaTemplateDao
 from module_basicdata.entity.vo.public.template_vo import TemplateRowModel, TemplatePageQueryModel, TemplateBaseModel
+from utils.camel_converter import ModelConverter
 
 
 class TemplateService:
@@ -34,11 +37,14 @@ class TemplateService:
         """
         query_result = await OaTemplateDao.get_template_list(query_db, query_object, data_scope_sql, is_page)
         if is_page:
-            template_list_result = PageModel[TemplateRowModel](
-                **{
-                    **query_result.model_dump(by_alias=True)
-                }
-            )
+            row_list = []
+            for row in query_result.rows:
+                row = dict(row)
+                row.update(row['OaTemplate'].to_dict())
+                row.pop('OaTemplate')
+                row_list.append(ModelConverter.convert_to_camel_case(row))
+            query_result.rows = row_list
+            return query_result
         else:
             template_list_result = []
             if query_result:
