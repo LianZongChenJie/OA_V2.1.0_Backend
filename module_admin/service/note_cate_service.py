@@ -51,10 +51,19 @@ class NoteCateService:
         :param page_object: 公告分类对象
         :return: 校验结果
         """
-        note_cate_id = -1 if page_object.id is None else page_object.id
-        note_cate = await NoteCateDao.get_note_cate_detail_by_info(query_db, page_object)
-        if note_cate and note_cate.id != note_cate_id:
-            return CommonConstant.NOT_UNIQUE
+        # 只根据 title 查询，检测是否存在同名公告分类
+        check_object = NoteCateModel(title=page_object.title)
+        note_cate = await NoteCateDao.get_note_cate_detail_by_info(query_db, check_object)
+        
+        # 如果找到同名公告分类，且不是当前编辑的公告分类，则返回不唯一
+        if note_cate:
+            # 如果是新增操作（id 为空），直接返回不唯一
+            if page_object.id is None:
+                return CommonConstant.NOT_UNIQUE
+            # 如果是编辑操作，检查找到的公告分类是否是当前编辑的公告分类
+            if note_cate.id != page_object.id:
+                return CommonConstant.NOT_UNIQUE
+        
         return CommonConstant.UNIQUE
 
     @classmethod
@@ -69,6 +78,10 @@ class NoteCateService:
         :param page_object: 新增公告分类对象
         :return: 新增公告分类校验结果
         """
+        # 去除标题前后空格
+        if page_object.title:
+            page_object.title = page_object.title.strip()
+        
         if not await cls.check_note_cate_title_unique_services(query_db, page_object):
             raise ServiceException(message=f'新增公告分类{page_object.title}失败，公告分类名称已存在')
 
@@ -101,6 +114,10 @@ class NoteCateService:
         :param page_object: 编辑公告分类对象
         :return: 编辑公告分类校验结果
         """
+        # 去除标题前后空格
+        if page_object.title:
+            page_object.title = page_object.title.strip()
+        
         edit_note_cate = page_object.model_dump(exclude_unset=True)
         note_cate_info = await cls.note_cate_detail_services(query_db, page_object.id)
 
@@ -198,4 +215,3 @@ class NoteCateService:
         result = NoteCateModel(**CamelCaseUtil.transform_result(note_cate)) if note_cate else NoteCateModel()
 
         return result
-

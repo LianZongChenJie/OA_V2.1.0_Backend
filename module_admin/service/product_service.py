@@ -95,30 +95,31 @@ class ProductService:
 
         try:
             current_time = int(datetime.now().timestamp())
-            add_product = ProductModel(
-                title=page_object.title,
-                cate_id=page_object.cate_id if page_object.cate_id is not None else 0,
-                thumb=page_object.thumb if page_object.thumb is not None else 0,
-                code=page_object.code,
-                barcode=page_object.barcode,
-                unit=page_object.unit,
-                specs=page_object.specs,
-                brand=page_object.brand,
-                producer=page_object.producer,
-                base_price=page_object.base_price if page_object.base_price is not None else 0,
-                purchase_price=page_object.purchase_price if page_object.purchase_price is not None else 0,
-                sale_price=page_object.sale_price if page_object.sale_price is not None else 0,
-                content=page_object.content,
-                album_ids=page_object.album_ids if page_object.album_ids else '',
-                file_ids=page_object.file_ids if page_object.file_ids else '',
-                stock=page_object.stock if page_object.stock is not None else 0,
-                is_object=page_object.is_object if page_object.is_object is not None else 1,
-                status=page_object.status if page_object.status is not None else 1,
-                create_time=current_time,
-                update_time=current_time,
-
-            )
-            await ProductDao.add_product_dao(query_db, add_product)
+            # 使用字典方式构建，确保所有字段都能正确传递
+            add_product_dict = {
+                'title': page_object.title,
+                'cate_id': page_object.cate_id if page_object.cate_id is not None else 0,
+                'thumb': page_object.thumb if page_object.thumb is not None else 0,
+                'code': page_object.code,
+                'barcode': page_object.barcode,
+                'unit': page_object.unit,
+                'specs': page_object.specs,
+                'brand': page_object.brand,
+                'producer': page_object.producer,
+                'base_price': float(page_object.base_price) if page_object.base_price else 0.0,
+                'purchase_price': float(page_object.purchase_price) if page_object.purchase_price else 0.0,
+                'sale_price': float(page_object.sale_price) if page_object.sale_price else 0.0,
+                'content': page_object.content,
+                'album_ids': page_object.album_ids if page_object.album_ids else '',
+                'file_ids': page_object.file_ids if page_object.file_ids else '',
+                'stock': page_object.stock if page_object.stock is not None else 0,
+                'is_object': page_object.is_object if page_object.is_object is not None else 1,
+                'status': page_object.status if page_object.status is not None else 1,
+                'create_time': current_time,
+                'update_time': current_time,
+                'admin_id': current_user_id if current_user_id else 0,
+            }
+            await ProductDao.add_product_dao(query_db, add_product_dict)
             await query_db.commit()
             return CrudResponseModel(is_success=True, message='新增成功')
         except Exception as e:
@@ -239,4 +240,3 @@ class ProductService:
         result = ProductModel(**CamelCaseUtil.transform_result(product)) if product else ProductModel()
 
         return result
-
