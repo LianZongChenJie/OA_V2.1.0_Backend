@@ -13,7 +13,7 @@ async def job():
             print(f'操作日志数量: {oper_count}')
 
             if oper_count:
-                await OaAdminLogCountDao.add(query_db, oper_count)
+                await OaAdminLogCountDao.add_last(query_db, oper_count)
 
             await query_db.commit()  # 提交事务
             print('日志统计任务执行成功')

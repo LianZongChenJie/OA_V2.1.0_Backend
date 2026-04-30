@@ -275,10 +275,16 @@ class OaAdminLogCountDao:
     """
 
     @classmethod
-    async def add(cls, db: AsyncSession, count: int) -> SysLogininfor:
+    async def add_last(cls, db: AsyncSession, count: int) -> SysLogininfor:
+        """
+        添加上一天操作数量统计记录
+        :param db:
+        :param count:
+        :return:
+        """
         add_model = OaAdminLogCount()
         add_model.year = int(datetime.now().strftime('%Y'))
-        add_model.date = datetime.now().strftime('%Y-%m-%d')
+        add_model.date = (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d')
         add_model.num = count
         add_model.create_time = int(datetime.now().timestamp())
         db.add(add_model)
