@@ -4,6 +4,7 @@ from common.constant import CommonConstant
 from common.vo import PageModel, CrudResponseModel
 from exceptions.exception import ServiceException
 from module_admin.dao.dept_dao import DeptDao
+from module_admin.dao.user_dao import UserDao
 from module_basicdata.dao.public.flow_dao import OaFlowDao
 from module_basicdata.dao.public.flow_step_dao import OaFlowStepDao
 from module_basicdata.entity.do.public.flow_step_do import OaFlowStep
@@ -79,22 +80,23 @@ class FlowService:
         try:
             result =  await OaFlowDao.get_flow_list(query_db, model, data_scope_sql, is_page)
             new_rows = []
-            for flow,flowCate,flowModule,user in result.rows:
+            for flow,flowCate,flowModule in result.rows:
                 flowVO = OaFlowVOModel(**flow)
                 flowVO.cate_name = flowCate.get('title')
                 flowVO.module_name = flowModule.get('title')
                 flowVO.check_table = flowCate.get('checkTable')
-                if flowVO.copy_names:
-                    flowVO.copy_names = user.get('nickName')
+                if flowVO.copy_uids != '':
+                    copy_names = await UserDao.get_nick_name_by_user_id(query_db, [int(id) for id in flowVO.copy_uids.split(',')])
+                    copy_names = ','.join(copy_names)
+                    flowVO.copy_names = copy_names
                 else:
                     flowVO.copy_names = '无'
                 if flowVO.department_ids is None or flowVO.department_ids == '':
                     flowVO.department_names = '全公司'
                 else:
-                    dept_names = await DeptDao.get_name_list_ids(query_db, flowVO.department_ids)
+                    dept_names = await DeptDao.get_dept_name(query_db, flowVO.department_ids.split(','))
                     if dept_names:
-                        for dept_name in dept_names:
-                            flowVO.department_names = ''.join(dept_name)
+                        flowVO.department_names = ','.join([name['dept_name'] for name in dept_names])
                     else:
                         flowVO.department_names = '未找到部门'
                 new_rows.append(flowVO)

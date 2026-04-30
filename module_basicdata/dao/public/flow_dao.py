@@ -16,10 +16,9 @@ from utils.page_util import PageUtil
 class OaFlowDao:
     @classmethod
     async def get_flow_list(cls, db: AsyncSession, query_object: OaFlowPageQueryModel, data_scope_sql: ColumnElement, is_page: bool = False) -> PageModel | list[list[dict[str, Any]]]:
-        query = (select(OaFlow,OaFlowCate, FlowModule,SysUser)
+        query = (select(OaFlow,OaFlowCate, FlowModule)
                  .join(OaFlowCate, OaFlow.cate_id == OaFlowCate.id, isouter=True)
                  .join(FlowModule, OaFlowCate.module_id == FlowModule.id, isouter=True)
-                 .join(SysUser, OaFlow.copy_uids == SysUser.user_id, isouter=True)
                  .where(
             OaFlow.status != "-1"
             if query_object
