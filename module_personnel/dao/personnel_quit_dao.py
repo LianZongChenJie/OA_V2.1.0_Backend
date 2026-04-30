@@ -143,19 +143,19 @@ class PersonnelQuitDao:
     async def count_by_uid(cls, db: AsyncSession, uid: str):
         result = await db.execute(select(func.count()).where(OaPersonalQuit.uid == uid))
         return result.scalar()
-    @classmethod
-    async def review(cls, db: AsyncSession, data: OaPersonalQuitBaseModel):
-        try:
-            await db.execute(
-                update(OaPersonalQuit)
-                .values(
-                    check_status=data.check_status,
-                    check_time=data.check_time
-                )
-                .where(OaPersonalQuit.id == data.id)
-            )
-            await db.commit()
-            return await cls.get_info_by_id(db, data.id)
-        except Exception as e:
-            await db.rollback()
-            raise e
+    # @classmethod
+    # async def review(cls, db: AsyncSession, data: OaPersonalQuitBaseModel):
+    #     try:
+    #         await db.execute(
+    #             update(OaPersonalQuit)
+    #             .values(
+    #                 check_status=data.check_status,
+    #                 check_time=data.check_time
+    #             )
+    #             .where(OaPersonalQuit.id == data.id)
+    #         )
+    #         await db.commit()
+    #         return await cls.get_info_by_id(db, data.id)
+    #     except Exception as e:
+    #         await db.rollback()
+    #         raise e

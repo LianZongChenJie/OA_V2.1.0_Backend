@@ -1,6 +1,7 @@
 from fastapi import File, Form, Path, Query, Request, Response, UploadFile, Body
 from typing import Annotated
-
+from common.annotation.log_annotation import Log
+from common.enums import BusinessType
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import ColumnElement
 
@@ -44,6 +45,7 @@ async def get_page_list(
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:personnel:talent:add')],
 )
+@Log(title='入职申请-新增', business_type=BusinessType.INSERT)
 async def add_talent(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
@@ -61,6 +63,7 @@ async def add_talent(
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:personnel:talent:update')],
 )
+@Log(title='入职申请-更新', business_type=BusinessType.UPDATE)
 async def update_talent(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
@@ -91,6 +94,7 @@ async def get_talent(
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:personnel:talent:delete')],
 )
+@Log(title='入职申请-删除', business_type=BusinessType.DELETE)
 async def delete_talent(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],

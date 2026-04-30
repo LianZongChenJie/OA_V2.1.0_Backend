@@ -103,7 +103,7 @@ class TalentService:
     @classmethod
     async def del_by_id(cls, db: AsyncSession, id: int):
         try:
-            talent = await TalentDao.del_by_id(db, id)
+            talent = await TalentDao.get_info_by_id(db, id)
             if talent.check_status != 0 or talent.check_status != 4:
                 raise CrudResponseModel(is_success=False, message='请先撤销申请再删除')
             await TalentDao.del_by_id(db, id)
@@ -112,34 +112,34 @@ class TalentService:
             await db.rollback()
             raise e
 
-    @classmethod
-    async def review(cls, db: AsyncSession, data: OaTalentBaseModel):
-        try:
-            data.check_time = int(datetime.now().timestamp())
-            change = await TalentDao.review(db, data)
-            await cls.add_record(db, change, data)
-            await db.commit()
-            return CrudResponseModel(is_success=True, message='审核成功')
-        except Exception as e:
-            await db.rollback()
-            raise e
+    # @classmethod
+    # async def review(cls, db: AsyncSession, data: OaTalentBaseModel):
+    #     try:
+    #         data.check_time = int(datetime.now().timestamp())
+    #         change = await TalentDao.review(db, data)
+    #         await cls.add_record(db, change, data)
+    #         await db.commit()
+    #         return CrudResponseModel(is_success=True, message='审核成功')
+    #     except Exception as e:
+    #         await db.rollback()
+    #         raise e
 
-    @classmethod
-    async def add_record(cls, db: AsyncSession, change: OaFlowRecordBaseModel, model: OaTalentBaseModel):
-        try:
-            flow_cate = await FlowCateDao.get_flow_cate_info(db, change.check_flow_id)
-            step = await OaFlowStepDao.get_info_by_flow_id(db, change.check_flow_id)
-            record = OaFlowRecordBaseModel()
-            record.action_id = change.id
-            record.check_table = flow_cate.name
-            record.flow_id = change.check_flow_id
-            record.check_files = model.file_ids
-            record.check_uid = change.check_last_uid
-            record.check_status = model.check_status
-            record.step_id = step.id if step is not None else 0
-            record.content = model.remark
-            record.check_time = int(datetime.now().timestamp())
-            await FlowRecordDao.add(db, record)
-        except Exception as e:
-            await db.rollback()
-            raise e
+    # @classmethod
+    # async def add_record(cls, db: AsyncSession, change: OaFlowRecordBaseModel, model: OaTalentBaseModel):
+    #     try:
+    #         flow_cate = await FlowCateDao.get_flow_cate_info(db, change.check_flow_id)
+    #         step = await OaFlowStepDao.get_info_by_flow_id(db, change.check_flow_id)
+    #         record = OaFlowRecordBaseModel()
+    #         record.action_id = change.id
+    #         record.check_table = flow_cate.name
+    #         record.flow_id = change.check_flow_id
+    #         record.check_files = model.file_ids
+    #         record.check_uid = change.check_last_uid
+    #         record.check_status = model.check_status
+    #         record.step_id = step.id if step is not None else 0
+    #         record.content = model.remark
+    #         record.check_time = int(datetime.now().timestamp())
+    #         await FlowRecordDao.add(db, record)
+    #     except Exception as e:
+    #         await db.rollback()
+    #         raise e

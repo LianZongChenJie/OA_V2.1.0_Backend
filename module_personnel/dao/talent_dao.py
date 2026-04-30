@@ -149,22 +149,22 @@ class TalentDao:
     async def count_by_uid(cls, db: AsyncSession, uid: str):
         result = await db.execute(select(func.count()).where(OaTalent.uid == uid))
         return result.scalar()
-    @classmethod
-    async def review(cls, db: AsyncSession, data: OaTalentBaseModel):
-        try:
-            result = await db.execute(
-                update(OaTalent)
-                .values(
-                    check_status=data.check_status,
-                    check_time=data.check_time
-                )
-                .where(OaTalent.id == data.id)
-            )
-            await db.commit()
-            info =  await cls.get_info_by_id(db, data.id)
-            return info
-        except Exception as e:
-            await db.rollback()
-            raise e
-        return result.rowcount
+    # @classmethod
+    # async def review(cls, db: AsyncSession, data: OaTalentBaseModel):
+    #     try:
+    #         result = await db.execute(
+    #             update(OaTalent)
+    #             .values(
+    #                 check_status=data.check_status,
+    #                 check_time=data.check_time
+    #             )
+    #             .where(OaTalent.id == data.id)
+    #         )
+    #         await db.commit()
+    #         info =  await cls.get_info_by_id(db, data.id)
+    #         return info
+    #     except Exception as e:
+    #         await db.rollback()
+    #         raise e
+    #     return result.rowcount
 

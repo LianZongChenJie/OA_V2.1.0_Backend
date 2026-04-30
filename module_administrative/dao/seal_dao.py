@@ -8,7 +8,6 @@ from common.vo import PageModel
 from module_admin.entity.do.dept_do import SysDept
 from module_admin.entity.do.seal_cate_do import SysSealCate
 from module_admin.entity.do.user_do import SysUser
-from module_basicdata.entity.do.public.flow_do import OaFlow
 from module_personnel.dao.flow_record_dao import FlowRecordDao
 from utils.page_util import PageUtil
 from module_administrative.entity.vo.seal_vo import OaSealBaseModel, OaSealPageQueryModel

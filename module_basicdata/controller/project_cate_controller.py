@@ -5,11 +5,12 @@ from common.aspect.data_scope import DataScopeDependency
 from common.aspect.db_seesion import DBSessionDependency
 from common.aspect.interface_auth import UserInterfaceAuthDependency
 from common.aspect.pre_auth import PreAuthDependency
+from common.enums import BusinessType
 from common.router import APIRouterPro
 from common.vo import PageResponseModel
 from fastapi import File, Form, Path, Query, Request, Response, UploadFile
 from typing import Annotated
-
+from common.annotation.log_annotation import Log
 from module_basicdata.entity.do.project.project_cate_do import OaProjectCate
 from module_basicdata.entity.vo.project.project_cate_vo import OaProjectCateBaseModel, ProjectCatePageQueryModel
 from module_basicdata.service.project.project_cate_service import ProjectCateService
@@ -44,6 +45,7 @@ async def list_page(
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('basicdata:project:cate:add')],
 )
+@Log(title="新增常规数据", business_type=BusinessType.INSERT)
 async def add_industry(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
@@ -60,14 +62,15 @@ async def add_industry(
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('basicdata:project:cate:del')],
 )
-async def change_status_industry(
+@Log(title="修改常规数据状态", business_type=BusinessType.UPDATE)
+async def change_status(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
     model: OaProjectCateBaseModel,
 ) -> Response:
     basic_result = await ProjectCateService.change_status_service(query_db, model)
     logger.info(basic_result.message)
-    return ResponseUtil.success(data=basic_result.message)
+    return ResponseUtil.success(msg=basic_result.message)
 
 @basic_project_cate_controller.put(
     "/update",
@@ -76,6 +79,7 @@ async def change_status_industry(
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('basicdata:project:cate:edit')],
 )
+@Log(title="修改常规数据", business_type=BusinessType.UPDATE)
 async def update_industry(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],

@@ -32,7 +32,7 @@ class IndustryService:
     async def add_industry_service(cls, query_db: AsyncSession, model: OaIndustryBaseModel) -> CrudResponseModel:
         try:
             if not await cls.check_name_unique_services(query_db, model):
-                return CrudResponseModel(is_success=False, message='行业类型已存在')
+                raise ServiceException(message='行业类型已存在')
             model.create_time = int(datetime.now().timestamp())
             model.status = 1
             await IndustryDao.add_db_industry(query_db, model)
@@ -46,7 +46,7 @@ class IndustryService:
     async def update_industry_service(cls, query_db: AsyncSession, model: OaIndustryBaseModel):
         try:
             if not await cls.check_name_unique_services(query_db, model):
-                return CrudResponseModel(is_success=False, message='行业类型已存在')
+                raise ServiceException(message='行业类型已存在')
             model.update_time = int(datetime.now().timestamp())
             await IndustryDao.update_industry(query_db, model)
             return CrudResponseModel(is_success=True, message='更新成功')

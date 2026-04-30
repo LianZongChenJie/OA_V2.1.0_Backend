@@ -2,14 +2,13 @@ from operator import and_
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, desc, delete
-from sqlalchemy.sql import ColumnElement, func,or_
+from sqlalchemy.sql import ColumnElement,or_
 from common.vo import PageModel
 from module_admin.entity.do.user_do import SysUser
 from utils.page_util import PageUtil
 from module_personnel.entity.vo.black_list_vo import OaBlacklistBaseModel, OaBlacklistPageQueryModel
 from module_personnel.entity.do.black_list_do import OaBlacklist
 from typing import Any
-from datetime import datetime
 
 class BlackListDao:
     @classmethod

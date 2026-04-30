@@ -22,7 +22,7 @@ class OaFlowStepDao:
             await db.commit()
             return True
         except Exception as e:
-            print("error: ",e)
+            await db.rollback()
             return False
 
     @classmethod

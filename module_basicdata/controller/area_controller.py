@@ -37,7 +37,7 @@ async def get_area_tree(
     response_model=AreaTreeModel,
     dependencies=[UserInterfaceAuthDependency('basicdata:area:add')],
 )
-@Log(title='区域信息', business_type=BusinessType.INSERT)
+@Log(title='添加区域信息', business_type=BusinessType.INSERT)
 async def add_area(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
@@ -53,7 +53,7 @@ async def add_area(
     response_model=AreaTreeModel,
     dependencies=[UserInterfaceAuthDependency('basicdata:area:update')],
 )
-@Log(title='区域信息', business_type=BusinessType.UPDATE)
+@Log(title='更新区域信息', business_type=BusinessType.UPDATE)
 async def update_area(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
@@ -73,7 +73,7 @@ async def update_area(
     response_model=AreaTreeModel,
     dependencies=[UserInterfaceAuthDependency('basicdata:area:changeStatus')],
 )
-@Log(title='区域信息', business_type=BusinessType.UPDATE)
+@Log(title='修改区域状态', business_type=BusinessType.UPDATE)
 async def change_status(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
@@ -93,9 +93,7 @@ async def change_status(
     response_model=AreaTreeModel,
     dependencies=[UserInterfaceAuthDependency('basicdata:area:getDataByLevel')],
 )
-@Log(title='区域信息', business_type=BusinessType.OTHER)
 async def get_area_by_level(
-    request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
     level: int = 1
 ) -> Response:
@@ -114,7 +112,6 @@ async def get_area_by_level(
     response_model=AreaBaseModel,
     dependencies=[UserInterfaceAuthDependency('basicdata:area:getById')],
 )
-@Log(title='区域信息', business_type=BusinessType.OTHER)
 async def get_area_by_id(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],

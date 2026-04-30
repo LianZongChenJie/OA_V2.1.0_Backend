@@ -1,10 +1,12 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import ColumnElement
 
+from common.annotation.log_annotation import Log
 from common.aspect.data_scope import DataScopeDependency
 from common.aspect.db_seesion import DBSessionDependency
 from common.aspect.interface_auth import UserInterfaceAuthDependency
 from common.aspect.pre_auth import PreAuthDependency
+from common.enums import BusinessType
 from common.router import APIRouterPro
 from common.vo import PageResponseModel
 from fastapi import File, Form, Path, Query, Request, Response, UploadFile
@@ -23,8 +25,8 @@ basic_project_step_controller = APIRouterPro(
 
 @basic_project_step_controller.get(
     "/list",
-    summary='常规数据分页列表接口',
-    description='用于获取常规数据分页列表',
+    summary='项目阶段分页列表接口',
+    description='用于获取项目阶段分页列表',
     response_model=PageResponseModel[OaStepBaseModel],
     dependencies=[UserInterfaceAuthDependency('basicdata:project:step:list')],
 )
@@ -39,11 +41,12 @@ async def list_page(
 
 @basic_project_step_controller.post(
     "/add",
-    summary='新增常规数据接口',
-    description='用于新增常规数据',
+    summary='新增项目阶段接口',
+    description='用于新增项目阶段',
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('basicdata:project:step:add')],
 )
+@Log(title="新增项目阶段", business_type=BusinessType.INSERT)
 async def add_industry(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
@@ -55,12 +58,13 @@ async def add_industry(
 
 @basic_project_step_controller.put(
     "/changeStatus",
-    summary='修改常规数据状态接口',
-    description='用于修改常规数据状态',
+    summary='修改项目阶段状态接口',
+    description='用于修改项目阶段状态',
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('basicdata:project:step:del')],
 )
-async def change_status_industry(
+@Log(title="修改项目阶段状态", business_type=BusinessType.UPDATE)
+async def change_status(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
     model: OaStepBaseModel,
@@ -71,11 +75,12 @@ async def change_status_industry(
 
 @basic_project_step_controller.put(
     "/update",
-    summary='修改常规数据接口',
-    description='用于修改常规数据',
+    summary='修改项目阶段接口',
+    description='用于修改项目阶段',
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('basicdata:project:step:edit')],
 )
+@Log(title="修改项目阶段", business_type=BusinessType.UPDATE)
 async def update_industry(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
@@ -87,8 +92,8 @@ async def update_industry(
 
 @basic_project_step_controller.get(
     "/detail/{id}",
-    summary='获取常规数据详情接口',
-    description='用于获取常规数据详情',
+    summary='获取项目阶段详情接口',
+    description='用于获取项目阶段详情',
     response_model=OaStepBaseModel,
     dependencies=[UserInterfaceAuthDependency('basicdata:project:step:detail')],
 )

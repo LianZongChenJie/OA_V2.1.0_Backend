@@ -113,18 +113,18 @@ class PersonnelQuitService:
             await db.rollback()
             raise e
 
-    @classmethod
-    async def review(cls, db: AsyncSession, data: OaPersonalQuitBaseModel):
-        try:
-            data.check_time = int(datetime.now().timestamp())
-            change = await PersonnelQuitDao.review(db, data)
-            await cls.add_record(db, change, data)
-            await db.commit()
-            return CrudResponseModel(is_success=True, message='操作成功！')
-        except Exception as e:
-            await db.rollback()
-            raise e
-            return CrudResponseModel(is_success=True, message='操作成功！')
+    # @classmethod
+    # async def review(cls, db: AsyncSession, data: OaPersonalQuitBaseModel):
+    #     try:
+    #         data.check_time = int(datetime.now().timestamp())
+    #         change = await PersonnelQuitDao.review(db, data)
+    #         await cls.add_record(db, change, data)
+    #         await db.commit()
+    #         return CrudResponseModel(is_success=True, message='操作成功！')
+    #     except Exception as e:
+    #         await db.rollback()
+    #         raise e
+    #         return CrudResponseModel(is_success=True, message='操作成功！')
 
     @classmethod
     async def add_record(cls, db: AsyncSession, change: OaFlowRecordBaseModel, model: OaPersonalQuitBaseModel):

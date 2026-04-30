@@ -4,10 +4,12 @@ from typing import Annotated
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import ColumnElement
 
+from common.annotation.log_annotation import Log
 from common.aspect.data_scope import DataScopeDependency
 from common.aspect.db_seesion import DBSessionDependency
 from common.aspect.interface_auth import UserInterfaceAuthDependency
 from common.aspect.pre_auth import PreAuthDependency, CurrentUserDependency
+from common.enums import BusinessType
 from common.router import APIRouterPro
 from module_personnel.entity.do.personnel_quit_do import OaPersonalQuit
 from module_personnel.entity.vo.personnel_quit_vo import OaPersonnelQuitPageQueryModel, OaPersonalQuitBaseModel
@@ -43,7 +45,9 @@ async def get_page_list(
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:personnel:quit:add')],
 )
+@Log(title='离职申请-新增', business_type=BusinessType.INSERT)
 async def add_quit(
+    request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
     query_object: Annotated[OaPersonalQuitBaseModel, Body()],
     current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
@@ -59,7 +63,9 @@ async def add_quit(
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:personnel:quit:update')],
 )
+@Log(title='离职申请-更新', business_type=BusinessType.UPDATE)
 async def update_quit(
+    request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
     model: Annotated[OaPersonalQuitBaseModel, Body()],
 )->Response:
@@ -87,6 +93,7 @@ async def get_quit(
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:personnel:quit:delete')],
 )
+@Log(title='离职申请-删除', business_type=BusinessType.DELETE)
 async def delete_quit(
     query_db: Annotated[AsyncSession, DBSessionDependency()],
     id: int,

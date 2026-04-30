@@ -4,10 +4,12 @@ from typing import Annotated
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import ColumnElement
 
+from common.annotation.log_annotation import Log
 from common.aspect.data_scope import DataScopeDependency
 from common.aspect.db_seesion import DBSessionDependency
 from common.aspect.interface_auth import UserInterfaceAuthDependency
 from common.aspect.pre_auth import PreAuthDependency, CurrentUserDependency
+from common.enums import BusinessType
 from common.router import APIRouterPro
 from module_personnel.entity.do.department_change_do import OaDepartmentChange
 from module_personnel.entity.vo.department_change_vo import OaDepartmentChangePageQueryModel, OaDepartmentChangeBassModel
@@ -44,6 +46,7 @@ async def get_page_list(
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:deptChange:add')],
 )
+@Log(title='人事管理-人事调动-新增',business_type=BusinessType.INSERT)
 async def add_change(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
@@ -61,6 +64,7 @@ async def add_change(
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:deptChange:update')],
 )
+@Log(title='人事管理-人事调动-更新',business_type=BusinessType.UPDATE)
 async def update_change(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
@@ -91,6 +95,7 @@ async def get_change(
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:deptChange:delete')],
 )
+@Log(title='人事管理-人事调动-删除',business_type=BusinessType.DELETE)
 async def delete_change(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],

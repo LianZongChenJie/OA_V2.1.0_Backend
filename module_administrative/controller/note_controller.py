@@ -3,10 +3,12 @@ from typing import Annotated
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import ColumnElement
 
+from common.annotation.log_annotation import Log
 from common.aspect.data_scope import DataScopeDependency
 from common.aspect.db_seesion import DBSessionDependency
 from common.aspect.interface_auth import UserInterfaceAuthDependency
 from common.aspect.pre_auth import PreAuthDependency, CurrentUserDependency
+from common.enums import BusinessType
 from common.router import APIRouterPro
 from module_administrative.entity.do.note_do import OaNote
 from module_administrative.entity.vo.note_vo import OaNoteBaseModel, OaNoteQueryPageModel
@@ -44,6 +46,7 @@ async def get_page_list(
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:note:add')],
 )
+@Log(title="新增公告列表", business_type=BusinessType.INSERT)
 async def add_note(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
@@ -61,6 +64,7 @@ async def add_note(
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:note:update')],
 )
+@Log(title="更新公告列表", business_type=BusinessType.UPDATE)
 async def update_note(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
@@ -91,6 +95,7 @@ async def get_note_by_id(
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:note:delete')],
 )
+@Log(title="删除公告列表", business_type=BusinessType.DELETE)
 async def delete_note(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],

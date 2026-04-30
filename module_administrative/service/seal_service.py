@@ -1,17 +1,16 @@
+from asyncio import set_child_watcher
 from unittest.mock import seal
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Any
 
-from common.constant import CommonConstant
 from exceptions.exception import ServiceException
 from module_basicdata.dao.public.flow_step_dao import OaFlowStepDao
 from module_administrative.dao.seal_dao import SealDao
 from module_personnel.dao.flow_record_dao import FlowRecordDao
-from module_administrative.entity.do.seal_do import OaSeal
 from sqlalchemy.sql import ColumnElement
 from module_administrative.entity.vo.seal_vo import OaSealBaseModel, \
-    OaSealPageQueryModel, OaSealDetail
+    OaSealPageQueryModel
 from common.vo import PageModel, CrudResponseModel
 from datetime import datetime
 from module_basicdata.dao.public.flow_cate_dao import FlowCateDao
@@ -56,6 +55,9 @@ class SealService:
                 model.end_time = int_time(model.end_time)
             elif model.end_time == '':
                 model.end_time = None
+            if model.is_borrow == 0:
+                model.start_time = 0
+                model.end_time = 0
             change = await SealDao.add(query_db, model)
             # await cls.add_record(query_db, change, model)
             await query_db.commit()
@@ -75,6 +77,9 @@ class SealService:
                 model.start_time = int_time(model.start_time)
             if model.end_time:
                 model.end_time = int_time(model.end_time)
+            if model.is_borrow == 0:
+                model.start_time = 0
+                model.end_time = 0
             change = await SealDao.update(query_db, model)
             # await cls.add_record(query_db, change, model)
             await query_db.commit()
@@ -106,10 +111,10 @@ class SealService:
     async def del_by_id(cls, db: AsyncSession, id: int):
         try:
             seal = await SealDao.get_info_by_id(db, id)
-            if not seal.check_status == 0 or seal.check_status == 4:    # 只能删除未提交审核或已撤销的申请
+            if seal['check_status'] == 0 or seal['check_status'] == 4:    # 只能删除未提交审核或已撤销的申请
                 await SealDao.del_by_id(db, id)
             else:
-                raise CrudResponseModel(is_success=False, message='请先撤销申请再删除')
+                raise ServiceException(message='请先撤销申请再删除')
             return CrudResponseModel(is_success=True, message='删除成功')
         except Exception as e:
             await db.rollback()

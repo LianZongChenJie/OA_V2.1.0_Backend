@@ -3,10 +3,12 @@ from typing import Annotated
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import ColumnElement
 
+from common.annotation.log_annotation import Log
 from common.aspect.data_scope import DataScopeDependency
 from common.aspect.db_seesion import DBSessionDependency
 from common.aspect.interface_auth import UserInterfaceAuthDependency
 from common.aspect.pre_auth import PreAuthDependency, CurrentUserDependency
+from common.enums import BusinessType
 from common.router import APIRouterPro
 from module_administrative.entity.do.seal_do import OaSeal
 from module_administrative.entity.vo.seal_vo import OaSealPageQueryModel, OaSealBaseModel
@@ -43,6 +45,7 @@ async def get_page_list(
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:seal:add')],
 )
+@Log(title="新增用章管理", business_type=BusinessType.INSERT)
 async def add_seal(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
@@ -60,6 +63,7 @@ async def add_seal(
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:seal:update')],
 )
+@Log(title="更新用章管理", business_type=BusinessType.UPDATE)
 async def update_seal(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
@@ -90,6 +94,7 @@ async def get_seal(
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:seal:delete')],
 )
+@Log(title="删除用章管理", business_type=BusinessType.DELETE)
 async def delete_seal(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
