@@ -5,6 +5,7 @@ from typing import Any
 from common.vo import PageModel
 from module_admin.entity.do.dept_do import SysDept
 from module_basicdata.entity.do.public.flow_cate_do import OaFlowCate
+from module_basicdata.entity.do.public.flow_module_do import FlowModule
 from module_basicdata.entity.vo.public.flow_cate_vo import FlowCatePageQueryModel, OaFlowCateModel
 from utils.page_util import PageUtil
 
@@ -12,7 +13,9 @@ from utils.page_util import PageUtil
 class FlowCateDao:
     @classmethod
     async def get_flow_cate_list(cls, db: AsyncSession, query_object: FlowCatePageQueryModel, data_scope_sql: ColumnElement, is_page: bool = False) -> PageModel | list[list[dict[str, Any]]]:
-        query = (select(OaFlowCate)
+        query = (select(OaFlowCate,
+                        FlowModule.title.label('module_name'))
+                 .join(FlowModule, FlowModule.id == OaFlowCate.module_id)
                  .where(
                     OaFlowCate.status != "-1"
                  if query_object
