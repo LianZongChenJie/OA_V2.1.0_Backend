@@ -28,7 +28,7 @@ class FlowCateService:
         if not await cls.check_name_unique_services(query_db, flow_cate_model):
             raise ServiceException(message=f'新增分类{flow_cate_model.title}失败，名称已存在')
         try:
-            flow_cate_model.create_time = int(datetime.now().timestamp() * 1000)
+            flow_cate_model.create_time = int(datetime.now().timestamp())
             await FlowCateDao.add_flow_cate(query_db, flow_cate_model)
             return CrudResponseModel(is_success=True, message='新增成功')
         except Exception as e:

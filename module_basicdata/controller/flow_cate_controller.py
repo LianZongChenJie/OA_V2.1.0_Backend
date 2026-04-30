@@ -3,6 +3,8 @@ from sqlalchemy.sql import ColumnElement
 from fastapi import File, Form, Path, Query, Request, Response, UploadFile
 from typing import Annotated
 
+from common.annotation.log_annotation import Log
+from common.enums import BusinessType
 from common.vo import PageResponseModel
 from utils.camel_converter import ModelConverter
 from utils.log_util import logger
@@ -44,6 +46,7 @@ async def list_page(
     response_model=OaFlowCateModel,
     dependencies=[UserInterfaceAuthDependency('basicdata:flowCate:add')],
 )
+@Log(title="新增审批类型", business_type=BusinessType.INSERT)
 async def add_flow_cate(
     request: Request,
     oa_flow_cate_model: OaFlowCateModel,
@@ -61,6 +64,7 @@ async def add_flow_cate(
     response_model=OaFlowCateModel,
     dependencies=[UserInterfaceAuthDependency('basicdata:flowCate:edit')],
 )
+@Log(title="修改审批类型", business_type=BusinessType.UPDATE)
 async def update_flow_cate(
     request: Request,
     oa_flow_cate_model: OaFlowCateModel,
@@ -77,6 +81,7 @@ async def update_flow_cate(
     response_model=OaFlowCateModel,
     dependencies=[UserInterfaceAuthDependency('basicdata:flowCate:del')],
 )
+@Log(title="删除审批类型", business_type=BusinessType.DELETE)
 async def delete_flow_cate(
     request: Request,
     flow_id: int,
@@ -115,6 +120,7 @@ async def get_flow_cate(
     response_model=OaFlowCateModel,
     dependencies=[UserInterfaceAuthDependency('basicdata:flowCate:changeStatus')],
 )
+@Log(title="改变审批类型状态", business_type=BusinessType.UPDATE)
 async def change_status(
     request: Request,
     oa_flow_cate_model: OaFlowCateModel,

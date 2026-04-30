@@ -1,10 +1,12 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import ColumnElement
 
+from common.annotation.log_annotation import Log
 from common.aspect.data_scope import DataScopeDependency
 from common.aspect.db_seesion import DBSessionDependency
 from common.aspect.interface_auth import UserInterfaceAuthDependency
 from common.aspect.pre_auth import PreAuthDependency, CurrentUserDependency
+from common.enums import BusinessType
 from common.router import APIRouterPro
 from common.vo import PageResponseModel
 from module_basicdata.entity.do.public.flow_do import OaFlow
@@ -47,6 +49,7 @@ async def list_page(
     response_model=OaFlowBaseModel,
     dependencies=[UserInterfaceAuthDependency('basicdata:flow:add')],
 )
+@Log(title="新增审批流程", business_type=BusinessType.INSERT)
 async def add(
     request: Request,
     oa_flow_base_model: OaFlowBaseModel,
@@ -54,7 +57,7 @@ async def add(
 
     current_user: Annotated[CurrentUserModel, CurrentUserDependency()]
     ) -> Response:
-    oa_flow_base_model.admin_id = current_user.user.user_name
+    oa_flow_base_model.admin_id = current_user.user.user_id
     flow_result = await FlowService.add_flow(query_db, oa_flow_base_model)
     logger.info(flow_result.message)
     return ResponseUtil.success(data=flow_result.message)
@@ -81,6 +84,7 @@ async def detail(
     response_model=OaFlowBaseModel,
     dependencies=[UserInterfaceAuthDependency('basicdata:flow:edit')],
 )
+@Log(title="编辑审批流程", business_type=BusinessType.UPDATE)
 async def update(
     request: Request,
     oa_flow_base_model: OaFlowBaseModel,
@@ -98,7 +102,9 @@ async def update(
     response_model=bool,
     dependencies=[UserInterfaceAuthDependency('basicdata:flow:edit')],
 )
+@Log(title="修改审批流程状态", business_type=BusinessType.UPDATE)
 async def change_status(
+    request: Request,
     oa_flow_base_model: OaFlowBaseModel,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
 ) -> Response:

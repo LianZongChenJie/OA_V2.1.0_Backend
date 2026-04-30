@@ -27,7 +27,7 @@ class FlowCateDao:
 
     @classmethod
     async def add_flow_cate(cls, db: AsyncSession, model: OaFlowCateModel):
-        db_flow_cate = OaFlowCate(**model.model_dump(exclude={"id"}, exclude_none=True), create_time = model.update_time)
+        db_flow_cate = OaFlowCate(**model.model_dump(exclude={"id", 'create_time'}, exclude_none=True), create_time = model.update_time)
         db.add(db_flow_cate)
         await db.commit()
         await db.refresh(db_flow_cate)

@@ -3,6 +3,8 @@ from fastapi import File, Form, Path, Query, Request, Response, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import ColumnElement
 
+from common.annotation.log_annotation import Log
+from common.enums import BusinessType
 from utils.camel_converter import ModelConverter
 from utils.log_util import logger
 
@@ -59,6 +61,7 @@ async def detail_page(
                             response_model = FlowModuleModel,
                             dependencies = [UserInterfaceAuthDependency('basicdata:flowModule:add')],
                             )
+@Log(title="添加消息模板", business_type=BusinessType.INSERT)
 async def add_flow_module(
     request: Request,
     flow_module_model: FlowModuleModel,
@@ -76,6 +79,7 @@ async def add_flow_module(
                             response_model = FlowModuleModel,
                             dependencies = [UserInterfaceAuthDependency('basicdata:flowModule:update')],
                             )
+@Log(title="更新消息模板", business_type=BusinessType.UPDATE)
 async def update_flow_module(
     request: Request,
     flow_module_model: FlowModuleModel,
@@ -93,6 +97,7 @@ async def update_flow_module(
                             response_model = FlowModuleModel,
                             dependencies = [UserInterfaceAuthDependency('basicdata:flowModule:delete')],
                             )
+@Log(title="删除消息模板", business_type=BusinessType.DELETE)
 async def delete_flow_module(
     request: Request,
     flow_module_id: int,
@@ -104,6 +109,7 @@ async def delete_flow_module(
     logger.info(flow_module_result.message)
     return ResponseUtil.success(data=flow_module_result.message)
 
+@Log(title="改变消息模板状态", business_type=BusinessType.UPDATE)
 @flow_module_controller.put("/changeStatus",
                             summary = '改变消息模板状态接口',
                             description = '用于改变消息模板状态',

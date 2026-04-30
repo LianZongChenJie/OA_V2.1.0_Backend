@@ -42,20 +42,20 @@ class FlowService:
     @classmethod
     async def add_flow(cls, query_db: AsyncSession, model: OaFlowBaseModel) -> CrudResponseModel:
         if not await cls.check_name_unique_services(query_db, model):
-            raise ServiceException(message=f'新增失败，工具已存在')
+            raise ServiceException(message=f'新增失败，流程已存在')
         try:
             model.create_time = int(datetime.now().timestamp())
             result = await OaFlowDao.add_flow(query_db, model)
-            step = OaFlowStep(
-
-                flow_id = result.id,
-                check_role = model.check_role,
-                check_position_id = model.check_position_id,
-                check_uids = model.check_uids,
-                check_types = model.check_types,
-                create_time = int(datetime.now().timestamp()),
-            )
-            await OaFlowStepDao.add(query_db, step)
+            # step = OaFlowStep(
+            #
+            #     flow_id = result.id,
+            #     check_role = model.check_role,
+            #     check_position_id = model.check_position_id,
+            #     check_uids = model.check_uids,
+            #     check_types = model.check_types,
+            #     create_time = int(datetime.now().timestamp()),
+            # )
+            # await OaFlowStepDao.add(query_db, step)
             if result:
                 return CrudResponseModel(is_success=True, message='新增成功')
             return CrudResponseModel(is_success=False, message='新增失败')
