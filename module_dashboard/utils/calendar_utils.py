@@ -57,6 +57,7 @@ class SchedulePriority(Enum):
     SYSTEM_IMPLEMENT = 13
     SYSTEM_MAINTENANCE = 14
     SYSTEM_ACCEPT = 15
+    UNSET = 16
 
     @property
     def description(self) -> str:
@@ -79,13 +80,15 @@ class SchedulePriority(Enum):
             12: '测试验证',
             13: '部署上线',
             14: '系统维护',
-            15: '系统验收'
+            15: '系统验收',
+            16: '未设定'
         }
         return descriptions.get(self.value, '未知')
 
     @property
     def back_ground_colors(self) -> str:
         backGroundColors = {
+            16:'#12bb37',
             15:'#12bb37',
             14:'#12bb37',
             13:'#12bb37',
@@ -103,6 +106,7 @@ class SchedulePriority(Enum):
     @property
     def border_color(self) -> str:
         borderColors = {
+            16: '#12bb37',
             15: '#12bb37',
             14: '#12bb37',
             13: '#12bb37',
