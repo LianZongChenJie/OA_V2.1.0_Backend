@@ -10,7 +10,6 @@ from module_administrative.entity.do.note_do import OaNote
 from typing import Any
 from datetime import datetime
 
-from utils.review_util import ReviewUtil
 
 
 class NoteDao:

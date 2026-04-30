@@ -1,6 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update, desc, or_, and_
-from sqlalchemy.sql import ColumnElement, func
+from sqlalchemy import select, update, desc, and_
+from sqlalchemy.sql import ColumnElement
 from common.vo import PageModel
 from module_admin.entity.do.user_do import SysUser
 from utils.page_util import PageUtil
@@ -141,3 +141,13 @@ class PlanDao:
         result = await db.execute(update(OaPlan).values(delete_time=int(datetime.now().timestamp())).where(OaPlan.id == id))
         await db.commit()
         return result.rowcount
+
+    @classmethod
+    async def get_well_remind_plan(cls, db: AsyncSession):
+        now = int(datetime.now().timestamp())
+        start_time = now - 15
+        end_time = now + 15
+        query = select(OaPlan.id, OaPlan.title, OaPlan.type,OaPlan.remind_type,OaPlan.remind_time,OaPlan.admin_id,OaPlan.file_ids, OaPlan.start_time) \
+        .where(OaPlan.delete_time == 0, OaPlan.remind_type != 0, OaPlan.remind_time >= start_time, OaPlan.remind_time < end_time)
+        result = await db.execute(query)
+        return result.mappings().all()
