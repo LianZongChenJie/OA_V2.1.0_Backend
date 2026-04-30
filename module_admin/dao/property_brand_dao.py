@@ -76,7 +76,7 @@ class PropertyBrandDao:
                 SysPropertyBrand.title.like(f'%{query_object.title}%') if query_object.title else True,
                 SysPropertyBrand.status == query_object.status if query_object.status is not None else True,
                 )
-            .order_by(SysPropertyBrand.sort.desc(), SysPropertyBrand.create_time.asc())
+            .order_by(SysPropertyBrand.sort.asc(), SysPropertyBrand.create_time.asc())
             .distinct()
         )
         property_brand_list: PageModel | list[dict] = await PageUtil.paginate(
@@ -96,7 +96,7 @@ class PropertyBrandDao:
         query = (
             select(SysPropertyBrand)
             .where(SysPropertyBrand.status != -1)
-            .order_by(SysPropertyBrand.sort.desc(), SysPropertyBrand.create_time.asc())
+            .order_by(SysPropertyBrand.sort.asc(), SysPropertyBrand.create_time.asc())
             .distinct()
         )
         result = (await db.execute(query)).scalars().all()

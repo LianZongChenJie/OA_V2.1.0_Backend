@@ -62,10 +62,19 @@ class PropertyBrandService:
         :param page_object: 资产品牌对象
         :return: 校验结果
         """
-        property_brand_id = -1 if page_object.id is None else page_object.id
-        property_brand = await PropertyBrandDao.get_property_brand_detail_by_info(query_db, page_object)
-        if property_brand and property_brand.id != property_brand_id:
-            return CommonConstant.NOT_UNIQUE
+        # 只根据 title 查询，检测是否存在同名品牌
+        check_object = PropertyBrandModel(title=page_object.title)
+        property_brand = await PropertyBrandDao.get_property_brand_detail_by_info(query_db, check_object)
+        
+        # 如果找到同名品牌，且不是当前编辑的品牌，则返回不唯一
+        if property_brand:
+            # 如果是新增操作（id 为空），直接返回不唯一
+            if page_object.id is None:
+                return CommonConstant.NOT_UNIQUE
+            # 如果是编辑操作，检查找到的品牌是否是当前编辑的品牌
+            if property_brand.id != page_object.id:
+                return CommonConstant.NOT_UNIQUE
+        
         return CommonConstant.UNIQUE
 
     @classmethod
@@ -80,6 +89,10 @@ class PropertyBrandService:
         :param page_object: 新增资产品牌对象
         :return: 新增资产品牌校验结果
         """
+        # 去除标题前后空格
+        if page_object.title:
+            page_object.title = page_object.title.strip()
+        
         if not await cls.check_property_brand_title_unique_services(query_db, page_object):
             raise ServiceException(message=f'新增品牌{page_object.title}失败，品牌名称已存在')
 
@@ -112,6 +125,10 @@ class PropertyBrandService:
         :param page_object: 编辑资产品牌对象
         :return: 编辑资产品牌校验结果
         """
+        # 去除标题前后空格
+        if page_object.title:
+            page_object.title = page_object.title.strip()
+        
         edit_property_brand = page_object.model_dump(exclude_unset=True)
         property_brand_info = await cls.property_brand_detail_services(query_db, page_object.id)
 

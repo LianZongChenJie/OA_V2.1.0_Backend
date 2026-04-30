@@ -36,14 +36,18 @@ class BasicAdmService:
         from module_admin.entity.do.basic_adm_do import OaBasicAdm
         from sqlalchemy import select, and_
         
-        # 构建查询条件：类型相同且名称相同
-        query = select(OaBasicAdm).where(
-            and_(
-                OaBasicAdm.types == page_object.types,
-                OaBasicAdm.title == page_object.title,
-                OaBasicAdm.status != -1  # 排除已删除的数据
-            )
-        )
+        # 构建查询条件列表
+        query_conditions = [OaBasicAdm.status != -1]  # 排除已删除的数据
+        
+        # 只有当 types 不为空时才添加 types 条件
+        if page_object.types:
+            query_conditions.append(OaBasicAdm.types == page_object.types)
+        
+        # 添加标题条件（标题不能为空，已在 validator 中校验）
+        if page_object.title:
+            query_conditions.append(OaBasicAdm.title == page_object.title)
+        
+        query = select(OaBasicAdm).where(and_(*query_conditions))
         
         result = await query_db.execute(query)
         existing_record = result.scalars().first()
@@ -62,6 +66,10 @@ class BasicAdmService:
     @classmethod
     async def add_basic_adm_service(cls, request: Request, query_db: AsyncSession, basic_adm_model: OaBasicAdmModel) -> CrudResponseModel:
         try:
+            # 去除标题前后空格
+            if basic_adm_model.title:
+                basic_adm_model.title = basic_adm_model.title.strip()
+            
             if not await cls.check_basic_adm_title_unique_services(query_db, basic_adm_model):
                 raise ServiceException(message=f'新增行政模块常规数据{basic_adm_model.title}失败，名称已存在')
 
@@ -78,6 +86,10 @@ class BasicAdmService:
     @classmethod
     async def update_basic_adm_service(cls, request: Request, query_db: AsyncSession, basic_adm_model: OaBasicAdmModel) -> CrudResponseModel:
         try:
+            # 去除标题前后空格
+            if basic_adm_model.title:
+                basic_adm_model.title = basic_adm_model.title.strip()
+            
             if not await cls.check_basic_adm_title_unique_services(query_db, basic_adm_model):
                 raise ServiceException(message=f'修改行政模块常规数据{basic_adm_model.title}失败，名称已存在')
 
@@ -134,4 +146,3 @@ class BasicAdmService:
         basic_adm = await BasicAdmDao.get_basic_adm_info(query_db, basic_adm_id)
         result = OaBasicAdmModel(**CamelCaseUtil.transform_result(basic_adm)) if basic_adm else OaBasicAdmModel()
         return result
-

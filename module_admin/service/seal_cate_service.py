@@ -167,10 +167,19 @@ class SealCateService:
         :param page_object: 印章类别对象
         :return: 校验结果
         """
-        seal_cate_id = -1 if page_object.id is None else page_object.id
-        seal_cate = await SealCateDao.get_seal_cate_detail_by_info(query_db, page_object)
-        if seal_cate and seal_cate.id != seal_cate_id:
-            return CommonConstant.NOT_UNIQUE
+        # 只根据 title 查询，检测是否存在同名印章类别
+        check_object = SealCateModel(title=page_object.title)
+        seal_cate = await SealCateDao.get_seal_cate_detail_by_info(query_db, check_object)
+        
+        # 如果找到同名印章类别，且不是当前编辑的印章类别，则返回不唯一
+        if seal_cate:
+            # 如果是新增操作（id 为空），直接返回不唯一
+            if page_object.id is None:
+                return CommonConstant.NOT_UNIQUE
+            # 如果是编辑操作，检查找到的印章类别是否是当前编辑的印章类别
+            if seal_cate.id != page_object.id:
+                return CommonConstant.NOT_UNIQUE
+        
         return CommonConstant.UNIQUE
 
     @classmethod
@@ -185,6 +194,10 @@ class SealCateService:
         :param page_object: 新增印章类别对象
         :return: 新增印章类别校验结果
         """
+        # 去除标题前后空格
+        if page_object.title:
+            page_object.title = page_object.title.strip()
+        
         if not await cls.check_seal_cate_title_unique_services(query_db, page_object):
             raise ServiceException(message=f'新增印章类别{page_object.title}失败，印章名称已存在')
 
@@ -225,6 +238,10 @@ class SealCateService:
         :param page_object: 编辑印章类别对象
         :return: 编辑印章类别校验结果
         """
+        # 去除标题前后空格
+        if page_object.title:
+            page_object.title = page_object.title.strip()
+        
         # 🔥 关键修复：只保留数据库真实存在的字段，排除虚拟字段
         edit_seal_cate = page_object.model_dump(
             exclude_unset=True,
@@ -357,4 +374,3 @@ class SealCateService:
         }
 
         return result
-

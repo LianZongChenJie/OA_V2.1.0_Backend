@@ -11,7 +11,7 @@ class ProductModel(BaseModel):
     产品表对应 pydantic 模型
     """
 
-    model_config = ConfigDict(alias_generator=to_camel, from_attributes=True)
+    model_config = ConfigDict(alias_generator=to_camel, from_attributes=True, populate_by_name=True)
 
     id: int | None = Field(default=None, description='产品 ID')
     title: str | None = Field(default=None, description='产品名称')
@@ -128,7 +128,6 @@ class DeleteProductModel(BaseModel):
     删除产品模型
     """
 
-    model_config = ConfigDict(alias_generator=to_camel)
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
 
     id: int = Field(description='需要删除的产品 ID')
-

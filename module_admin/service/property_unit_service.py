@@ -62,10 +62,19 @@ class PropertyUnitService:
         :param page_object: 资产单位对象
         :return: 校验结果
         """
-        property_unit_id = -1 if page_object.id is None else page_object.id
-        property_unit = await PropertyUnitDao.get_property_unit_detail_by_info(query_db, page_object)
-        if property_unit and property_unit.id != property_unit_id:
-            return CommonConstant.NOT_UNIQUE
+        # 只根据 title 查询，检测是否存在同名单位
+        check_object = PropertyUnitModel(title=page_object.title)
+        property_unit = await PropertyUnitDao.get_property_unit_detail_by_info(query_db, check_object)
+        
+        # 如果找到同名单位，且不是当前编辑的单位，则返回不唯一
+        if property_unit:
+            # 如果是新增操作（id 为空），直接返回不唯一
+            if page_object.id is None:
+                return CommonConstant.NOT_UNIQUE
+            # 如果是编辑操作，检查找到的单位是否是当前编辑的单位
+            if property_unit.id != page_object.id:
+                return CommonConstant.NOT_UNIQUE
+        
         return CommonConstant.UNIQUE
 
     @classmethod
@@ -80,6 +89,10 @@ class PropertyUnitService:
         :param page_object: 新增资产单位对象
         :return: 新增资产单位校验结果
         """
+        # 去除标题前后空格
+        if page_object.title:
+            page_object.title = page_object.title.strip()
+        
         if not await cls.check_property_unit_title_unique_services(query_db, page_object):
             raise ServiceException(message=f'新增单位{page_object.title}失败，单位名称已存在')
 
@@ -112,6 +125,10 @@ class PropertyUnitService:
         :param page_object: 编辑资产单位对象
         :return: 编辑资产单位校验结果
         """
+        # 去除标题前后空格
+        if page_object.title:
+            page_object.title = page_object.title.strip()
+        
         edit_property_unit = page_object.model_dump(exclude_unset=True)
         property_unit_info = await cls.property_unit_detail_services(query_db, page_object.id)
 

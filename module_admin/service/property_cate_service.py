@@ -185,16 +185,25 @@ class PropertyCateService:
             cls, query_db: AsyncSession, page_object: PropertyCateModel
     ) -> bool:
         """
-        校验资产分类名称是否唯一 service
+        校验资产分类名称是否唯一 service（全局唯一）
 
         :param query_db: orm 对象
         :param page_object: 资产分类对象
         :return: 校验结果
         """
-        property_cate_id = -1 if page_object.id is None else page_object.id
-        property_cate = await PropertyCateDao.get_property_cate_detail_by_info(query_db, page_object)
-        if property_cate and property_cate.id != property_cate_id:
-            return CommonConstant.NOT_UNIQUE
+        # 只根据 title 查询，检测全局是否存在同名分类
+        check_object = PropertyCateModel(title=page_object.title)
+        property_cate = await PropertyCateDao.get_property_cate_detail_by_info(query_db, check_object)
+        
+        # 如果找到同名分类，且不是当前编辑的分类，则返回不唯一
+        if property_cate:
+            # 如果是新增操作（id 为空），直接返回不唯一
+            if page_object.id is None:
+                return CommonConstant.NOT_UNIQUE
+            # 如果是编辑操作，检查找到的分类是否是当前编辑的分类
+            if property_cate.id != page_object.id:
+                return CommonConstant.NOT_UNIQUE
+        
         return CommonConstant.UNIQUE
 
     @classmethod
@@ -253,6 +262,10 @@ class PropertyCateService:
         :param page_object: 新增资产分类对象
         :return: 新增资产分类校验结果
         """
+        # 去除标题前后空格
+        if page_object.title:
+            page_object.title = page_object.title.strip()
+        
         if not await cls.check_property_cate_title_unique_services(query_db, page_object):
             raise ServiceException(message=f'新增分类{page_object.title}失败，分类名称已存在')
 
@@ -287,6 +300,10 @@ class PropertyCateService:
         :param page_object: 编辑资产分类对象
         :return: 编辑资产分类校验结果
         """
+        # 去除标题前后空格
+        if page_object.title:
+            page_object.title = page_object.title.strip()
+        
         edit_property_cate = page_object.model_dump(exclude_unset=True)
         property_cate_info = await cls.property_cate_detail_services(query_db, page_object.id)
 
@@ -395,4 +412,3 @@ class PropertyCateService:
         result = PropertyCateModel(**CamelCaseUtil.transform_result(property_cate)) if property_cate else PropertyCateModel()
 
         return result
-

@@ -80,7 +80,7 @@ class PropertyCateDao:
                 SysPropertyCate.status == query_object.status if query_object.status is not None else True,
                 SysPropertyCate.pid == query_object.pid if query_object.pid is not None else True,
                 )
-            .order_by(SysPropertyCate.sort.desc(), SysPropertyCate.create_time.asc())
+            .order_by(SysPropertyCate.sort.asc(), SysPropertyCate.create_time.asc())
             .distinct()
         )
         property_cate_list: PageModel | list[dict[str, Any]] = await PageUtil.paginate(
@@ -104,7 +104,7 @@ class PropertyCateDao:
                 SysPropertyCate.status != -1,
                 SysPropertyCate.pid == pid
             )
-            .order_by(SysPropertyCate.sort.desc(), SysPropertyCate.create_time.asc())
+            .order_by(SysPropertyCate.sort.asc(), SysPropertyCate.create_time.asc())
             .distinct()
         )
         result = (await db.execute(query)).scalars().all()
@@ -122,7 +122,7 @@ class PropertyCateDao:
         query = (
             select(SysPropertyCate)
             .where(SysPropertyCate.status != -1)
-            .order_by(SysPropertyCate.sort.desc(), SysPropertyCate.create_time.asc())
+            .order_by(SysPropertyCate.sort.asc(), SysPropertyCate.create_time.asc())
             .distinct()
         )
         result = (await db.execute(query)).scalars().all()
@@ -219,4 +219,3 @@ class PropertyCateDao:
         ).scalar()
 
         return child_count
-
