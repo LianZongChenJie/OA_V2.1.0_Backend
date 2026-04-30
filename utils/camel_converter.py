@@ -57,6 +57,39 @@ class ModelConverter:
             data[key] = value
         
         return data
+    @classmethod
+    def underscore_to_camelcase(cls, data):
+        """
+        将字典中的下划线键名转换为驼峰命名
+
+        Args:
+            data: 输入的字典或列表
+
+        Returns:
+            转换后的字典或列表
+        """
+        if isinstance(data, dict):
+            new_dict = {}
+            for key, value in data.items():
+                # 转换键名：将下划线分隔转换为驼峰
+                camel_key = cls.convert_key_to_camel(key)
+                # 递归处理嵌套结构
+                new_dict[camel_key] = cls.underscore_to_camelcase(value)
+            return new_dict
+        elif isinstance(data, list):
+            return [cls.underscore_to_camelcase(item) for item in data]
+        else:
+            return data
+
+    @classmethod
+    def convert_key_to_camel(cls,key: str) -> str:
+        """将单个键名从下划线转换为驼峰"""
+        if '_' not in key:
+            return key
+
+        parts = key.split('_')
+        # 第一个单词首字母小写，后续单词首字母大写
+        return parts[0] + ''.join(part.capitalize() for part in parts[1:])
 
     @staticmethod
     def to_dict_list(model_objs: List, by_alias: bool = True) -> List[Dict]:
