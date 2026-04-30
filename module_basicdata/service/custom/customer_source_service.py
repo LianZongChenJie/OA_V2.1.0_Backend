@@ -45,7 +45,7 @@ class CustomerSourceService:
     @classmethod
     async def update_service(cls, query_db: AsyncSession, model: OaCustomerSourceBaseModel):
         if not await cls.check_name_unique_services(query_db, model):
-            raise ServiceException(message=f'新增客户来源{model.title}失败，来源名称已存在')
+            raise ServiceException(message=f'修改客户来源{model.title}失败，来源名称已存在')
         try:
             model.update_time = int(datetime.now().timestamp())
             await CustomerSourceDao.update(query_db, model)
