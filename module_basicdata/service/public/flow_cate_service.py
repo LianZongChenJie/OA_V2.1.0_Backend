@@ -6,22 +6,30 @@ from datetime import datetime
 from common.constant import CommonConstant
 from common.vo import PageModel, CrudResponseModel
 from exceptions.exception import ServiceException
+from module_admin.dao.dept_dao import DeptDao
 from module_basicdata.dao.public.flow_cate_dao import FlowCateDao
 from module_basicdata.entity.vo.public.flow_cate_vo import FlowCatePageQueryModel, OaFlowCateModel
+from utils.camel_converter import ModelConverter
+
 
 class FlowCateService:
     @classmethod
     async def get_flow_cate_list_services(cls, query_db: AsyncSession, query_object: FlowCatePageQueryModel, data_scope_sql: ColumnElement, is_page: bool = False) -> PageModel[OaFlowCateModel] | list[dict[str, Any]]:
         query_list = await FlowCateDao.get_flow_cate_list(query_db, query_object, data_scope_sql, is_page)
         if is_page:
-            flow_cate_list_result = PageModel[OaFlowCateModel](**{
-                **query_list.model_dump(by_alias=True)
-            })
-        else:
-            flow_cate_list_result = []
-            if query_list:
-                flow_cate_list_result = [{**row} for row in query_list]
-        return flow_cate_list_result
+            row_list = []
+            for row in query_list.rows:
+                row = dict(row)
+                row.update(row['OaFlowCate'].to_dict())
+                row.pop('OaFlowCate')
+                if row['department_ids'] != '':
+                    dept_names = await DeptDao.get_dept_name(query_db, row['department_ids'].split(','))
+                    row['dept_name'] = ','.join([name['dept_name'] for name in dept_names])
+                else:
+                    row['dept_name'] = '全公司'
+                row_list.append(ModelConverter.convert_to_camel_case(row))
+            query_list.rows = row_list
+        return query_list
 
     @classmethod
     async def add_flow_cate_service(cls, query_db: AsyncSession, flow_cate_model: OaFlowCateModel) -> CrudResponseModel:

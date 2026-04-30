@@ -363,5 +363,19 @@ class DeptDao:
         await db.execute(update(SysDept).where(SysDept.dept_id == dept_id).values(leader_id=user_id,leader=user_name))
         await db.commit()
 
+    @classmethod
+    async def get_dept_name(cls, db: AsyncSession, dept_ids: list):
+        """
+        检查部门名称是否唯一
+
+        :param db: orm对象
+        :param dept_name: 部门名称
+        :param dept_id: 部门id
+        :return: 是否唯一
+        """
+        query = select(SysDept.dept_name).where(SysDept.dept_id.in_(dept_ids))
+        result = await db.execute(query)
+        return result.mappings().all()
+
 
 

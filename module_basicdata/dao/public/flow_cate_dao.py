@@ -1,8 +1,9 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update, desc
+from sqlalchemy import select, update, desc, func
 from sqlalchemy.sql import ColumnElement
 from typing import Any
 from common.vo import PageModel
+from module_admin.entity.do.dept_do import SysDept
 from module_basicdata.entity.do.public.flow_cate_do import OaFlowCate
 from module_basicdata.entity.vo.public.flow_cate_vo import FlowCatePageQueryModel, OaFlowCateModel
 from utils.page_util import PageUtil
@@ -20,7 +21,7 @@ class FlowCateDao:
                  else True,
                  data_scope_sql,
                  ).order_by(OaFlowCate.id.asc()))
-        flow_cate_list: PageModel | list[list[dict[str, Any]]] = await PageUtil.paginate(
+        flow_cate_list: PageModel | list[list[dict[str, Any]]] = await PageUtil.paginate_dict(
             db, query, query_object.page_num, query_object.page_size, is_page
         )
         return flow_cate_list
