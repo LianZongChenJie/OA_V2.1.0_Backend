@@ -166,9 +166,17 @@ class ScheduleService:
         rows = data_list.get('rows', []) if isinstance(data_list, dict) else data_list.rows
         
         for item in rows:
+            back_ground_colors = ''
+            border_color = ''
+            if item['cid'] > 15:
+                back_ground_colors = SchedulePriority(int(16)).back_ground_colors
+                border_color = SchedulePriority(int(16)).border_color
+            else:
+                back_ground_colors = SchedulePriority(int(item['cid'])).back_ground_colors
+                border_color = SchedulePriority(int(item['cid'])).border_color
             calendar_item = {
-                'backgroundColor': SchedulePriority(int(item['cid'])).back_ground_colors,
-                'borderColor': SchedulePriority(int(item['cid'])).border_color,
+                'backgroundColor': back_ground_colors,
+                'borderColor': border_color,
                 'end': item['endTime'],
                 'start': item['startTime'],
                 'title': item['title'],

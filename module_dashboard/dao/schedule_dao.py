@@ -41,13 +41,15 @@ class ScheduleDao:
                 if len(range_parts) == 2:
                     start_timestamp = int(datetime.strptime(range_parts[0].strip(), "%Y-%m-%d").timestamp())
                     end_timestamp = int(datetime.strptime(range_parts[1].strip(), "%Y-%m-%d").timestamp()) + 86399  # 当天结束时间
-                    conditions.append(OaSchedule.start_time.between(start_timestamp, end_timestamp))
+                    conditions.append(OaSchedule.start_time >=start_timestamp)
+                    conditions.append(OaSchedule.start_time <= end_timestamp)
             except Exception as e:
                 logger.warning(f'解析时间范围失败：{str(e)}')
         elif query_object.begin_time and query_object.end_time:
             start_timestamp = int(datetime.strptime(query_object.begin_time, "%Y-%m-%d").timestamp())
-            end_timestamp = int(datetime.strptime(query_object.end_time, "%Y-%m-%d").timestamp())
-            conditions.append(OaSchedule.start_time.between(start_timestamp, end_timestamp))
+            end_timestamp = int(datetime.strptime(query_object.end_time, "%Y-%m-%d").timestamp()) + 86399
+            conditions.append(OaSchedule.start_time >= start_timestamp)
+            conditions.append(OaSchedule.start_time <= end_timestamp)
 
         # 关键词搜索（标题或备注）
         if query_object.keywords:
