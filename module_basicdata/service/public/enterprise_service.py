@@ -41,6 +41,10 @@ class EnterpriseService:
         if not await cls.check_name_unique_services(query_db, enterprise_model):
             raise ServiceException(message=f'修改{enterprise_model.title}失败，名称已存在')
         try:
+            if enterprise_model.bank is None:
+                enterprise_model.bank = ''
+            if enterprise_model.bank_sn is None:
+                enterprise_model.bank_sn = ''
             enterprise_model.update_time = int(datetime.now().timestamp() * 1000)
             await EnterpriseDao.update_enterprise(query_db, enterprise_model)
             return CrudResponseModel(is_success=True, message='更新成功')
