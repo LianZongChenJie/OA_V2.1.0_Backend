@@ -1,6 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import ColumnElement
-from sqlalchemy import select, update,desc
+from sqlalchemy import select, update,desc,asc
 from typing import Any
 from common.vo import PageModel
 from module_basicdata.entity.do.public.flow_module_do import FlowModule
@@ -25,7 +25,7 @@ class OAFlowModuleDao:
         query = (
             select(FlowModule)
             .where(
-                FlowModule.status == '1'
+                FlowModule.status != -1
                 if query_object
                 else True,
                 FlowModule.titel.like(f'%{query_object.title}%') if query_object.title else True,
@@ -35,7 +35,7 @@ class OAFlowModuleDao:
                 if query_object.begin_time and query_object.end_time
                 else True,
                 data_scope_sql,
-            ).order_by(FlowModule.create_time.desc())
+            ).order_by(asc(FlowModule.sort))
         )
         flow_module_list: PageModel | list[list[dict[str, Any]]] = await PageUtil.paginate(
             db, query, query_object.page_num, query_object.page_size, is_page

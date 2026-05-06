@@ -20,12 +20,12 @@ from module_basicdata.service.public.flow_module_service import FlowModuleServic
 from utils.response_util import ResponseUtil
 
 flow_module_controller = APIRouterPro(
-    prefix='/basicdata/flowModule', order_num=3, tags=['基础数据-公共模块-消息模板'], dependencies=[PreAuthDependency()]
+    prefix='/basicdata/flowModule', order_num=3, tags=['基础数据-公共模块-审批模块'], dependencies=[PreAuthDependency()]
 )
 
 @flow_module_controller.get("/list",
-                            summary = '获取消息模板分页列表接口',
-                            description = '用于获取消息模板分页列表',
+                            summary = '获取审批模块分页列表接口',
+                            description = '用于获取审批模块分页列表',
                             response_model = PageResponseModel[FlowModuleModel],
                             dependencies = [UserInterfaceAuthDependency('basicdata:flowModule:list')],
                             )
@@ -39,8 +39,8 @@ async def list_page(
     return ResponseUtil.success(model_content=flow_module_list)
 
 @flow_module_controller.get("/detail/{flow_module_id}",
-                            summary = '获取消息模板详情接口',
-                            description = '用于获取消息模板详情',
+                            summary = '获取审批模块详情接口',
+                            description = '用于获取审批模块详情',
                             response_model = FlowModuleModel,
                             dependencies = [UserInterfaceAuthDependency('basicdata:flowModule:detail')],
                             )
@@ -56,12 +56,12 @@ async def detail_page(
     return ResponseUtil.success(data=ModelConverter.to_dict(flow_module_result, by_alias=True))
 
 @flow_module_controller.post("/add",
-                            summary = '添加消息模板接口',
-                            description = '用于添加消息模板',
+                            summary = '添加审批模块接口',
+                            description = '用于添加审批模块',
                             response_model = FlowModuleModel,
                             dependencies = [UserInterfaceAuthDependency('basicdata:flowModule:add')],
                             )
-@Log(title="添加消息模板", business_type=BusinessType.INSERT)
+@Log(title="添加审批模块", business_type=BusinessType.INSERT)
 async def add_flow_module(
     request: Request,
     flow_module_model: FlowModuleModel,
@@ -74,12 +74,12 @@ async def add_flow_module(
     return ResponseUtil.success(data=flow_module_result.message)
 
 @flow_module_controller.put("/update",
-                            summary = '更新消息模板接口',
-                            description = '用于更新消息模板',
+                            summary = '更新审批模块接口',
+                            description = '用于更新审批模块',
                             response_model = FlowModuleModel,
                             dependencies = [UserInterfaceAuthDependency('basicdata:flowModule:update')],
                             )
-@Log(title="更新消息模板", business_type=BusinessType.UPDATE)
+@Log(title="更新审批模块", business_type=BusinessType.UPDATE)
 async def update_flow_module(
     request: Request,
     flow_module_model: FlowModuleModel,
@@ -92,12 +92,12 @@ async def update_flow_module(
     return ResponseUtil.success(data=flow_module_result.message)
 
 @flow_module_controller.delete("/delete/{flow_module_id}",
-                            summary = '删除消息模板接口',
-                            description = '用于删除消息模板',
+                            summary = '删除审批模块接口',
+                            description = '用于删除审批模块',
                             response_model = FlowModuleModel,
                             dependencies = [UserInterfaceAuthDependency('basicdata:flowModule:delete')],
                             )
-@Log(title="删除消息模板", business_type=BusinessType.DELETE)
+@Log(title="删除审批模块", business_type=BusinessType.DELETE)
 async def delete_flow_module(
     request: Request,
     flow_module_id: int,
@@ -109,10 +109,10 @@ async def delete_flow_module(
     logger.info(flow_module_result.message)
     return ResponseUtil.success(data=flow_module_result.message)
 
-@Log(title="改变消息模板状态", business_type=BusinessType.UPDATE)
+@Log(title="改变审批模块状态", business_type=BusinessType.UPDATE)
 @flow_module_controller.put("/changeStatus",
-                            summary = '改变消息模板状态接口',
-                            description = '用于改变消息模板状态',
+                            summary = '改变审批模块状态接口',
+                            description = '用于改变审批模块状态',
                             response_model = FlowModuleModel,
                             dependencies = [UserInterfaceAuthDependency('basicdata:flowModule:changeStatus')],
                             )
