@@ -33,7 +33,7 @@ class OaTemplateDao:
                    )
             .join(SysUser, OaTemplate.admin_id == SysUser.user_id, isouter=True)
             .where(
-                OaTemplate.status == '1'
+                OaTemplate.status != -1
                 if query_object
                 else True,
                 OaTemplate.title.like(f'%{query_object.title}%') if query_object.title else True,
@@ -62,7 +62,7 @@ class OaTemplateDao:
         :param db: orm对象
         :return:
         """
-        db_temp_role = OaTemplate(**template.model_dump(exclude={"id", "create_time"}, exclude_none=True))
+        db_temp_role = OaTemplate(**template.model_dump(exclude={"id", "create_time"}, exclude_none=True), create_time=template.create_time)
         db.add(db_temp_role)
 
     @classmethod

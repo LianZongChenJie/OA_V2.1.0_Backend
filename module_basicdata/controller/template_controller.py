@@ -62,7 +62,7 @@ async def add_basicdata_template(
     query_db: Annotated[AsyncSession, DBSessionDependency()],
     current_user: Annotated[CurrentUserModel, CurrentUserDependency()]
 ) -> Response:
-    add_template.admin_id = current_user.user.user_name
+    add_template.admin_id = str(current_user.user.user_id)
     add_template_result = await TemplateService.add_template_services(query_db, add_template)
     logger.info(add_template_result.message)
 
