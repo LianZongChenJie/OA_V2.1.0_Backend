@@ -53,5 +53,9 @@ class OaMsgQueryPageModel(OaMsgBaseModel):
     """消息查询页面VO"""
     model_config = ConfigDict(alias_generator=to_camel, from_attributes=True)
     keyword: str | None = Field(None, description='关键字')
+    begin_time: str | int |None = Field(None, description='开始时间')
+    end_time: str | int | None = Field(None, description='结束时间')
+    read_status: int | None = Field(None, description='消息状态：0未读 1已读')
+    msg_type: int | None = Field(None, description='消息类型：1个人消息， 2系统消息')
     page_num: Optional[int] = Field(None, description='页码')
     page_size: Optional[int] = Field(None, description='每页条数')
