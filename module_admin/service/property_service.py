@@ -314,7 +314,8 @@ class PropertyService:
         from module_admin.entity.do.property_brand_do import SysPropertyBrand
         from module_admin.entity.do.property_unit_do import SysPropertyUnit
         from module_admin.entity.do.user_do import SysUser
-        from sqlalchemy import alias
+        from module_admin.entity.do.dept_do import SysDept
+        from sqlalchemy import alias, select
         
         property = await PropertyDao.get_property_detail_by_id(query_db, property_id)
         
@@ -352,6 +353,24 @@ class PropertyService:
                 'adminName': result[4] if len(result) > 4 else None,
                 'updateName': result[5] if len(result) > 5 else None,
             }
+            
+            # 查询使用部门名称（支持逗号分隔的多个部门ID）
+            user_dids = property_obj.user_dids
+            if user_dids and user_dids.strip():
+                dept_ids = [int(did.strip()) for did in user_dids.split(',') if did.strip()]
+                if dept_ids:
+                    dept_query = select(SysDept.dept_name).where(SysDept.dept_id.in_(dept_ids))
+                    dept_result = (await query_db.execute(dept_query)).scalars().all()
+                    extra_fields['userDidNames'] = ','.join(dept_result) if dept_result else None
+            
+            # 查询使用人员名称（支持逗号分隔的多个用户ID）
+            user_ids = property_obj.user_ids
+            if user_ids and user_ids.strip():
+                u_ids = [int(uid.strip()) for uid in user_ids.split(',') if uid.strip()]
+                if u_ids:
+                    user_query = select(SysUser.nick_name).where(SysUser.user_id.in_(u_ids))
+                    user_result = (await query_db.execute(user_query)).scalars().all()
+                    extra_fields['userIdNames'] = ','.join(user_result) if user_result else None
             
             # 将 ORM 对象转换为字典
             property_dict = CamelCaseUtil.transform_result(property_obj)

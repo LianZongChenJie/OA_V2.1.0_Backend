@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import and_, select, update, alias
+from sqlalchemy import and_, or_, select, update, alias
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from common.vo import PageModel
@@ -101,6 +101,14 @@ class PropertyDao:
         
         if query_object.source is not None:
             conditions.append(SysProperty.source == query_object.source)
+        
+        # 关键字搜索：同时搜索名称和编号
+        if query_object.keywords and query_object.keywords.strip():
+            keywords = query_object.keywords.strip()
+            conditions.append(or_(
+                SysProperty.title.like(f'%{keywords}%'),
+                SysProperty.code.like(f'%{keywords}%')
+            ))
         
         # 构建联合查询，关联分类、品牌、单位和用户表
         query = (
