@@ -74,7 +74,7 @@ class TenderPageQueryModel(PageQueryModel):
 # 新增/编辑/删除模型
 class AddTenderModel(TenderModel):
     """新增投标信息模型"""
-    pass
+    attachments: Optional[List['TenderAttachmentModel']] = Field([], description='附件列表')
 
 class EditTenderModel(TenderModel):
     """编辑投标信息模型"""

@@ -8,7 +8,7 @@ from io import BytesIO
 from fastapi import UploadFile
 from openpyxl.styles import PatternFill, Font
 
-from utils.file_util import allowed_file, generate_file_path, save_upload_file, ALLOWED_EXTENSIONS, get_file_ext
+from utils.file_util import allowed_file, generate_file_path, generate_file_path_without_id, save_upload_file, ALLOWED_EXTENSIONS, get_file_ext
 from common.vo import PageModel, CrudResponseModel
 from module_admin.dao.tender_dao import TenderDao
 from module_admin.entity.vo.tender_vo import (
@@ -26,23 +26,15 @@ class TenderService:
 
     @classmethod
     async def upload_tender_attachment_services(
-            cls, query_db: AsyncSession, project_tender_id: int, sort: int, file: UploadFile
+            cls, file: UploadFile
     ) -> CrudResponseModel:
         """
-        上传投标附件（适配VO模型+数据库结构）
-        :param query_db: 数据库会话
-        :param project_tender_id: 投标ID
-        :param sort: 排序值
+        上传投标附件（仅上传文件，不关联数据库）
+        文件关联逻辑由前端在新增投标信息接口中处理
         :param file: 上传的文件对象
         :return: 上传结果
         """
-        # 1. 校验投标ID是否存在
-        logger.info(f'校验投标ID {project_tender_id} 是否存在')
-        tender_info = await TenderDao.get_tender_detail_by_id(query_db, project_tender_id)
-        if not tender_info:
-            raise ServiceException(message=f'关联的投标信息不存在，投标ID：{project_tender_id}')
-
-        # 2. 校验文件格式
+        # 1. 校验文件格式
         logger.info(f'校验文件格式：{file.filename}')
         if not allowed_file(file.filename):
             raise ServiceException(
@@ -51,9 +43,9 @@ class TenderService:
 
         absolute_path = None
         try:
-            # 3. 生成文件存储路径
+            # 2. 生成文件存储路径（使用临时目录，不依赖投标ID）
             logger.info(f'生成文件存储路径：{file.filename}')
-            relative_path, absolute_path = generate_file_path(project_tender_id, file.filename)
+            relative_path, absolute_path = generate_file_path_without_id(file.filename)
             logger.info(f'文件存储路径：相对路径={relative_path}，绝对路径={absolute_path}')
 
             # 确保目录存在
@@ -62,36 +54,12 @@ class TenderService:
                 os.makedirs(file_dir, exist_ok=True)
                 logger.info(f'创建目录：{file_dir}')
 
-            # 4. 保存文件到本地
+            # 3. 保存文件到本地
             logger.info(f'保存文件到本地：{absolute_path}')
             file_size = await save_upload_file(file, absolute_path)
             logger.info(f'文件保存成功，大小：{file_size} 字节')
 
-            # 5. 构建附件新增模型（严格适配VO模型字段）
-            logger.info('构建附件新增模型')
-            add_attachment_model = AddTenderAttachmentModel(
-                project_tender_id=project_tender_id,
-                file_name=file.filename,
-                file_path=relative_path,
-                file_size=file_size,  # VO已改为int类型，匹配数据库
-                file_ext=get_file_ext(file.filename) or '',
-                file_mime=file.content_type or 'application/octet-stream',
-                sort=sort,
-                # create_by='',  # VO模型存在该字段，赋空值（数据库无此字段，DAO层会忽略）
-                # create_time='',  # 交给数据库自动填充，赋空值
-                # update_by='',  # VO模型存在该字段，赋空值
-                # update_time='',  # 交给数据库自动填充，赋空值
-                delete_time=0  # 软删除标记
-            )
-            logger.info(f'附件模型：{add_attachment_model.model_dump()}')
-
-            # 6. 保存到数据库
-            logger.info('保存附件信息到数据库')
-            await TenderDao.add_tender_attachment_dao(query_db, add_attachment_model)
-            await query_db.commit()
-            logger.info('附件信息保存成功，事务已提交')
-
-            # 关键修改：在 upload_tender_attachment_services 方法的 return 处补全所有字段
+            # 返回文件信息，供前端后续关联使用
             return CrudResponseModel(
                 is_success=True,
                 message='附件上传成功',
@@ -100,13 +68,11 @@ class TenderService:
                     'file_path': relative_path,
                     'file_size': file_size,
                     'file_ext': get_file_ext(file.filename) or '',
-                    'file_mime': file.content_type or 'application/octet-stream',
-                    'sort': sort
+                    'file_mime': file.content_type or 'application/octet-stream'
                 }
             )
         except Exception as e:
-            await query_db.rollback()
-            logger.error(f'附件上传失败，事务已回滚：{str(e)}', exc_info=True)
+            logger.error(f'附件上传失败：{str(e)}', exc_info=True)
 
             # 上传失败时删除已保存的文件
             if absolute_path and os.path.exists(absolute_path):
@@ -140,7 +106,7 @@ class TenderService:
 
     @classmethod
     async def add_tender_services(cls, query_db: AsyncSession, page_object: AddTenderModel) -> CrudResponseModel:
-        """新增投标"""
+        """新增投标（含附件）"""
         # 日期转换
         if page_object.purchase_date:
             try:
@@ -173,9 +139,28 @@ class TenderService:
         page_object.delete_time = 0
 
         try:
-            await TenderDao.add_tender_dao(query_db, page_object)
+            # 保存投标基本信息，获取返回的投标对象
+            tender_result = await TenderDao.add_tender_dao(query_db, page_object)
+            tender_id = tender_result.id
+            
+            # 如果有附件，批量保存附件
+            if page_object.attachments and len(page_object.attachments) > 0:
+                for attachment in page_object.attachments:
+                    # 构建附件新增模型
+                    add_attachment_model = AddTenderAttachmentModel(
+                        project_tender_id=tender_id,
+                        file_name=attachment.file_name or '',
+                        file_path=attachment.file_path or '',
+                        file_size=attachment.file_size or 0,
+                        file_ext=attachment.file_ext or '',
+                        file_mime=attachment.file_mime or '',
+                        sort=attachment.sort or 0,
+                        delete_time=0
+                    )
+                    await TenderDao.add_tender_attachment_dao(query_db, add_attachment_model)
+            
             await query_db.commit()
-            return CrudResponseModel(is_success=True, message='新增成功')
+            return CrudResponseModel(is_success=True, message='新增成功', result={'tender_id': tender_id})
         except Exception as e:
             await query_db.rollback()
             raise ServiceException(message=f'新增失败：{str(e)}') from e

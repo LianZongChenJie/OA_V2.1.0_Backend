@@ -310,26 +310,21 @@ async def import_tender(
 @tender_controller.post(
     '/attachment/upload',
     summary='上传投标附件接口',
-    description='用于上传投标附件（支持单文件上传）',
+    description='用于上传投标附件（支持单文件上传，仅上传文件，不关联数据库）',
     response_model=ResponseBaseModel,
     dependencies=[UserInterfaceAuthDependency('tender:attachment:upload')],
 )
 @Log(title='投标附件', business_type=BusinessType.INSERT)
 async def upload_tender_attachment(
         request: Request,
-        project_tender_id: Annotated[int, Query(..., description='投标ID')],
         file: Annotated[UploadFile, File(..., description='附件文件')],
-        query_db: Annotated[AsyncSession, DBSessionDependency()],
-        sort: Annotated[int, Query(description='排序值')] = 0,
 ) -> Response:
-    """上传投标附件"""
+    """上传投标附件（仅上传文件，文件关联由前端在新增投标接口中处理）"""
     try:
         # 调用Service层上传逻辑
-        upload_result = await TenderService.upload_tender_attachment_services(
-            query_db, project_tender_id, sort, file
-        )
+        upload_result = await TenderService.upload_tender_attachment_services(file)
 
-        # 正确从data字段获取文件信息（Service层返回的CrudResponseModel结构）
+        # 正确从result字段获取文件信息
         file_data = upload_result.result if upload_result.result else {}
 
         # 构造前端需要的回显数据
@@ -338,12 +333,10 @@ async def upload_tender_attachment(
             "file_path": file_data.get("file_path", ""),
             "file_size": file_data.get("file_size", 0),
             "file_ext": file_data.get("file_ext", ""),
-            "file_mime": file_data.get("file_mime", ""),
-            "sort": file_data.get("sort", sort),
-            "attachment_id": file_data.get("attachment_id", "")  # 可选：如果DAO层返回了附件ID，可补充
+            "file_mime": file_data.get("file_mime", "")
         }
 
-        logger.info(f'投标附件上传成功，文件名：{file_data.get("file_name", "")}，投标ID：{project_tender_id}')
+        logger.info(f'投标附件上传成功，文件名：{file_data.get("file_name", "")}')
         return ResponseUtil.success(msg="上传成功", data=response_data)
 
     # 针对性捕获ServiceException（业务异常）

@@ -18,7 +18,7 @@ def get_file_ext(filename: str) -> str:
 
 def generate_file_path(project_tender_id: int, filename: str) -> Tuple[str, str]:
     """
-    生成文件存储路径
+    生成文件存储路径（带投标ID）
     :param project_tender_id: 投标ID
     :param filename: 原始文件名
     :return: 相对路径、绝对路径
@@ -34,6 +34,28 @@ def generate_file_path(project_tender_id: int, filename: str) -> Tuple[str, str]
 
     # 相对路径（存储到数据库）和绝对路径（实际存储）
     relative_path = os.path.join(str(project_tender_id), date_dir, unique_filename)
+    absolute_path = os.path.join(save_dir, unique_filename)
+
+    return relative_path, absolute_path
+
+
+def generate_file_path_without_id(filename: str) -> Tuple[str, str]:
+    """
+    生成文件存储路径（不带投标ID，用于预上传）
+    :param filename: 原始文件名
+    :return: 相对路径、绝对路径
+    """
+    # 创建日期目录
+    date_dir = datetime.now().strftime("%Y%m%d")
+    save_dir = os.path.join(UPLOAD_DIR, "temp", date_dir)
+    os.makedirs(save_dir, exist_ok=True)
+
+    # 生成唯一文件名（避免重复）
+    file_ext = get_file_ext(filename)
+    unique_filename = f"{uuid.uuid4()}.{file_ext}" if file_ext else str(uuid.uuid4())
+
+    # 相对路径（存储到数据库）和绝对路径（实际存储）
+    relative_path = os.path.join("temp", date_dir, unique_filename)
     absolute_path = os.path.join(save_dir, unique_filename)
 
     return relative_path, absolute_path

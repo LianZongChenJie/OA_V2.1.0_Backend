@@ -72,7 +72,9 @@ class TenderDao:
     @classmethod
     async def add_tender_dao(cls, db: AsyncSession, tender: AddTenderModel) -> OaProjectTender:
         """新增投标信息"""
-        db_tender = OaProjectTender(**tender.model_dump(exclude_unset=True, by_alias=True))
+        # 排除 attachments 字段，因为数据库模型中没有这个字段
+        tender_data = tender.model_dump(exclude_unset=True, exclude={'attachments'}, by_alias=True)
+        db_tender = OaProjectTender(**tender_data)
         db.add(db_tender)
         await db.flush()
         await db.refresh(db_tender)
