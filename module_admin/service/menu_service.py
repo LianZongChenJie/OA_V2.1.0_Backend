@@ -91,7 +91,9 @@ class MenuService:
         :return: 校验结果
         """
         menu_id = -1 if page_object.menu_id is None else page_object.menu_id
-        menu = await MenuDao.get_menu_detail_by_info(query_db, MenuModel(menuName=page_object.menu_name))
+        menu = await MenuDao.get_menu_detail_by_info(
+            query_db, MenuModel(menuName=page_object.menu_name, parentId=page_object.parent_id, menuType=page_object.menu_type)
+        )
         if menu and menu.menu_id != menu_id:
             return CommonConstant.NOT_UNIQUE
         return CommonConstant.UNIQUE
