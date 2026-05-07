@@ -54,7 +54,7 @@ class TenderDao:
         query = query.order_by(desc(OaProjectTender.sort), desc(OaProjectTender.id))
 
         if is_page:
-            result = await PageUtil.paginate(db, query, query_object.page_num, query_object.page_size)
+            result = await PageUtil.paginate(db, query, query_object.page_num, query_object.page_size, is_page=True)
         else:
             result = (await db.execute(query)).scalars().all()
 

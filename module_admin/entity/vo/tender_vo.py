@@ -54,6 +54,7 @@ class TenderModel(BaseModel):
     is_deposit_refunded: Optional[str] = Field(None, description='是否退回保证金（是/否）', max_length=20)
     bid_result: Optional[str] = Field(None, description='中标结果', max_length=20)
     bid_service_fee: Optional[float] = Field(None, description='中标服务费（元）')
+    deposit_paid_time: Optional[str] = Field(None, description='投标保证金缴纳时间（YYYY-MM-DD HH:MM:SS）')
     sort: Optional[int] = Field(None, description='排序')
     create_time: Optional[str] = Field(None, description='创建时间（YYYY-MM-DD HH:MM:SS）')
     update_time: Optional[str] = Field(None, description='更新时间（YYYY-MM-DD HH:MM:SS）')

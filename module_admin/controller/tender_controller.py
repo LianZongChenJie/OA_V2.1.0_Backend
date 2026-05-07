@@ -61,22 +61,42 @@ async def get_tender_list(
 ) -> Response:
     """获取投标分页列表"""
     try:
+        logger.info(f'获取投标列表，page_num={tender_page_query.page_num}, page_size={tender_page_query.page_size}')
+        
         tender_page_query_result = await TenderService.get_tender_list_services(
             query_db, tender_page_query, is_page=True
         )
-        logger.info('获取投标列表成功')
+        logger.info(f'获取投标列表成功，结果类型: {type(tender_page_query_result).__name__}')
 
-        # 统一处理返回结果
-        if isinstance(tender_page_query_result, list):
+        # 根据返回类型选择合适的响应方式
+        from common.vo import PageModel
+        if isinstance(tender_page_query_result, PageModel):
+            # 分页结果：提取分页数据并转换
+            result_dict = tender_page_query_result.model_dump()
+            rows_data = result_dict.get('rows', [])
+            processed_rows = [
+                item.model_dump(by_alias=True) if hasattr(item, 'model_dump')
+                else jsonable_encoder(item)
+                for item in rows_data
+            ]
+            page_info = {
+                'rows': processed_rows,
+                'total': result_dict.get('total', 0),
+                'pageNum': result_dict.get('page_num', tender_page_query.page_num),
+                'pageSize': result_dict.get('page_size', tender_page_query.page_size),
+                'hasNext': result_dict.get('has_next', False)
+            }
+            return ResponseUtil.success(dict_content=page_info)
+        elif isinstance(tender_page_query_result, list):
+            # 列表结果：逐个处理
             processed_data = [
                 item.model_dump(by_alias=True) if hasattr(item, 'model_dump')
                 else jsonable_encoder(item)
                 for item in tender_page_query_result
             ]
             return ResponseUtil.success(data=processed_data)
-        elif hasattr(tender_page_query_result, 'model_dump'):
-            return ResponseUtil.success(model_content=tender_page_query_result)
         else:
+            # 其他类型：直接返回
             return ResponseUtil.success(data=tender_page_query_result)
     except Exception as e:
         logger.error(f'获取投标列表失败：{str(e)}', exc_info=True)
