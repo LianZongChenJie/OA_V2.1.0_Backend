@@ -1,5 +1,6 @@
 from typing import Optional, Generic, TypeVar, List
 from pydantic import BaseModel, Field
+from pydantic.alias_generators import to_camel
 from fastapi import UploadFile
 
 # 通用基础模型
@@ -7,22 +8,30 @@ T = TypeVar('T')
 
 class PageQueryModel(BaseModel):
     """分页查询基础模型"""
+    model_config = {'alias_generator': to_camel, 'populate_by_name': True}
+    
     page_num: Optional[int] = Field(1, description='页码')
     page_size: Optional[int] = Field(10, description='每页数量')
 
 class PageModel(BaseModel, Generic[T]):
     """分页结果基础模型"""
+    model_config = {'alias_generator': to_camel, 'populate_by_name': True}
+    
     total: int = Field(0, description='总记录数')
     rows: List[T] = Field([], description='数据列表')
 
 class DataResponseModel(BaseModel):
     """数据响应基础模型"""
+    model_config = {'alias_generator': to_camel, 'populate_by_name': True}
+    
     code: int = Field(200, description='响应码')
     message: str = Field('success', description='响应信息')
     data: Optional[T] = None
 
 class CrudResponseModel(BaseModel):
     """CRUD操作响应基础模型"""
+    model_config = {'alias_generator': to_camel, 'populate_by_name': True}
+    
     code: int = Field(200, description='响应码')
     message: str = Field('操作成功', description='响应信息')
     data: Optional[T] = None
@@ -31,6 +40,8 @@ class CrudResponseModel(BaseModel):
 # 投标信息基础模型
 class TenderModel(BaseModel):
     """投标信息基础模型"""
+    model_config = {'alias_generator': to_camel, 'populate_by_name': True}
+    
     id: Optional[int] = None
     month: Optional[str] = Field(None, description='月份', max_length=20)
     customer_name: Optional[str] = Field(None, description='客户名称', max_length=100)
@@ -88,6 +99,8 @@ class DeleteTenderModel(BaseModel):
 # 附件相关模型
 class TenderAttachmentModel(BaseModel):
     """投标附件基础模型"""
+    model_config = {'alias_generator': to_camel, 'populate_by_name': True}
+    
     id: Optional[int] = None
     project_tender_id: Optional[int] = None
     file_name: Optional[str] = Field(None, description='附件名称', max_length=200)

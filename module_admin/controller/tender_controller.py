@@ -347,13 +347,13 @@ async def upload_tender_attachment(
         # 正确从result字段获取文件信息
         file_data = upload_result.result if upload_result.result else {}
 
-        # 构造前端需要的回显数据
+        # 构造前端需要的回显数据（驼峰命名）
         response_data = {
-            "file_name": file_data.get("file_name", ""),
-            "file_path": file_data.get("file_path", ""),
-            "file_size": file_data.get("file_size", 0),
-            "file_ext": file_data.get("file_ext", ""),
-            "file_mime": file_data.get("file_mime", "")
+            "fileName": file_data.get("file_name", ""),
+            "filePath": file_data.get("file_path", ""),
+            "fileSize": file_data.get("file_size", 0),
+            "fileExt": file_data.get("file_ext", ""),
+            "fileMime": file_data.get("file_mime", "")
         }
 
         logger.info(f'投标附件上传成功，文件名：{file_data.get("file_name", "")}')
