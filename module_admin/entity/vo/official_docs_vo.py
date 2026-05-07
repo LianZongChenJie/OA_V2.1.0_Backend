@@ -11,7 +11,7 @@ class OfficialDocsModel(BaseModel):
     公文表对应 pydantic 模型
     """
 
-    model_config = ConfigDict(alias_generator=to_camel, from_attributes=True)
+    model_config = ConfigDict(alias_generator=to_camel, from_attributes=True, populate_by_name=True)
 
     id: int | None = Field(default=None, description='公文 ID')
     title: str | None = Field(default=None, description='公文主题')

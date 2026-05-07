@@ -160,8 +160,12 @@ class OfficialDocsDao:
             elif query_object.tab == 4:
                 # 我抄送的
                 if user_id:
+                    # 同时检查 copy_uids（抄送）和 check_copy_uids（审核抄送）
                     query = query.where(
-                        func.find_in_set(str(user_id), OaOfficialDocs.copy_uids)
+                        or_(
+                            func.find_in_set(str(user_id), OaOfficialDocs.copy_uids),
+                            func.find_in_set(str(user_id), OaOfficialDocs.check_copy_uids)
+                        )
                     )
 
         if query_object.keywords:
