@@ -36,6 +36,7 @@ class WorkDao:
 
         if query_object.to_uids:
             conditions.append(func.find_in_set(query_object.to_uids, OaWork.to_uids))
+            conditions.append(OaWork.send_time != 0)
 
         if query_object.types:
             conditions.append(OaWork.types == query_object.types)
@@ -50,6 +51,13 @@ class WorkDao:
                     start_timestamp = int(datetime.fromisoformat(time_range[0]).timestamp())
                     end_timestamp = int(datetime.fromisoformat(time_range[1] + ' 23:59:59').timestamp())
                     conditions.append(OaWork.start_date.between(start_timestamp, end_timestamp))
+            except ValueError:
+                pass
+        if query_object.begin_time and query_object.end_time:
+            try:
+                start_timestamp = int(datetime.fromisoformat(query_object.begin_time).timestamp())
+                end_timestamp = int(datetime.fromisoformat(query_object.end_time + ' 23:59:59').timestamp())
+                conditions.append(OaWork.start_date.between(start_timestamp, end_timestamp))
             except ValueError:
                 pass
 

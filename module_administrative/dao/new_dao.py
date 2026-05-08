@@ -23,8 +23,8 @@ class NewsDao:
         # 构建条件列表
         conditions = []
         conditions.append(OaNews.delete_time == 0)
-        conditions.append(OaNews.title.like(f'%{query_object.keyword}%')) if query_object.keyword else None
-        conditions.append(OaNews.content.like(f'%{query_object.keyword}%')) if query_object.keyword else None
+        if query_object.keywords:
+            conditions.append(OaNews.title.like(f'%{query_object.keywords}%')) if query_object.keywords else None
 
         # 添加数据权限条件
         if data_scope_sql is not None:

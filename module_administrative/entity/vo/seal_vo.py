@@ -84,7 +84,7 @@ class OaSealPageQueryModel(OaSealBaseModel):
     """用章申请分页查询VO"""
     page_num: int | None = Field(None, description='页码')
     page_size: int | None = Field(None, description='页大小')
-    keyword: str | None = Field(None, description='关键字')
+    keywords: str | None = Field(None, description='关键字')
 
 
 class OaSealDetail(BaseModel):

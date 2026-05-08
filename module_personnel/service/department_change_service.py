@@ -30,7 +30,23 @@ class DepartmentChangeService:
 
         query_list = await DepartmentChangeDao.get_page_list(query_db, query_object, data_scope_sql, is_page)
         if is_page:
-            return ResponseConverter.convert_page_result(query_list, cls.time_fields, 'OaDepartmentChange')
+            ResponseConverter.convert_page_result(query_list, cls.time_fields, 'OaDepartmentChange')
+            for row in query_list.rows:
+                if row['status'] == 1:
+                    row['statusStr'] = '未调动'
+                elif row['status'] == 2:
+                    row['statusStr'] = '已交接调动'
+                if row['checkStatus'] == 0:
+                    row['checkStatusStr'] = '待审核'
+                elif row['checkStatus'] == 1:
+                    row['checkStatusStr'] = '审核中'
+                elif row['checkStatus'] == 2:
+                    row['checkStatusStr'] = '审核通过'
+                elif row['checkStatus'] == 3:
+                    row['checkStatusStr'] = '审核不通过'
+                elif row['checkStatus'] == 4:
+                    row['checkStatusStr'] = '撤销审核'
+            return query_list
         else:
             result_list = []
             if query_list:

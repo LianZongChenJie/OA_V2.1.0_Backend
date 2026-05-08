@@ -25,6 +25,7 @@ class LaborContractDao:
                  .join(user, user.user_id == OaLaborContract.admin_id, isouter=True)
                  .join(OaEnterprise, OaLaborContract.enterprise_id == OaEnterprise.id, isouter=True)
                      .where(
+                            OaLaborContract.delete_time == 0,
                             OaLaborContract.cate == query_object.cate if query_object.cate else True,
                             OaLaborContract.properties == query_object.properties if query_object.properties else True,
                             OaLaborContract.status == query_object.status if query_object.status else True,
@@ -88,6 +89,28 @@ class LaborContractDao:
     @classmethod
     async def del_by_id(cls, db: AsyncSession, id: int):
         result = await db.execute(update(OaLaborContract).values(delete_time=int(datetime.now().timestamp())).where(OaLaborContract.id == id))
+        await db.commit()
+        return result.rowcount
+
+    @classmethod
+    async def get_expire_contract(cls, db: AsyncSession):
+        """
+        获取所有到期状态未变更的合同id
+        :param db:
+        :return:
+        """
+        query = (select(OaLaborContract.id)
+                .where(
+                    OaLaborContract.delete_time == 0,
+                    OaLaborContract.status == 1,
+                    OaLaborContract.end_time <= int(datetime.now().timestamp()),
+                ))
+        info = await db.execute(query)
+        return info.scalars().all()
+
+    @classmethod
+    async def change_expire_contract_status(cls, db: AsyncSession, contract_ids: list[int]):
+        result = await db.execute(update(OaLaborContract).values(status=2).where(OaLaborContract.id.in_(contract_ids)))
         await db.commit()
         return result.rowcount
 

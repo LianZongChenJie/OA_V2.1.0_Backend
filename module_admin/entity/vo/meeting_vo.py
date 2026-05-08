@@ -287,6 +287,8 @@ class MeetingRecordsPageQueryModel(MeetingRecordsModel):
     keywords: str | None = Field(default=None, description='搜索关键词')
     anchor_id: int | None = Field(default=None, description='主持人 ID')
     diff_time: str | None = Field(default=None, description='时间范围')
+    begin_time: str | None = Field(default=None, description='开始时间')
+    end_time: str | None = Field(default=None, description='结束时间')
 
 
 class AddMeetingRecordsModel(MeetingRecordsModel):

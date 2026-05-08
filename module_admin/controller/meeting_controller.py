@@ -491,7 +491,6 @@ async def get_meeting_records_detail(
     dependencies=[UserInterfaceAuthDependency('system:meeting:records:list')],
 )
 async def get_meeting_user_records_list(
-    request: Request,
     page_query: Annotated[MeetingRecordsPageQueryModel, Query()],
     db: Annotated[AsyncSession, DBSessionDependency()],
     current_user: Annotated[CurrentUserModel, CurrentUserDependency()],

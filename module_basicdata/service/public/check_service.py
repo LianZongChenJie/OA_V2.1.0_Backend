@@ -119,9 +119,9 @@ class CheckService:
                     if next_step:
                         # 存在下一步审核
                         if next_step.check_role == 1:
-                            check_uids = await DeptDao.get_dept_manages(detail['admin_id'])
+                            check_uids = await DeptDao.get_dept_manages(db, detail['admin_id'])
                         elif next_step.check_role == 2:
-                            check_uids = await DeptDao.get_dept_manages(detail['admin_id'], True)
+                            check_uids = await DeptDao.get_dept_manages(db, detail['admin_id'], True)
                         elif next_step.check_role == 3:
                             uids = await UserDao.get_user_by_post_id(db,next_step.check_position_id)
                             check_uids = ','.join(str(uid) for uid in uids)
@@ -364,28 +364,30 @@ class CheckService:
             sort = 0
             flow_name = ''
             check_position_id = 0
-            check_uids = ''
+
             flow_steps = json.loads(flow_data['flow_list'])
             for flow_step in flow_steps:
+                check_uids = []
                 if flow_step['check_role'] == '1':
-                    check_uids = await DeptDao.get_dept_manages(db, user_id,False)
-                    if check_uids:
-                        check_uids = ','.join(str(uid) for uid in check_uids)
+                    check_uid = await DeptDao.get_dept_manages(db, user_id,False)
+                    if check_uid:
+                        a_uids = check_uid.split(',')
+                        check_uids.extend(a_uids)
                     flow_name = '当前部门负责人'
                     check_position_id = 0
                 if flow_step['check_role'] == '2':
-                    check_uids = await DeptDao.get_dept_manages(db, user_id, True)
-                    if check_uids:
-                        check_uids = ','.join(str(uid) for uid in check_uids)
+                    check_uid = await DeptDao.get_dept_manages(db, user_id, True)
+                    if check_uid:
+                        check_uids.extend(check_uid.split(','))
                     flow_name = '上级部门负责人'
                     check_position_id = 0
                 if flow_step['check_role'] == '3':
                     check_position = await PostDao.get_post_by_id(db, flow_step['check_position_id'])
-                    check_uids = await UserDao.get_user_by_post_id(db, flow_step['check_position_id'])
-                    if check_uids:
-                        check_uids = ','.join(str(uid) for uid in check_uids)
+                    check_uid = await UserDao.get_user_by_post_id(db, flow_step['check_position_id'])
+                    if check_uid:
+                        check_uids.extend(check_uid)
                     else:
-                        check_uids = ''
+                        check_uids = []
                     if check_position:
                         flow_name = check_position.post_name
                         check_position_id = check_position.post_id
@@ -395,11 +397,11 @@ class CheckService:
                 if flow_step['check_role'] == '4':
                     flow_name = '指定成员'
                     check_position_id = 0
-                    check_uids = flow_step['check_uids']
+                    check_uids.append(flow_step['check_uids'])
                 if flow_step['check_role'] == '5':
                     flow_name = '指定成员'
                     check_position_id = 0
-                    check_uids = flow_step['check_uids']
+                    check_uids.append(flow_step['check_uids'])
                     check_type = 1
                 st = OaFlowStepBaseModel()
                 st.action_id = query_model.action_id
@@ -407,7 +409,7 @@ class CheckService:
                 st.flow_name = flow_name
                 st.check_position_id = check_position_id
                 st.check_role = int(flow_step['check_role'])
-                st.check_uids = check_uids
+                st.check_uids = ','.join(check_uids)
                 st.create_time = int(datetime.now().timestamp())
                 st.sort = sort
                 st.check_types = flow_step['check_types']
@@ -541,9 +543,9 @@ class CheckService:
                 detail['flow'] = flows
             else:
                 # 当前审核人
-                detail['check_unames'] = await UserDao.get_user_name_by_user_id(db, detail['check_uids'].split(','))
+                detail['check_unames'] = await UserDao.get_nick_name_by_user_id(db, detail['check_uids'].split(','))
                 # 抄送人
-                detail['copy_name'] = await UserDao.get_user_name_by_user_id(db, detail['check_copy_uids'].split(','))
+                detail['copy_name'] = await UserDao.get_nick_name_by_user_id(db, detail['check_copy_uids'].split(','))
                 # 审核节点步骤
                 nodes = await OaFlowStepDao.get_step_by_action_id_flow_id_list(db, action_id, flow_id)
                 node_list = []

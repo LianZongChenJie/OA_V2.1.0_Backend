@@ -14,7 +14,6 @@ from common.router import APIRouterPro
 from module_personnel.entity.do.care_do import OaCare
 from module_personnel.entity.vo.care_vo import OaCareBaseModel, OaCarePageQueryModel
 from module_personnel.service.care_service import CareService
-from utils.camel_converter import ModelConverter
 from utils.response_util import ResponseUtil
 from module_admin.entity.vo.user_vo import (
     CurrentUserModel

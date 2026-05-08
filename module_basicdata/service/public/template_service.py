@@ -74,16 +74,18 @@ class TemplateService:
             raise e
 
     @classmethod
-    async def check_template_name_unique_services(cls, query_db: AsyncSession, page_object: TemplateBaseModel) -> bool:
+    async def check_template_name_unique_services(cls, query_db: AsyncSession, update_model: TemplateBaseModel) -> bool:
         """
         校验用户名是否唯一service
 
         :param query_db: orm对象
-        :param page_object: 用户对象
+        :param update_model: 用户对象
         :return: 校验结果
         """
-        name = -1 if page_object.name is None else page_object.name
-        template = await OaTemplateDao.get_template_by_info(query_db, TemplateBaseModel(name=page_object.name))
+        name = -1 if update_model.name is None else update_model.name
+        template = await OaTemplateDao.get_template_by_info(query_db, TemplateBaseModel(name=update_model.name))
+        if template.id == update_model.id:
+            return CommonConstant.UNIQUE
         if template and template.name == name:
             return CommonConstant.NOT_UNIQUE
         return CommonConstant.UNIQUE

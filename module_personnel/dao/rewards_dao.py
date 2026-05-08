@@ -24,6 +24,7 @@ class RewardsDao:
                  .join(SysUser, OaRewards.uid == SysUser.user_id,isouter=True)
                  .join(user, OaRewards.admin_id == user.user_id,isouter=True)
                      .where(
+                            OaRewards.delete_time == 0,
                             OaRewards.status == query_object.status if query_object.status else True,
                             OaRewards.types == query_object.types if query_object.types else True,
                             OaRewards.rewards_cate == query_object.rewards_cate if query_object.rewards_cate else True,

@@ -16,7 +16,6 @@ from module_administrative.service.note_service import NoteService
 from module_admin.entity.vo.user_vo import (
     CurrentUserModel
 )
-from utils.camel_converter import ModelConverter
 from utils.response_util import ResponseUtil
 
 administrative_note_controller = APIRouterPro(

@@ -45,7 +45,8 @@ class CareService:
         try:
             model.create_time = int(datetime.now().timestamp())
             model.care_time = int_time(model.care_time)
-            model.status = 1
+            if model.status is None:
+                model.status = 1
             await CareDao.add(query_db, model)
             await query_db.commit()
             return CrudResponseModel(is_success=True, message='新增成功')

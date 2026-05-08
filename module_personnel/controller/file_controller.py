@@ -1,5 +1,3 @@
-import os
-
 from fastapi import File, Form, Path, Query, Request, Response, UploadFile
 from typing import Annotated
 

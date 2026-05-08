@@ -14,7 +14,6 @@ from common.router import APIRouterPro
 from module_personnel.entity.do.labor_contract_do import OaLaborContract
 from module_personnel.entity.vo.lable_contract_vo import OaLaborContractBaseModel, OaLaborContractPageQueryModel
 from module_personnel.service.labor_contrack_service import LaborContractService
-from utils.camel_converter import ModelConverter
 from utils.response_util import ResponseUtil
 from module_admin.entity.vo.user_vo import (
     CurrentUserModel

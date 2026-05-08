@@ -51,7 +51,7 @@ class OAFlowModuleDao:
         :param flow_module: 审批模块表信息对象
         :return:
         """
-        db_flow_module = FlowModule(**flow_module.model_dump())
+        db_flow_module = FlowModule(**flow_module.model_dump(exclude=["id","create_time"]), create_time = flow_module.create_time)
         db.add(db_flow_module)
         await db.commit()
         await db.refresh(db_flow_module)

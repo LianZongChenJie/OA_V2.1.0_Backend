@@ -367,6 +367,10 @@ class MeetingRecordsDao:
             except ValueError:
                 pass
 
+        if query_object.begin_time and query_object.end_time:
+            query = query.where(OaMeetingRecords.meeting_date >= int(datetime.fromisoformat(query_object.begin_time).timestamp()))
+            query = query.where(OaMeetingRecords.meeting_date <= int(datetime.fromisoformat(query_object.end_time + ' 23:59:59').timestamp()))
+
         if query_object.join_uids:
             query = query.filter(or_(
                 func.find_in_set(query_object.join_uids, OaMeetingRecords.join_uids) > 0,

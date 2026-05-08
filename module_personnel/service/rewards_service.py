@@ -48,7 +48,8 @@ class RewardsService:
     async def add_service(cls, query_db: AsyncSession, model: OaRewardsBaseModel) -> CrudResponseModel:
         try:
             model.create_time = int(datetime.now().timestamp())
-            model.status = 1
+            if model.status is None:
+                model.status = 1
             rewards = await RewardsDao.add(query_db, model)
             await query_db.commit()
             return CrudResponseModel(is_success=True, message='新增成功')

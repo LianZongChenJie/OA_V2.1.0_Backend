@@ -2,14 +2,10 @@ from fastapi import File, Form, Path, Query, Request, Response, UploadFile
 from typing import Annotated
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.sql import ColumnElement
-
-from common.aspect.data_scope import DataScopeDependency
 from common.aspect.db_seesion import DBSessionDependency
 from common.aspect.interface_auth import UserInterfaceAuthDependency
 from common.aspect.pre_auth import PreAuthDependency
 from common.router import APIRouterPro
-from module_personnel.entity.do.admin_profile_do import OaAdminProfiles
 
 from module_personnel.entity.vo.admin_profile_vo import OaAdminProfilesUpdateModel
 from module_personnel.service.profile_service import ProfileService

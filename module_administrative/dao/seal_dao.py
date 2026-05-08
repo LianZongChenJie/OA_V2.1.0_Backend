@@ -65,8 +65,8 @@ class SealDao:
         if query_object.seal_cate_id:
             conditions.append(OaSeal.seal_cate_id == query_object.seal_cate_id)
 
-        if query_object.keyword:
-            conditions.append(OaSeal.title.like(f"%{query_object.keyword}%"))
+        if query_object.keywords:
+            conditions.append(OaSeal.title.like(f"%{query_object.keywords}%"))
 
         elif query_object.check_uids:
             conditions.append(func.find_in_set(query_object.check_uids, OaSeal.check_uids) > 0)
@@ -155,12 +155,14 @@ class SealDao:
         admin = aliased(SysUser, name='admin')
         did_name = aliased(SysDept, name='did_name')
         last_checker = aliased(SysUser, name='last_checker')
-        query = select(
+        copy = aliased(SysUser, name='copy')
+        query = (select(
             OaSeal,
             did_name.dept_name.label('did_dept'),
             admin.nick_name.label('admin_name'),
             last_checker.nick_name.label('check_last_name'),
-            SysSealCate.title.label('cate_name')
+            SysSealCate.title.label('cate_name'),
+            copy.nick_name.label('copy_name')
         ).join(
             user, OaSeal.admin_id == user.user_id, isouter=True
         ).join(
@@ -171,7 +173,9 @@ class SealDao:
             last_checker, OaSeal.check_last_uid == last_checker.user_id, isouter=True
         ).join(
             SysSealCate, SysSealCate.id == OaSeal.seal_cate_id, isouter=True
-        ).where(OaSeal.id == id)
+        )
+        .join(copy, func.find_in_set(copy.user_id, OaSeal.check_copy_uids), isouter=True)
+        .where(OaSeal.id == id))
         result = await db.execute(query)
         row = result.first()
         if not row:
