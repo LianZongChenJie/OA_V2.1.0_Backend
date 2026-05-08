@@ -8,7 +8,7 @@ from module_admin.dao.user_dao import UserDao
 from module_basicdata.dao.public.flow_dao import OaFlowDao
 from module_basicdata.dao.public.flow_step_dao import OaFlowStepDao
 from module_basicdata.entity.do.public.flow_step_do import OaFlowStep
-from module_basicdata.entity.vo.public.flow_vo import OaFlowBaseModel, OaFlowVOModel
+from module_basicdata.entity.vo.public.flow_vo import OaFlowBaseModel, OaFlowVOModel, OaFlowPageQueryModel
 from datetime import datetime
 
 from utils.camel_converter import ModelConverter
@@ -76,11 +76,19 @@ class FlowService:
             raise e
 
     @classmethod
-    async def get_flow_list(cls,query_db: AsyncSession, model: OaFlowBaseModel, data_scope_sql: ColumnElement, is_page: bool) -> PageModel[OaFlowBaseModel]:
+    async def get_flow_list(cls,query_db: AsyncSession, model: OaFlowPageQueryModel, data_scope_sql: ColumnElement, is_page: bool) -> PageModel[OaFlowBaseModel]:
         try:
             result =  await OaFlowDao.get_flow_list(query_db, model, data_scope_sql, is_page)
             new_rows = []
             for flow,flowCate,flowModule in result.rows:
+                if model.by_dept and flow['departmentIds'] != '':
+                    """
+                    开启部门过滤后，过滤掉非本部门的流程
+                    """
+                    dept_ids = flow['departmentIds'].split(',')
+                    if str(model.dept_id) not in dept_ids:
+                        result.total -= 1
+                        continue
                 flowVO = OaFlowVOModel(**flow)
                 flowVO.cate_name = flowCate.get('title')
                 flowVO.module_name = flowModule.get('title')

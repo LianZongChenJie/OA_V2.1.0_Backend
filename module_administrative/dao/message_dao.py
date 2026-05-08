@@ -55,7 +55,7 @@ class MessageDao:
         conditions.append(data_scope_sql)
         # 应用所有条件
         if conditions:
-            query = query.where(*conditions)
+            query = query.where(*conditions).group_by(OaMessage.id)
 
 
         # 排序

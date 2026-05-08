@@ -37,7 +37,11 @@ flow_controller = APIRouterPro(
 async def list_page(
     flow_cate_page_query: Annotated[OaFlowPageQueryModel, Query()],
     query_db: Annotated[AsyncSession, DBSessionDependency()],
-    data_scope_sql: Annotated[ColumnElement, DataScopeDependency(OaFlow)], ) -> Response:
+    data_scope_sql: Annotated[ColumnElement, DataScopeDependency(OaFlow)],
+    current_user: Annotated[CurrentUserModel, CurrentUserDependency()]
+) -> Response:
+    if flow_cate_page_query.by_dept:
+        flow_cate_page_query.dept_id = current_user.user.dept_id
     flow_list = await FlowService.get_flow_list(query_db, flow_cate_page_query, data_scope_sql, is_page=True)
     logger.info('获取成功')
     return ResponseUtil.success(model_content=ModelConverter.convert_to_camel_case(flow_list))
