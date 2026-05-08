@@ -632,3 +632,41 @@ class UserDao:
         query = select(SysUser.user_name,SysUser.nick_name, SysUser.user_id, SysUser.avatar).where(SysUser.user_id.in_(user_ids))
         result = await db.execute(query)
         return result.mappings().all()
+
+    @classmethod
+    async def get_user_id_by_dept_id(cls, db: AsyncSession, dept_id: int):
+        """
+        根据部门id获取用户id列表
+
+        :param db: orm对象
+        :param dept_id: 用户部门id
+        :return: 用户岗位关联信息
+        """
+        query = select(SysUser.user_id).where(SysUser.dept_id == dept_id)
+        result = await db.execute(query)
+        return result.scalars().all()
+
+    @classmethod
+    async def get_user_id_by_post_id(cls, db: AsyncSession, post_id: int):
+        """
+        根据部门id获取用户id列表
+
+        :param db: orm对象
+        :param post_id: 用户部门id
+        :return: 用户岗位关联信息
+        """
+        query = select(SysUserPost.user_id).where(SysUserPost.post_id == post_id)
+        result = await db.execute(query)
+        return result.scalars().all()
+
+    @classmethod
+    async def get_all_user_id(cls, db: AsyncSession):
+        """
+        获取所有未删除用户id
+
+        :param db: orm对象
+        :return: 用户岗位关联信息
+        """
+        query = select(SysUser.user_id).where(SysUser.del_flag != 2)
+        result = await db.execute(query)
+        return result.scalars().all()
