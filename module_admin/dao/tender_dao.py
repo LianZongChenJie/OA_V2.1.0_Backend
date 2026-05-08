@@ -36,15 +36,15 @@ class TenderDao:
         if query_object.bid_result and query_object.bid_result.strip():
             query = query.where(OaProjectTender.bid_result.like(f'%{query_object.bid_result.strip()}%'))
 
-        # 时间条件处理
+        # 开标日期条件处理（使用 begin_time 和 end_time 参数）
         if query_object.begin_time and query_object.end_time:
             try:
-                begin_datetime = datetime.fromisoformat(query_object.begin_time)
-                end_datetime = datetime.fromisoformat(query_object.end_time)
+                bid_opening_start = datetime.strptime(query_object.begin_time, '%Y-%m-%d').date()
+                bid_opening_end = datetime.strptime(query_object.end_time, '%Y-%m-%d').date()
                 query = query.where(
                     and_(
-                        OaProjectTender.create_time >= begin_datetime,
-                        OaProjectTender.create_time <= end_datetime,
+                        OaProjectTender.bid_opening_date >= bid_opening_start,
+                        OaProjectTender.bid_opening_date <= bid_opening_end,
                         )
                 )
             except ValueError:
@@ -70,10 +70,23 @@ class TenderDao:
         return result
 
     @classmethod
+    async def get_tender_by_project_name(cls, db: AsyncSession, project_name: str, exclude_id: int = None) -> OaProjectTender | None:
+        """根据项目名称查询投标信息（用于验重）"""
+        query = select(OaProjectTender).where(
+            OaProjectTender.project_name == project_name,
+            OaProjectTender.delete_time == 0
+        )
+        if exclude_id:
+            query = query.where(OaProjectTender.id != exclude_id)
+        result = (await db.execute(query)).scalars().first()
+        return result
+
+    @classmethod
     async def add_tender_dao(cls, db: AsyncSession, tender: AddTenderModel) -> OaProjectTender:
         """新增投标信息"""
         # 排除 attachments 字段，因为数据库模型中没有这个字段
-        tender_data = tender.model_dump(exclude_unset=True, exclude={'attachments'}, by_alias=True)
+        # 使用 by_alias=False 确保使用下划线命名（与数据库模型一致）
+        tender_data = tender.model_dump(exclude_unset=True, exclude={'attachments'}, by_alias=False)
         db_tender = OaProjectTender(**tender_data)
         db.add(db_tender)
         await db.flush()
@@ -83,7 +96,9 @@ class TenderDao:
     @classmethod
     async def edit_tender_dao(cls, db: AsyncSession, tender: EditTenderModel) -> OaProjectTender:
         """编辑投标信息"""
-        edit_data = tender.model_dump(exclude_unset=True, exclude={'id'}, by_alias=True)
+        # 使用 by_alias=False 确保使用下划线命名（与数据库模型一致）
+        # 排除 id 和 attachments 字段
+        edit_data = tender.model_dump(exclude_unset=True, exclude={'id', 'attachments'}, by_alias=False)
         
         # MySQL 不支持 RETURNING 子句，需要先更新再查询
         query = (
@@ -161,6 +176,44 @@ class TenderDao:
                 OaProjectTenderAttachment.delete_time == 0
             )
             .values(delete_time=int(datetime.now().timestamp() * 1000))
+        )
+        await db.execute(query)
+        return True
+
+    @classmethod
+    async def batch_delete_tender_attachments_dao(
+            cls, db: AsyncSession, attachment_ids: list[int], delete_time: int
+    ) -> bool:
+        """批量删除投标附件（软删除）"""
+        if not attachment_ids:
+            return True
+
+        query = (
+            update(OaProjectTenderAttachment)
+            .where(
+                OaProjectTenderAttachment.id.in_(attachment_ids),
+                OaProjectTenderAttachment.delete_time == 0
+            )
+            .values(delete_time=delete_time * 1000)
+        )
+        await db.execute(query)
+        return True
+
+    @classmethod
+    async def batch_delete_tender_attachments_dao(
+            cls, db: AsyncSession, attachment_ids: list[int], delete_time: int
+    ) -> bool:
+        """批量删除投标附件（软删除）"""
+        if not attachment_ids:
+            return True
+
+        query = (
+            update(OaProjectTenderAttachment)
+            .where(
+                OaProjectTenderAttachment.id.in_(attachment_ids),
+                OaProjectTenderAttachment.delete_time == 0
+            )
+            .values(delete_time=delete_time * 1000)
         )
         await db.execute(query)
         return True

@@ -74,11 +74,27 @@ async def get_tender_list(
             # 分页结果：提取分页数据并转换
             result_dict = tender_page_query_result.model_dump()
             rows_data = result_dict.get('rows', [])
-            processed_rows = [
-                item.model_dump(by_alias=True) if hasattr(item, 'model_dump')
-                else jsonable_encoder(item)
-                for item in rows_data
-            ]
+            processed_rows = []
+            for item in rows_data:
+                if hasattr(item, 'model_dump'):
+                    row_dict = item.model_dump(by_alias=True)
+                else:
+                    row_dict = jsonable_encoder(item)
+                
+                # 时间格式化：将时间戳转换为可读格式
+                if 'createTime' in row_dict and row_dict['createTime']:
+                    try:
+                        row_dict['createTime'] = datetime.fromtimestamp(row_dict['createTime']).strftime('%Y-%m-%d %H:%M:%S')
+                    except:
+                        pass
+                if 'updateTime' in row_dict and row_dict['updateTime']:
+                    try:
+                        row_dict['updateTime'] = datetime.fromtimestamp(row_dict['updateTime']).strftime('%Y-%m-%d %H:%M:%S')
+                    except:
+                        pass
+                
+                processed_rows.append(row_dict)
+            
             page_info = {
                 'rows': processed_rows,
                 'total': result_dict.get('total', 0),
@@ -119,8 +135,17 @@ async def get_tender_detail(
         tender_detail = await TenderService.tender_detail_services(query_db, tender_id)
         logger.info(f'获取投标详情成功，ID：{tender_id}')
 
-        if tender_detail and hasattr(tender_detail, 'model_dump'):
-            return ResponseUtil.success(model_content=tender_detail)
+        if tender_detail and isinstance(tender_detail, dict):
+            # 将 tender 和 attachments 中的字段转换为驼峰命名
+            from utils.common_util import CamelCaseUtil
+            result = {}
+            if 'tender' in tender_detail:
+                result['tender'] = CamelCaseUtil.transform_result(tender_detail['tender'])
+            if 'attachments' in tender_detail:
+                result['attachments'] = CamelCaseUtil.transform_result(tender_detail['attachments'])
+            return ResponseUtil.success(data=result)
+        elif tender_detail and hasattr(tender_detail, 'model_dump'):
+            return ResponseUtil.success(data=tender_detail.model_dump(by_alias=True))
         return ResponseUtil.success(data=tender_detail)
     except ServiceException as e:
         logger.error(f'获取投标详情失败：{e.message}')

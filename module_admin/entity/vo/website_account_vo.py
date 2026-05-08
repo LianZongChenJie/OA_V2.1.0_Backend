@@ -1,15 +1,20 @@
 from typing import Optional, List
 from pydantic import BaseModel, Field
+from pydantic.alias_generators import to_camel
 
 # 基础查询模型
 class PageQueryModel(BaseModel):
     """分页查询基础模型"""
+    model_config = {'alias_generator': to_camel, 'populate_by_name': True}
+    
     page_num: Optional[int] = Field(1, description='页码')
     page_size: Optional[int] = Field(10, description='每页数量')
 
 # 网站账号基础模型
 class WebsiteAccountModel(BaseModel):
     """网站账号信息基础模型"""
+    model_config = {'alias_generator': to_camel, 'populate_by_name': True}
+    
     id: Optional[int] = None
     website_name: Optional[str] = Field(None, description='网站名称', max_length=255)
     website_url: Optional[str] = Field(None, description='网址', max_length=1512)
@@ -33,6 +38,8 @@ class WebsiteAccountPageQueryModel(PageQueryModel):
 # 新增/编辑/删除模型
 class AddWebsiteAccountModel(BaseModel):
     """新增网站账号信息模型"""
+    model_config = {'alias_generator': to_camel, 'populate_by_name': True}
+    
     website_name: str = Field(..., description='网站名称', max_length=255)
     website_url: str = Field(..., description='网址', max_length=1512)
     username: Optional[str] = Field(None, description='用户名', max_length=100)
@@ -48,10 +55,14 @@ class EditWebsiteAccountModel(WebsiteAccountModel):
 
 class DeleteWebsiteAccountModel(BaseModel):
     """删除网站账号信息模型"""
+    model_config = {'alias_generator': to_camel, 'populate_by_name': True}
+    
     ids: str = Field(..., description='网站账号 ID 列表（逗号分隔）')
 
 class SetWebsiteAccountStatusModel(BaseModel):
     """设置网站账号状态模型"""
+    model_config = {'alias_generator': to_camel, 'populate_by_name': True}
+    
     id: int = Field(..., description='网站账号 ID')
     status: int = Field(..., description='状态（0-禁用，1-启用）')
 

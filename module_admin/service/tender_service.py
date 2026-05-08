@@ -107,6 +107,12 @@ class TenderService:
     @classmethod
     async def add_tender_services(cls, query_db: AsyncSession, page_object: AddTenderModel) -> CrudResponseModel:
         """新增投标（含附件）"""
+        # 项目名称验重
+        if page_object.project_name:
+            existing_tender = await TenderDao.get_tender_by_project_name(query_db, page_object.project_name)
+            if existing_tender:
+                raise ServiceException(message=f'项目名称已存在：{page_object.project_name}')
+
         # 日期转换
         if page_object.purchase_date:
             try:
@@ -122,13 +128,14 @@ class TenderService:
             except ValueError:
                 raise ServiceException(message='bid_opening_date 日期格式错误，仅支持 YYYY-MM-DD')
 
-        # 枚举字段转换
+        # 枚举字段转换（支持 '是', 'YES', 'yes', 'Y', '1', 'true', 'TRUE' 等多种格式）
         tender_dict = page_object.model_dump()
+        yes_values = ['是', 'YES', 'yes', 'Y', '1', 'true', 'TRUE']
         enum_mapping = {
-            'is_tender_submitted': '是' if tender_dict.get('is_tender_submitted') in ['是', 'YES', 'yes'] else '否',
-            'has_tender_invoice': '是' if tender_dict.get('has_tender_invoice') in ['是', 'YES', 'yes'] else '否',
-            'is_deposit_paid': '是' if tender_dict.get('is_deposit_paid') in ['是', 'YES', 'yes'] else '否',
-            'is_deposit_refunded': '是' if tender_dict.get('is_deposit_refunded') in ['是', 'YES', 'yes'] else '否'
+            'is_tender_submitted': '是' if tender_dict.get('is_tender_submitted') in yes_values else '否',
+            'has_tender_invoice': '是' if tender_dict.get('has_tender_invoice') in yes_values else '否',
+            'is_deposit_paid': '是' if tender_dict.get('is_deposit_paid') in yes_values else '否',
+            'is_deposit_refunded': '是' if tender_dict.get('is_deposit_refunded') in yes_values else '否'
         }
         for field, value in enum_mapping.items():
             setattr(page_object, field, value)
@@ -172,6 +179,12 @@ class TenderService:
         if not tender_info:
             raise ServiceException(message=f'投标信息不存在，ID：{page_object.id}')
 
+        # 项目名称验重（排除当前记录）
+        if page_object.project_name:
+            existing_tender = await TenderDao.get_tender_by_project_name(query_db, page_object.project_name, exclude_id=page_object.id)
+            if existing_tender:
+                raise ServiceException(message=f'项目名称已存在：{page_object.project_name}')
+
         # 日期格式转换
         if page_object.purchase_date:
             try:
@@ -191,7 +204,33 @@ class TenderService:
         page_object.update_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
         try:
+            # 更新投标基本信息
             await TenderDao.edit_tender_dao(query_db, page_object)
+            
+            # 如果有附件，先删除原有附件（软删除），再新增新附件
+            if page_object.attachments and len(page_object.attachments) > 0:
+                # 获取现有附件列表
+                existing_attachments = await TenderDao.get_tender_attachments(query_db, page_object.id)
+                if existing_attachments:
+                    # 软删除现有附件
+                    attachment_ids = [att.id for att in existing_attachments]
+                    delete_time = int(datetime.now().timestamp())
+                    await TenderDao.batch_delete_tender_attachments_dao(query_db, attachment_ids, delete_time)
+                
+                # 新增新附件
+                for attachment in page_object.attachments:
+                    add_attachment_model = AddTenderAttachmentModel(
+                        project_tender_id=page_object.id,
+                        file_name=attachment.file_name or '',
+                        file_path=attachment.file_path or '',
+                        file_size=attachment.file_size or 0,
+                        file_ext=attachment.file_ext or '',
+                        file_mime=attachment.file_mime or '',
+                        sort=attachment.sort or 0,
+                        delete_time=0
+                    )
+                    await TenderDao.add_tender_attachment_dao(query_db, add_attachment_model)
+            
             await query_db.commit()
             return CrudResponseModel(is_success=True, message='修改成功')
         except Exception as e:

@@ -50,8 +50,9 @@ class WebsiteAccountDao:
     async def add_website_account_dao(cls, db: AsyncSession, account: AddWebsiteAccountModel) -> OaWebsiteAccount:
         """新增网站账号信息"""
         now = datetime.now()
+        # 使用 by_alias=False 确保使用下划线命名（与数据库模型一致）
         db_account = OaWebsiteAccount(
-            **account.model_dump(exclude_unset=True, by_alias=True),
+            **account.model_dump(exclude_unset=True, by_alias=False),
             create_time=int(now.timestamp()),
             update_time=int(now.timestamp()),
             delete_time=0
@@ -65,7 +66,8 @@ class WebsiteAccountDao:
     async def edit_website_account_dao(cls, db: AsyncSession, account: EditWebsiteAccountModel) -> OaWebsiteAccount:
         """编辑网站账号信息"""
         # 构建更新数据，排除不需要更新的字段
-        edit_data = account.model_dump(exclude_unset=True, exclude={'id'}, by_alias=True)
+        # 使用 by_alias=False 确保使用下划线命名（与数据库模型一致）
+        edit_data = account.model_dump(exclude_unset=True, exclude={'id'}, by_alias=False)
         
         # 移除不应该由编辑接口修改的字段
         edit_data.pop('created_at', None)  # 创建时间不应修改

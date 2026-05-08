@@ -63,6 +63,7 @@ class OaProjectTender(Base):
     bid_result = Column(String(20), nullable=True, comment='中标结果')
     bid_service_fee = Column(DECIMAL(precision=10, scale=2), nullable=True, comment='中标服务费')
     deposit_paid_time = Column(DateTime, nullable=True, comment='投标保证金缴纳时间')
+    tender_leader_id = Column(String(100), nullable=True, comment='标书负责人ID')
     create_time = Column(DateTime, nullable=False, default=datetime.now, comment='创建时间')
     update_time = Column(DateTime, nullable=False, default=datetime.now, onupdate=datetime.now, comment='更新时间')
     delete_time = Column(BigInteger, nullable=True, default=0, comment='删除时间')
