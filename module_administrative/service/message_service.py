@@ -27,6 +27,25 @@ class MessageService:
                 row = dict(row)
                 row.update(row['OaMessage'].to_dict())
                 row.pop('OaMessage')
+                # 处理 copy_names
+                if row.get('copy_names') is None:
+                    row['copy_names'] = ''
+                elif row['copy_names'] == '':
+                    row['copy_names'] = ''
+                else:
+                    # 可选：去除首尾逗号
+                    row['copy_names'] = row['copy_names'].strip(',')
+                    row['copy_names'] = row['copy_names'].replace(',,', ',')
+
+                # 同样处理其他字段
+                if row.get('dept_name') is None:
+                    row['dept_name'] = ''
+                if row.get('post_name') is None:
+                    row['post_name'] = ''
+                else:
+                    row['dept_name'] = row['dept_name'].strip(',')
+                    row['dept_name'] = row['dept_name'].replace(',,', ',')
+
                 if row['types'] == 1:
                     row['types_str'] = '用户'
                     row['to_user_name'] = row['to_name']
