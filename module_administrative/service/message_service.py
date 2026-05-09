@@ -22,44 +22,7 @@ class MessageService:
                                                                                              list[dict[str, Any]]:
         query_list = await MessageDao.get_list(query_db, query_object, data_scope_sql, is_page)
         if is_page:
-            row_list = []
-            for row in query_list.rows:
-                row = dict(row)
-                row.update(row['OaMessage'].to_dict())
-                row.pop('OaMessage')
-                # 处理 copy_names
-                if row.get('copy_names') is None:
-                    row['copy_names'] = ''
-                elif row['copy_names'] == '':
-                    row['copy_names'] = ''
-                else:
-                    # 可选：去除首尾逗号
-                    row['copy_names'] = row['copy_names'].strip(',')
-                    row['copy_names'] = row['copy_names'].replace(',,', ',')
-
-                # 同样处理其他字段
-                if row.get('dept_name') is None:
-                    row['dept_name'] = ''
-                if row.get('post_name') is None:
-                    row['post_name'] = ''
-                else:
-                    row['dept_name'] = row['dept_name'].strip(',')
-                    row['dept_name'] = row['dept_name'].replace(',,', ',')
-
-                if row['types'] == 1:
-                    row['types_str'] = '用户'
-                    row['to_user_name'] = row['to_name']
-                elif row['types'] == 2:
-                    row['types_str'] = '部门'
-                    row['to_user_name'] = row['dept_name']
-                elif row['types'] == 3:
-                    row['types_str'] = '岗位'
-                    row['to_user_name'] = row['post_name']
-                elif row['types'] == 4:
-                    row['types_str'] = '公司'
-                    row['to_user_name'] = '全公司'
-                row_list.append(ModelConverter.convert_to_camel_case(row))
-            query_list.rows = row_list
+            query_list.rows = await cls.fields_handle(query_list.rows)
             return query_list
         else:
             return ModelConverter.convert_to_camel_case(query_list)
@@ -73,19 +36,7 @@ class MessageService:
             detail = dict(detail)
             detail.update(detail['OaMessage'].to_dict())
             detail.pop('OaMessage')
-            if detail['types'] == 1:
-                detail['types_str'] = '用户'
-                detail['to_user_name'] = detail['to_name']
-            elif detail['types'] == 2:
-                detail['types_str'] = '部门'
-                detail['to_user_name'] = detail['dept_name']
-            elif detail['types'] == 3:
-                detail['types_str'] = '岗位'
-                detail['to_user_name'] = detail['post_name']
-            elif detail['types'] == 4:
-                detail['types_str'] = '公司'
-                detail['to_user_name'] = '全公司'
-            return ModelConverter.convert_to_camel_case(detail)
+            return await cls._field_handle(detail)
         except Exception as e:
             raise e
 
@@ -201,6 +152,80 @@ class MessageService:
             return CrudResponseModel(is_success=True, message='发送成功')
         except Exception as e:
             raise e
+
+    @classmethod
+    async def fields_handle(cls,fields_list:list[dict[str, Any]]):
+        """
+        列表查询字段处理
+        :param fields_list:
+        :return:
+        """
+        result_list = []
+        for fields in fields_list:
+            fields = dict(fields)
+            fields.update(fields['OaMessage'].to_dict())
+            fields.pop('OaMessage')
+            flds = await cls._field_handle(fields)
+            result_list.append(flds)
+        return result_list
+
+    @classmethod
+    async def _field_handle(cls, fields: dict):
+        """
+        详情字段处理
+        :param fields:
+        :return:
+        """
+        if fields.get('to_names') is None:
+            fields['to_names'] = ''
+        elif fields['to_names'] == '':
+            fields['to_names'] = ''
+        else:
+            # 可选：去除首尾逗号
+            fields['to_names'] = fields['to_names'].strip(',')
+            fields['to_names'] = fields['to_names'].replace(',,', ',')
+
+        # 处理 copy_names
+        if fields.get('copy_names') is None:
+            fields['copy_names'] = ''
+        elif fields['copy_names'] == '':
+            fields['copy_names'] = ''
+        else:
+            # 可选：去除首尾逗号
+            fields['copy_names'] = fields['copy_names'].strip(',')
+            fields['copy_names'] = fields['copy_names'].replace(',,', ',')
+
+        # 同样处理其他字段
+        if fields.get('dept_names') is None:
+            fields['dept_names'] = ''
+        if fields.get('dept_names') is None:
+            fields['dept_names'] = ''
+        else:
+            fields['dept_names'] = fields['dept_names'].strip(',')
+            fields['dept_names'] = fields['dept_names'].replace(',,', ',')
+
+        if fields.get('post_names') is None:
+            fields['post_names'] = ''
+        if fields.get('post_names') is None:
+            fields['post_names'] = ''
+        else:
+            fields['post_names'] = fields['post_names'].strip(',')
+            fields['post_names'] = fields['post_names'].replace(',,', ',')
+
+        if fields['types'] == 1:
+            fields['types_str'] = '用户'
+            fields['to_user_name'] = fields['to_names']
+        elif fields['types'] == 2:
+            fields['types_str'] = '部门'
+            fields['to_user_name'] = fields['dept_names']
+        elif fields['types'] == 3:
+            fields['types_str'] = '岗位'
+            fields['to_user_name'] = fields['post_names']
+        elif fields['types'] == 4:
+            fields['types_str'] = '公司'
+            fields['to_user_name'] = '全公司'
+
+        return ModelConverter.convert_to_camel_case(fields)
 
 # ---------------------------------------------- 垃圾箱 -----------------------------------------------------
     @classmethod

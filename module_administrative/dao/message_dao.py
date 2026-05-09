@@ -23,56 +23,7 @@ class MessageDao:
     @classmethod
     async def get_list(cls, db: AsyncSession, query_object: OaMessagePageQueryModel,
                        data_scope_sql: ColumnElement, is_page: bool = False) -> PageModel | list[list[dict[str, Any]]]:
-        tu = aliased(SysUser, name="tu")
-
-        # 子查询：只聚合存在的抄送人（使用 INNER JOIN，避免产生空行）
-        copy_subquery = (
-            select(
-                OaMessage.id.label('msg_id'),
-                func.group_concat(SysUser.nick_name, ',').label('copy_names')
-            )
-            .join(SysUser, func.find_in_set(SysUser.user_id, OaMessage.copy_uids) > 0)
-            .group_by(OaMessage.id)
-            .subquery()
-        )
-
-        # 子查询：聚合部门（只聚合存在的）
-        dept_subquery = (
-            select(
-                OaMessage.id.label('msg_id'),
-                func.group_concat(SysDept.dept_name, ',').label('dept_names')
-            )
-            .join(SysDept, func.find_in_set(SysDept.dept_id, OaMessage.dids) > 0)
-            .group_by(OaMessage.id)
-            .subquery()
-        )
-
-        # 子查询：聚合岗位（只聚合存在的）
-        post_subquery = (
-            select(
-                OaMessage.id.label('msg_id'),
-                func.group_concat(SysPost.post_name, ',').label('post_names')
-            )
-            .join(SysPost, func.find_in_set(SysPost.post_id, OaMessage.pids) > 0)
-            .group_by(OaMessage.id)
-            .subquery()
-        )
-
-        # 主查询
-        query = (
-            select(
-                OaMessage,
-                tu.nick_name.label('to_name'),
-                copy_subquery.c.copy_names.label('copy_names'),
-                dept_subquery.c.dept_names.label('dept_name'),
-                post_subquery.c.post_names.label('post_name')
-            )
-            .join(tu, OaMessage.from_uid == tu.user_id, isouter=True)
-            .outerjoin(copy_subquery, OaMessage.id == copy_subquery.c.msg_id)
-            .outerjoin(dept_subquery, OaMessage.id == dept_subquery.c.msg_id)
-            .outerjoin(post_subquery, OaMessage.id == post_subquery.c.msg_id)
-        )
-
+        query = await cls.build_query(db)
         conditions = []
         conditions.append(OaMessage.delete_time == 0)
         if not query_object.is_draft is None:
@@ -106,19 +57,12 @@ class MessageDao:
 
     @classmethod
     async def get_detail(cls, db: AsyncSession, message_id: int):
-        tu = aliased(SysUser, name="tu")
-        cu = aliased(SysUser, name="cu")
-        query = (select(OaMessage,
-                        tu.nick_name.label('to_name'),
-                        cu.nick_name.label('copy_name'),
-                        SysDept.dept_name.label('dept_name'),
-                        SysPost.post_name.label('post_name')
-                        )
-                 .join(tu, OaMessage.from_uid == tu.user_id, isouter=True)
-                 .join(cu, func.find_in_set(cu.user_id, OaMessage.copy_uids), isouter=True)
-                 .join(SysDept, func.find_in_set(SysDept.dept_id, OaMessage.dids), isouter=True)
-                 .join(SysPost, func.find_in_set(SysPost.post_id, OaMessage.pids), isouter=True)
-                 ).where(OaMessage.id == message_id)
+        query = await cls.build_query(db)
+        conditions = []
+        conditions.append(OaMessage.delete_time == 0)
+        conditions.append(OaMessage.id == message_id)
+        if conditions:
+            query = query.where(*conditions)
         result = await db.execute(query)
         return result.mappings().first()
 
@@ -188,7 +132,7 @@ class MessageDao:
         from_user = aliased(SysUser, name='from_user')
         to_user = aliased(SysUser, name='to_user')
 
-        # 收件箱（不会有重复问题）
+        # 收件箱
         inbox_stmt = (select(
             text("'收件箱' as source"),
             OaMsg.id,
@@ -203,6 +147,7 @@ class MessageDao:
         .join(from_user, from_user.user_id == OaMsg.from_uid, isouter=True)
         .where(
             OaMsg.delete_time != 0,
+            OaMsg.clear_time == 0,
             OaMsg.to_uid == user_id
         ))
 
@@ -236,6 +181,7 @@ class MessageDao:
             OaMessage.delete_time != 0,
             OaMessage.from_uid == user_id,
             OaMessage.send_time != 0,
+            OaMessage.clear_time == 0,
             data_scope_sql
         ))
 
@@ -257,6 +203,7 @@ class MessageDao:
             OaMessage.delete_time != 0,
             OaMessage.from_uid == user_id,
             OaMessage.send_time == 0,
+            OaMessage.clear_time == 0,
             data_scope_sql
         ))
 
@@ -268,3 +215,69 @@ class MessageDao:
             db, query, query_object.page_num, query_object.page_size, is_page
         )
         return page_list
+
+    @classmethod
+    async def build_query(cls, db: AsyncSession):
+
+        """
+        构建查询列表、消息详情查询语句
+        :param db:
+        :return:
+        """
+        # 子查询：聚合接收人
+        to_subquery = (
+            select(
+                OaMessage.id.label('msg_id'),
+                func.group_concat(SysUser.nick_name, ',').label('to_names')
+            )
+            .join(SysUser, func.find_in_set(SysUser.user_id, OaMessage.uids) > 0)
+            .group_by(OaMessage.id)
+            .subquery()
+        )
+        # 子查询：只聚合存在的抄送人（使用 INNER JOIN，避免产生空行）
+        copy_subquery = (
+            select(
+                OaMessage.id.label('msg_id'),
+                func.group_concat(SysUser.nick_name, ',').label('copy_names')
+            )
+            .join(SysUser, func.find_in_set(SysUser.user_id, OaMessage.copy_uids) > 0)
+            .group_by(OaMessage.id)
+            .subquery()
+        )
+
+        # 子查询：聚合部门（只聚合存在的）
+        dept_subquery = (
+            select(
+                OaMessage.id.label('msg_id'),
+                func.group_concat(SysDept.dept_name, ',').label('dept_names')
+            )
+            .join(SysDept, func.find_in_set(SysDept.dept_id, OaMessage.dids) > 0)
+            .group_by(OaMessage.id)
+            .subquery()
+        )
+
+        # 子查询：聚合岗位（只聚合存在的）
+        post_subquery = (
+            select(
+                OaMessage.id.label('msg_id'),
+                func.group_concat(SysPost.post_name, ',').label('post_names')
+            )
+            .join(SysPost, func.find_in_set(SysPost.post_id, OaMessage.pids) > 0)
+            .group_by(OaMessage.id)
+            .subquery()
+        )
+        # 主查询
+        query = (
+            select(
+                OaMessage,
+                to_subquery.c.to_names.label('to_names'),
+                copy_subquery.c.copy_names.label('copy_names'),
+                dept_subquery.c.dept_names.label('dept_names'),
+                post_subquery.c.post_names.label('post_names')
+            )
+            .outerjoin(to_subquery, OaMessage.id == to_subquery.c.msg_id)
+            .outerjoin(copy_subquery, OaMessage.id == copy_subquery.c.msg_id)
+            .outerjoin(dept_subquery, OaMessage.id == dept_subquery.c.msg_id)
+            .outerjoin(post_subquery, OaMessage.id == post_subquery.c.msg_id)
+        )
+        return query

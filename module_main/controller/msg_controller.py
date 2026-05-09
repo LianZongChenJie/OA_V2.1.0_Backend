@@ -14,7 +14,7 @@ from common.router import APIRouterPro
 from module_administrative.entity.do.message_do import OaMessage
 from module_administrative.entity.do.msg_do import OaMsg
 from module_administrative.entity.vo.message_vo import OaMessagePageQueryModel, OaMessageBaseModel, \
-    OaMessageDeleteModel, OaMessageStarModel, OaMessageClearModel
+    OaMessageDeleteModel, OaMessageStarModel, OaMessageClearModel, OaMessageReadModel
 from module_administrative.entity.vo.msg_vo import OaMsgQueryPageModel, OaMsgBaseModel
 from module_administrative.service.message_service import MessageService
 from utils.response_util import ResponseUtil
@@ -179,7 +179,7 @@ async def restore_message(
     result = await MessageService.restore(query_db, model.message_id, model.table)
     return ResponseUtil.success(msg=result.message)
 
-@msg_controller.put(
+@msg_controller.delete(
     '/clear',
     summary='清空发送',
     description='清空发送',
@@ -289,13 +289,13 @@ async def set_reads(
 @Log(title='查看消息',business_type=BusinessType.UPDATE)
 async def read(
     request: Request,
-    messageId: int,
+    model: Annotated[OaMessageReadModel,Body()],
     query_db: Annotated[AsyncSession, DBSessionDependency()]
 ) -> Response:
     """
     阅读消息
     """
-    result = await MessageService.set_read(query_db, messageId)
+    result = await MessageService.set_read(query_db, model.message_id)
     return ResponseUtil.success(data=result)
 
 @msg_controller.delete(

@@ -1,5 +1,3 @@
-from email.policy import default
-
 from pydantic import BaseModel, Field, validator, ConfigDict, field_serializer, field_validator
 from utils.timeformat import format_timestamp
 from typing import Optional
@@ -107,3 +105,7 @@ class OaMessageClearModel(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel, from_attributes=True)
     message_id: int = Field(0, description='消息id集合')
     table: str = Field("", description='表名')
+
+class OaMessageReadModel(BaseModel):
+    model_config = ConfigDict(alias_generator=to_camel, from_attributes=True)
+    message_id: int = Field(0, description='消息id')
