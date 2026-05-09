@@ -274,29 +274,46 @@ class OfficialDocsService:
         
         try:
             current_time = int(datetime.now().timestamp())
-            # 只获取数据库表中存在的字段，排除扩展字段
-            docs_data = page_object.model_dump(
-                exclude_unset=True,
-                exclude={
-                    'id', 'secrets_str', 'urgency_str', 'check_status_str',
-                    'draft_name', 'draft_dname', 'send_names', 'copy_names',
-                    'share_names', 'file_array', 'create_time', 'update_time',
-                    'delete_time'
-                }
-            )
+            
+            # 手动构建数据字典，确保所有字段都被正确处理
+            docs_data = {
+                'title': page_object.title or '',
+                'code': page_object.code or '',
+                'secrets': page_object.secrets or 1,
+                'urgency': page_object.urgency or 1,
+                'send_uids': page_object.send_uids or '',
+                'copy_uids': page_object.copy_uids or '',
+                'share_uids': page_object.share_uids or '',
+                'content': page_object.content or '',
+                'file_ids': page_object.file_ids or '',
+                'draft_uid': page_object.draft_uid or 0,
+                'did': page_object.did or 0,
+                'admin_id': user_id or 0,
+                'create_time': current_time,
+                'update_time': current_time,
+                'delete_time': 0,
+                'check_status': 0,
+                'check_flow_id': 0,
+                'check_step_sort': 0,
+                'check_uids': '',
+                'check_last_uid': '',
+                'check_history_uids': '',
+                'check_copy_uids': '',
+                'check_time': 0,
+            }
             
             # 将时间字符串转换回时间戳
-            if 'draft_time' in docs_data and isinstance(docs_data['draft_time'], str):
-                try:
-                    dt = datetime.fromisoformat(docs_data['draft_time'])
-                    docs_data['draft_time'] = int(dt.timestamp())
-                except ValueError:
-                    pass
-            
-            docs_data['admin_id'] = user_id
-            docs_data['create_time'] = current_time
-            docs_data['update_time'] = current_time
-            docs_data['delete_time'] = 0
+            if page_object.draft_time:
+                if isinstance(page_object.draft_time, str):
+                    try:
+                        dt = datetime.fromisoformat(page_object.draft_time)
+                        docs_data['draft_time'] = int(dt.timestamp())
+                    except ValueError:
+                        docs_data['draft_time'] = 0
+                else:
+                    docs_data['draft_time'] = int(page_object.draft_time)
+            else:
+                docs_data['draft_time'] = 0
 
             await OfficialDocsDao.add_official_docs_dao(query_db, OfficialDocsModel(**docs_data))
             await query_db.commit()

@@ -345,8 +345,39 @@ class CarFeeDao:
                 )
             )
 
+        # 单个时间点查询（优先）
+        if query_object.fee_time:
+            try:
+                fee_time_value = query_object.fee_time
+                
+                # 解析时间参数（支持日期字符串或时间戳）
+                if isinstance(fee_time_value, str):
+                    # 如果是日期字符串格式（包含 - 或 /）
+                    if '-' in fee_time_value or '/' in fee_time_value:
+                        fee_dt = datetime.fromisoformat(fee_time_value)
+                        fee_timestamp = int(fee_dt.timestamp())
+                    else:
+                        # 假设是时间戳字符串
+                        fee_timestamp = int(fee_time_value)
+                else:
+                    fee_timestamp = int(fee_time_value)
+                
+                # 将时间戳转换为当天的开始和结束时间
+                fee_date = datetime.fromtimestamp(fee_timestamp).date()
+                begin_timestamp = int(datetime.combine(fee_date, datetime.min.time()).timestamp())
+                end_timestamp = int(datetime.combine(fee_date, datetime.max.time()).timestamp())
+                
+                query = query.where(
+                    and_(
+                        OaCarFee.fee_time >= begin_timestamp,
+                        OaCarFee.fee_time <= end_timestamp,
+                    )
+                )
+            except (ValueError, TypeError, OSError) as e:
+                # 解析失败时忽略该条件
+                pass
         # 时间范围查询
-        if query_object.diff_time:
+        elif query_object.diff_time:
             try:
                 time_range = query_object.diff_time.split('~')
                 if len(time_range) == 2:

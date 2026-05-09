@@ -61,22 +61,58 @@ async def get_tender_list(
 ) -> Response:
     """获取投标分页列表"""
     try:
+        logger.info(f'获取投标列表，page_num={tender_page_query.page_num}, page_size={tender_page_query.page_size}')
+        
         tender_page_query_result = await TenderService.get_tender_list_services(
             query_db, tender_page_query, is_page=True
         )
-        logger.info('获取投标列表成功')
+        logger.info(f'获取投标列表成功，结果类型: {type(tender_page_query_result).__name__}')
 
-        # 统一处理返回结果
-        if isinstance(tender_page_query_result, list):
+        # 根据返回类型选择合适的响应方式
+        from common.vo import PageModel
+        if isinstance(tender_page_query_result, PageModel):
+            # 分页结果：提取分页数据并转换
+            result_dict = tender_page_query_result.model_dump()
+            rows_data = result_dict.get('rows', [])
+            processed_rows = []
+            for item in rows_data:
+                if hasattr(item, 'model_dump'):
+                    row_dict = item.model_dump(by_alias=True)
+                else:
+                    row_dict = jsonable_encoder(item)
+                
+                # 时间格式化：将时间戳转换为可读格式
+                if 'createTime' in row_dict and row_dict['createTime']:
+                    try:
+                        row_dict['createTime'] = datetime.fromtimestamp(row_dict['createTime']).strftime('%Y-%m-%d %H:%M:%S')
+                    except:
+                        pass
+                if 'updateTime' in row_dict and row_dict['updateTime']:
+                    try:
+                        row_dict['updateTime'] = datetime.fromtimestamp(row_dict['updateTime']).strftime('%Y-%m-%d %H:%M:%S')
+                    except:
+                        pass
+                
+                processed_rows.append(row_dict)
+            
+            page_info = {
+                'rows': processed_rows,
+                'total': result_dict.get('total', 0),
+                'pageNum': result_dict.get('page_num', tender_page_query.page_num),
+                'pageSize': result_dict.get('page_size', tender_page_query.page_size),
+                'hasNext': result_dict.get('has_next', False)
+            }
+            return ResponseUtil.success(dict_content=page_info)
+        elif isinstance(tender_page_query_result, list):
+            # 列表结果：逐个处理
             processed_data = [
                 item.model_dump(by_alias=True) if hasattr(item, 'model_dump')
                 else jsonable_encoder(item)
                 for item in tender_page_query_result
             ]
             return ResponseUtil.success(data=processed_data)
-        elif hasattr(tender_page_query_result, 'model_dump'):
-            return ResponseUtil.success(model_content=tender_page_query_result)
         else:
+            # 其他类型：直接返回
             return ResponseUtil.success(data=tender_page_query_result)
     except Exception as e:
         logger.error(f'获取投标列表失败：{str(e)}', exc_info=True)
@@ -99,8 +135,17 @@ async def get_tender_detail(
         tender_detail = await TenderService.tender_detail_services(query_db, tender_id)
         logger.info(f'获取投标详情成功，ID：{tender_id}')
 
-        if tender_detail and hasattr(tender_detail, 'model_dump'):
-            return ResponseUtil.success(model_content=tender_detail)
+        if tender_detail and isinstance(tender_detail, dict):
+            # 将 tender 和 attachments 中的字段转换为驼峰命名
+            from utils.common_util import CamelCaseUtil
+            result = {}
+            if 'tender' in tender_detail:
+                result['tender'] = CamelCaseUtil.transform_result(tender_detail['tender'])
+            if 'attachments' in tender_detail:
+                result['attachments'] = CamelCaseUtil.transform_result(tender_detail['attachments'])
+            return ResponseUtil.success(data=result)
+        elif tender_detail and hasattr(tender_detail, 'model_dump'):
+            return ResponseUtil.success(data=tender_detail.model_dump(by_alias=True))
         return ResponseUtil.success(data=tender_detail)
     except ServiceException as e:
         logger.error(f'获取投标详情失败：{e.message}')
@@ -327,13 +372,13 @@ async def upload_tender_attachment(
         # 正确从result字段获取文件信息
         file_data = upload_result.result if upload_result.result else {}
 
-        # 构造前端需要的回显数据
+        # 构造前端需要的回显数据（驼峰命名）
         response_data = {
-            "file_name": file_data.get("file_name", ""),
-            "file_path": file_data.get("file_path", ""),
-            "file_size": file_data.get("file_size", 0),
-            "file_ext": file_data.get("file_ext", ""),
-            "file_mime": file_data.get("file_mime", "")
+            "fileName": file_data.get("file_name", ""),
+            "filePath": file_data.get("file_path", ""),
+            "fileSize": file_data.get("file_size", 0),
+            "fileExt": file_data.get("file_ext", ""),
+            "fileMime": file_data.get("file_mime", "")
         }
 
         logger.info(f'投标附件上传成功，文件名：{file_data.get("file_name", "")}')

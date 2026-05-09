@@ -47,22 +47,43 @@ async def get_website_account_list(
 ) -> Response:
     """获取网站账号列表"""
     try:
-        website_account_page_query_result = await WebsiteAccountService.get_website_account_list_services(
-            query_db, website_account_page_query, is_page=True
+        # 直接调用DAO层进行分页查询
+        from module_admin.dao.website_account_dao import WebsiteAccountDao
+        from utils.page_util import PageUtil
+        from sqlalchemy import select
+        from module_admin.entity.do.website_account_do import OaWebsiteAccount
+        
+        # 构建查询
+        query = select(OaWebsiteAccount).where(OaWebsiteAccount.delete_time == 0)
+        
+        # 添加查询条件
+        if website_account_page_query.website_url and website_account_page_query.website_url.strip():
+            query = query.where(OaWebsiteAccount.website_url.like(f'%{website_account_page_query.website_url.strip()}%'))
+        
+        # 排序
+        query = query.order_by(OaWebsiteAccount.sort.asc())
+        
+        # 执行分页查询
+        page_result = await PageUtil.paginate(
+            query_db, 
+            query, 
+            website_account_page_query.page_num, 
+            website_account_page_query.page_size, 
+            is_page=True
         )
-        logger.info('获取网站账号列表成功')
+        
+        logger.info(f'获取网站账号列表成功，总数：{page_result.total}')
 
-        if isinstance(website_account_page_query_result, list):
-            processed_data = [
-                item.model_dump(by_alias=True) if hasattr(item, 'model_dump')
-                else jsonable_encoder(item)
-                for item in website_account_page_query_result
-            ]
-            return ResponseUtil.success(data=processed_data)
-        elif hasattr(website_account_page_query_result, 'model_dump'):
-            return ResponseUtil.success(model_content=website_account_page_query_result)
-        else:
-            return ResponseUtil.success(data=website_account_page_query_result)
+        # 构建响应（通过 model_dump 获取分页数据）
+        page_result_dict = page_result.model_dump()
+        page_info = {
+            'rows': page_result_dict.get('rows', []),
+            'total': page_result_dict.get('total', 0),
+            'pageNum': page_result_dict.get('page_num', website_account_page_query.page_num),
+            'pageSize': page_result_dict.get('page_size', website_account_page_query.page_size),
+            'hasNext': page_result_dict.get('has_next', False)
+        }
+        return ResponseUtil.success(dict_content=page_info)
     except Exception as e:
         logger.error(f'获取网站账号列表失败：{str(e)}', exc_info=True)
         return ResponseUtil.error(msg=f'获取列表失败：{str(e)}')
@@ -85,7 +106,12 @@ async def get_website_account_detail(
         logger.info(f'获取网站账号详情成功，ID：{account_id}')
 
         if account_detail and hasattr(account_detail, 'model_dump'):
-            return ResponseUtil.success(model_content=account_detail)
+            # 使用 by_alias=True 返回驼峰命名
+            return ResponseUtil.success(data=account_detail.model_dump(by_alias=True))
+        elif hasattr(account_detail, '__dict__'):
+            # 处理 SQLAlchemy 模型对象，转换为驼峰命名
+            from utils.common_util import CamelCaseUtil
+            return ResponseUtil.success(data=CamelCaseUtil.transform_result(account_detail))
         return ResponseUtil.success(data=account_detail)
     except ServiceException as e:
         logger.error(f'获取网站账号详情失败：{e.message}')

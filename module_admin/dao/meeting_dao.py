@@ -352,7 +352,39 @@ class MeetingRecordsDao:
         if query_object.keywords:
             query = query.where(OaMeetingRecords.title.like(f'%{query_object.keywords}%'))
 
-        if query_object.diff_time:
+        # 单个时间点查询（优先）
+        if query_object.meeting_date:
+            try:
+                meeting_date_value = query_object.meeting_date
+                
+                # 解析时间参数（支持日期字符串或时间戳）
+                if isinstance(meeting_date_value, str):
+                    # 如果是日期字符串格式（包含 - 或 /）
+                    if '-' in meeting_date_value or '/' in meeting_date_value:
+                        meeting_dt = datetime.fromisoformat(meeting_date_value)
+                        meeting_timestamp = int(meeting_dt.timestamp())
+                    else:
+                        # 假设是时间戳字符串
+                        meeting_timestamp = int(meeting_date_value)
+                else:
+                    meeting_timestamp = int(meeting_date_value)
+                
+                # 将时间戳转换为当天的开始和结束时间
+                meeting_date = datetime.fromtimestamp(meeting_timestamp).date()
+                begin_timestamp = int(datetime.combine(meeting_date, datetime.min.time()).timestamp())
+                end_timestamp = int(datetime.combine(meeting_date, datetime.max.time()).timestamp())
+                
+                query = query.where(
+                    and_(
+                        OaMeetingRecords.meeting_date >= begin_timestamp,
+                        OaMeetingRecords.meeting_date <= end_timestamp,
+                    )
+                )
+            except (ValueError, TypeError, OSError) as e:
+                # 解析失败时忽略该条件
+                pass
+        # 时间范围查询
+        elif query_object.diff_time:
             try:
                 time_range = query_object.diff_time.split('~')
                 if len(time_range) == 2:

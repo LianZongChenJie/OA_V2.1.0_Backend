@@ -1,5 +1,6 @@
-from typing import Optional, Generic, TypeVar, List
+from typing import Optional, Generic, TypeVar, List, Union
 from pydantic import BaseModel, Field
+from pydantic.alias_generators import to_camel
 from fastapi import UploadFile
 
 # 通用基础模型
@@ -7,22 +8,30 @@ T = TypeVar('T')
 
 class PageQueryModel(BaseModel):
     """分页查询基础模型"""
+    model_config = {'alias_generator': to_camel, 'populate_by_name': True}
+    
     page_num: Optional[int] = Field(1, description='页码')
     page_size: Optional[int] = Field(10, description='每页数量')
 
 class PageModel(BaseModel, Generic[T]):
     """分页结果基础模型"""
+    model_config = {'alias_generator': to_camel, 'populate_by_name': True}
+    
     total: int = Field(0, description='总记录数')
     rows: List[T] = Field([], description='数据列表')
 
 class DataResponseModel(BaseModel):
     """数据响应基础模型"""
+    model_config = {'alias_generator': to_camel, 'populate_by_name': True}
+    
     code: int = Field(200, description='响应码')
     message: str = Field('success', description='响应信息')
     data: Optional[T] = None
 
 class CrudResponseModel(BaseModel):
     """CRUD操作响应基础模型"""
+    model_config = {'alias_generator': to_camel, 'populate_by_name': True}
+    
     code: int = Field(200, description='响应码')
     message: str = Field('操作成功', description='响应信息')
     data: Optional[T] = None
@@ -31,15 +40,18 @@ class CrudResponseModel(BaseModel):
 # 投标信息基础模型
 class TenderModel(BaseModel):
     """投标信息基础模型"""
+    model_config = {'alias_generator': to_camel, 'populate_by_name': True}
+    
     id: Optional[int] = None
     month: Optional[str] = Field(None, description='月份', max_length=20)
+    tender_leader_id: Optional[Union[str, int]] = Field(None, description='标书负责人ID')
     customer_name: Optional[str] = Field(None, description='客户名称', max_length=100)
     project_name: Optional[str] = Field(None, description='项目名称', max_length=200)
     tender_leader: Optional[str] = Field(None, description='投标负责人', max_length=50)
     purchase_date: Optional[str] = Field(None, description='购买日期（YYYY-MM-DD）')
     tender_agency: Optional[str] = Field(None, description='招标机构', max_length=100)
-    project_cycle: Optional[str] = Field(None, description='项目周期', max_length=50)
-    shortlisted_countries: Optional[str] = Field(None, description='入围家数', max_length=20)
+    project_cycle: Optional[Union[str, int]] = Field(None, description='项目周期')
+    shortlisted_countries: Optional[Union[str, int]] = Field(None, description='入围家数')
     budget_amount: Optional[float] = Field(None, description='预算金额（元）')
     bid_opening_date: Optional[str] = Field(None, description='开标日期（YYYY-MM-DD）')
     is_tender_submitted: Optional[str] = Field(None, description='是否投标（是/否）', max_length=20)
@@ -54,6 +66,7 @@ class TenderModel(BaseModel):
     is_deposit_refunded: Optional[str] = Field(None, description='是否退回保证金（是/否）', max_length=20)
     bid_result: Optional[str] = Field(None, description='中标结果', max_length=20)
     bid_service_fee: Optional[float] = Field(None, description='中标服务费（元）')
+    deposit_paid_time: Optional[str] = Field(None, description='投标保证金缴纳时间（YYYY-MM-DD HH:MM:SS）')
     sort: Optional[int] = Field(None, description='排序')
     create_time: Optional[str] = Field(None, description='创建时间（YYYY-MM-DD HH:MM:SS）')
     update_time: Optional[str] = Field(None, description='更新时间（YYYY-MM-DD HH:MM:SS）')
@@ -63,6 +76,7 @@ class TenderModel(BaseModel):
 class TenderPageQueryModel(PageQueryModel):
     """投标信息分页查询模型"""
     month: Optional[str] = Field(None, description='月份')
+    tender_leader_id: Optional[str] = Field(None, description='标书负责人ID')
     customer_name: Optional[str] = Field(None, description='客户名称')
     project_name: Optional[str] = Field(None, description='项目名称')
     tender_leader: Optional[str] = Field(None, description='投标负责人')
@@ -70,6 +84,8 @@ class TenderPageQueryModel(PageQueryModel):
     bid_result: Optional[str] = Field(None, description='中标结果')
     begin_time: Optional[str] = Field(None, description='开始时间（YYYY-MM-DD）')
     end_time: Optional[str] = Field(None, description='结束时间（YYYY-MM-DD）')
+    bid_opening_date_start: Optional[str] = Field(None, description='开标日期开始（YYYY-MM-DD）')
+    bid_opening_date_end: Optional[str] = Field(None, description='开标日期结束（YYYY-MM-DD）')
 
 # 新增/编辑/删除模型
 class AddTenderModel(TenderModel):
@@ -79,6 +95,8 @@ class AddTenderModel(TenderModel):
 class EditTenderModel(TenderModel):
     """编辑投标信息模型"""
     id: int = Field(..., description='投标ID')
+    attachments: Optional[List['TenderAttachmentModel']] = Field([], description='附件列表')
+    attachments: Optional[List['TenderAttachmentModel']] = Field([], description='附件列表')
 
 class DeleteTenderModel(BaseModel):
     """删除投标信息模型"""
@@ -87,6 +105,8 @@ class DeleteTenderModel(BaseModel):
 # 附件相关模型
 class TenderAttachmentModel(BaseModel):
     """投标附件基础模型"""
+    model_config = {'alias_generator': to_camel, 'populate_by_name': True}
+    
     id: Optional[int] = None
     project_tender_id: Optional[int] = None
     file_name: Optional[str] = Field(None, description='附件名称', max_length=200)

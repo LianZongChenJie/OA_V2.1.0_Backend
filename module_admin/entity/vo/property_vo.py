@@ -44,6 +44,8 @@ class PropertyModel(BaseModel):
     unit_name: str | None = Field(default=None, description='计量单位名称')
     admin_name: str | None = Field(default=None, description='创建人姓名')
     update_name: str | None = Field(default=None, description='最后修改人姓名')
+    user_did_names: str | None = Field(default=None, description='使用部门名称')
+    user_id_names: str | None = Field(default=None, description='使用人员名称')
 
     @field_validator('status', mode='before')
     @classmethod
@@ -133,6 +135,7 @@ class PropertyPageQueryModel(PropertyQueryModel):
 
     page_num: int = Field(default=1, description='当前页码')
     page_size: int = Field(default=10, description='每页记录数')
+    keywords: str | None = Field(default=None, description='关键字搜索（搜索名称和编号）')
 
 class AddPropertyModel(PropertyModel):
     """
