@@ -121,7 +121,7 @@ class WebsiteAccountService:
                 'website_url': '网址 (必填)',
                 'username': '用户名',
                 'password': '密码',
-                'has_uk': '是否有 UK',
+                'has_uk': '是否有 UK (已购UK/未购UK/未设置)',
                 'sort': '排序 (数字)',
                 'remark': '说明'
             }
@@ -135,9 +135,27 @@ class WebsiteAccountService:
                     'website_url': 'https://www.gouguoa.com',
                     'username': 'admin',
                     'password': '123456',
-                    'has_uk': '否',
+                    'has_uk': '已购UK',
                     'sort': '1',
-                    'remark': '示例账号'
+                    'remark': '示例：已购买UK的情况'
+                },
+                {
+                    'website_name': '测试网站B',
+                    'website_url': 'https://www.testb.com',
+                    'username': 'user_b',
+                    'password': 'test123',
+                    'has_uk': '未购UK',
+                    'sort': '2',
+                    'remark': '示例：未购买UK的情况'
+                },
+                {
+                    'website_name': '测试网站C',
+                    'website_url': 'https://www.testc.com',
+                    'username': 'user_c',
+                    'password': 'pass456',
+                    'has_uk': '未设置',
+                    'sort': '3',
+                    'remark': '示例：未设置UK状态'
                 }
             ]
 
@@ -150,11 +168,13 @@ class WebsiteAccountService:
                 df.to_excel(writer, sheet_name='网站账号模板', index=False, header=True)
                 worksheet = writer.sheets['网站账号模板']
 
+                # 样式设置
                 for cell in worksheet[1]:
                     cell.font = Font(bold=True)
                 for cell in worksheet[2]:
                     cell.fill = PatternFill(start_color="E6E6FA", end_color="E6E6FA", fill_type="solid")
 
+                # 列宽自适应
                 for col in worksheet.columns:
                     max_length = max(len(str(cell.value)) for cell in col)
                     worksheet.column_dimensions[col[0].column_letter].width = min(max_length + 2, 50)
@@ -207,12 +227,23 @@ class WebsiteAccountService:
 
                     import_model = WebsiteAccountImportTempModel(**row)
 
+                    # 处理 has_uk 字段转换：已购UK->Y, 未购UK->N, 未设置/识别不了->NS
+                    has_uk_value = import_model.has_uk.strip()
+                    if has_uk_value == '已购UK':
+                        has_uk_converted = 'Y'
+                    elif has_uk_value == '未购UK':
+                        has_uk_converted = 'N'
+                    elif has_uk_value == '未设置':
+                        has_uk_converted = 'NS'
+                    else:
+                        has_uk_converted = 'NS'
+
                     add_model = AddWebsiteAccountModel(
                         website_name=import_model.website_name.strip(),
                         website_url=import_model.website_url.strip(),
                         username=import_model.username.strip() or None,
                         password=import_model.password.strip() or None,
-                        has_uk=import_model.has_uk.strip() or None,
+                        has_uk=has_uk_converted,
                         remark=import_model.remark.strip() or None,
                         sort=int(import_model.sort.strip()) if import_model.sort.strip() else 0
                     )
