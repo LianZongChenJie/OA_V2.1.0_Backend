@@ -28,7 +28,7 @@ dashboard_schedule_controller = APIRouterPro(
     summary='获取工作记录列表',
     description='用于获取工作记录列表',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:schedule:uery')],
+    dependencies=[UserInterfaceAuthDependency('dashboard:schedule:list')],
 )
 async def get_page_list(
     request: Request,
@@ -44,7 +44,7 @@ async def get_page_list(
     summary='新增工作记录',
     description='用于新增工作记录',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:schedule:add')],
+    dependencies=[UserInterfaceAuthDependency('dashboard:schedule:add')],
 )
 @Log(title="新增工作记录", business_type=BusinessType.INSERT)
 async def add_schedule(
@@ -62,7 +62,7 @@ async def add_schedule(
     summary='更新工作记录',
     description='用于更新工作记录',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:schedule:update')],
+    dependencies=[UserInterfaceAuthDependency('dashboard:schedule:update')],
 )
 @Log(title="更新工作记录", business_type=BusinessType.UPDATE)
 async def update_schedule(
@@ -78,7 +78,7 @@ async def update_schedule(
     summary='获取工作记录详情',
     description='用于获取工作记录详情',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:schedule:uery')],
+    dependencies=[UserInterfaceAuthDependency('dashboard:schedule:query')],
 )
 async def get_schedule_by_id(
     request: Request,
@@ -93,7 +93,7 @@ async def get_schedule_by_id(
     summary='删除工作记录',
     description='用于删除工作记录',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:schedule:delete')],
+    dependencies=[UserInterfaceAuthDependency('dashboard:schedule:delete')],
 )
 @Log(title="删除工作记录", business_type=BusinessType.DELETE)
 async def delete_schedule(
@@ -104,13 +104,14 @@ async def delete_schedule(
     result =  await ScheduleService.del_by_id(query_db, id)
     return ResponseUtil.success(msg=result.message)
 
+# --------------------------------------- 日历工作记录 ----------------------------------------
 
 @dashboard_schedule_controller.get(
     "/calendar/list",
     summary='获取工作记录列表',
     description='用于获取工作记录列表',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:schedule:uery')],
+    dependencies=[UserInterfaceAuthDependency('dashboard:schedule:calendar:query')],
 )
 async def get_calendar_list(
     request: Request,
@@ -126,7 +127,7 @@ async def get_calendar_list(
     summary='获取日历工作记录详情',
     description='用于获取日历工作记录详情',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:schedule:uery')],
+    dependencies=[UserInterfaceAuthDependency('dashboard:schedule:calendar:query')],
 )
 async def get_calendar_schedule_by_id(
     request: Request,

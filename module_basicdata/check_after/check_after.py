@@ -6,7 +6,8 @@ from module_finance.dao.loan_dao import LoanDao
 from datetime import datetime
 
 from module_finance.dao.ticket_dao import TicketDao
-
+from module_personnel.dao.department_change_dao import DepartmentChangeDao
+from utils.log_util import logger
 
 class CheckAfter:
     """
@@ -28,6 +29,8 @@ class CheckAfter:
             await cls.update_invoice(db, id)
         elif check_table == "ticket":
             await cls.update_ticket(db, id)
+        elif check_table == "department_change":
+            await cls.update_department_change(db, id)
         else:
             pass
 
@@ -93,3 +96,21 @@ class CheckAfter:
        ticket.pay_time = int(datetime.now().timestamp())
        await TicketDao.update_by_entity(db, ticket)
        return
+
+    @classmethod
+    async def update_department_change(cls, db:AsyncSession, id:int):
+        """
+        更新员工部门变动表状态
+        """
+        change = await DepartmentChangeDao.get_info_by_id(db, id)
+        if change is not None:
+            change = change['OaDepartmentChange']
+        else:
+            logger.info("部门变动不存在, id: %s", id)
+            return
+        try:
+            change.status =2
+            await DepartmentChangeDao.update_by_entity(db, change)
+        except Exception as e:
+            logger.error("更新员工部门变动表状态失败: %s", e)
+        return

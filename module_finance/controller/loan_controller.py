@@ -27,7 +27,7 @@ finance_loan_controller = APIRouterPro(
     summary='获取借支管理列表',
     description='用于获取借支管理列表',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:loan:query')],
+    dependencies=[UserInterfaceAuthDependency('finance:loan:list')],
 )
 async def get_page_list(
     request: Request,
@@ -43,7 +43,7 @@ async def get_page_list(
     summary='获取用户借支管理列表',
     description='用于用户获取借支管理列表',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:loan:query')],
+    dependencies=[UserInterfaceAuthDependency('finance:loan:list')],
 )
 async def get_page_list(
     request: Request,
@@ -62,7 +62,7 @@ async def get_page_list(
     summary='新增借支管理',
     description='用于新增借支管理',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:loan:add')],
+    dependencies=[UserInterfaceAuthDependency('finance:loan:add')],
 )
 @Log(title='借支管理-新增',business_type=BusinessType.INSERT)
 async def add_loan(
@@ -81,7 +81,7 @@ async def add_loan(
     summary='更新借支管理',
     description='用于更新借支管理',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:loan:update')],
+    dependencies=[UserInterfaceAuthDependency('finance:loan:update')],
 )
 @Log(title='借支管理-编辑',business_type=BusinessType.UPDATE)
 async def update_loan(
@@ -97,7 +97,7 @@ async def update_loan(
     summary='获取借支管理详情',
     description='用于获取借支管理详情',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:loan:query')],
+    dependencies=[UserInterfaceAuthDependency('finance:loan:query')],
 )
 async def get_loan(
     request: Request,
@@ -112,7 +112,7 @@ async def get_loan(
     summary='删除借支管理',
     description='用于删除借支管理',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:loan:delete')],
+    dependencies=[UserInterfaceAuthDependency('finance:loan:delete')],
 )
 @Log(title='借支管理-删除',business_type=BusinessType.DELETE)
 async def delete_loan(
@@ -123,63 +123,12 @@ async def delete_loan(
     result =  await OaLoanService.del_by_id(query_db, id)
     return ResponseUtil.success(msg=result.message)
 
-# @finance_loan_controller.put(
-#     "/pass",
-#     summary='审核通过',
-#     description='用于审核通过',
-#     response_model=None,
-#     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:loan:pass')],
-# )
-# async def pass_loan(
-#         request: Request,
-#         query_db: Annotated[AsyncSession, DBSessionDependency()],
-#         data: Annotated[OaLoanBaseModel, Body()],
-#         current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
-# ) -> Response:
-#     userId = current_user.user.user_id
-#     result =  await OaLoanService.pass_loan(query_db, data, userId)
-#     return ResponseUtil.success(msg=result.message)
-#
-# @finance_loan_controller.put(
-#     "/reject",
-#     summary='审核拒绝',
-#     description='用于审核拒绝',
-#     response_model=None,
-#     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:loan:reject')],
-# )
-# async def reject_loan(
-#         request: Request,
-#         query_db: Annotated[AsyncSession, DBSessionDependency()],
-#         data: Annotated[OaLoanBaseModel, Body()],
-#         current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
-# ) -> Response:
-#     userId = current_user.user.user_id
-#     result =  await OaLoanService.reject_loan(query_db, data, userId)
-#     return ResponseUtil.success(msg=result.message)
-#
-# @finance_loan_controller.put(
-#     "/cancel",
-#     summary='撤销申请',
-#     description='用于撤销申请',
-#     response_model=None,
-#     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:loan:cancel')],
-# )
-# async def cancel_loan(
-#         request: Request,
-#         query_db: Annotated[AsyncSession, DBSessionDependency()],
-#         data: Annotated[OaLoanBaseModel, Body()],
-#         current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
-# ) -> Response:
-#     userId = current_user.user.user_id
-#     result =  await OaLoanService.cancel_loan(query_db, data, userId)
-#     return ResponseUtil.success(msg=result.message)
-
 @finance_loan_controller.put(
     "/pay",
     summary='打款',
     description='用于打款',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:loan:pay')],
+    dependencies=[UserInterfaceAuthDependency('finance:loan:pay')],
 )
 @Log(title='借支管理-打款',business_type=BusinessType.UPDATE)
 async def pay_loan(
@@ -197,7 +146,7 @@ async def pay_loan(
     summary='还款',
     description='用于还款',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:loan:back')],
+    dependencies=[UserInterfaceAuthDependency('finance:loan:back')],
 )
 @Log(title='借支管理-还款',business_type=BusinessType.UPDATE)
 async def back_loan(

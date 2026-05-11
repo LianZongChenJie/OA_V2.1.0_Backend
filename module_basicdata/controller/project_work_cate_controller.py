@@ -28,7 +28,7 @@ basic_project_workCate_controller = APIRouterPro(
     summary='工作类别分页列表接口',
     description='用于获取工作类别分页列表',
     response_model=PageResponseModel[OaWorkCateBaseModel],
-    dependencies=[UserInterfaceAuthDependency('basicdata:project:step:list')],
+    dependencies=[UserInterfaceAuthDependency('basicdata:project:work:cate:list')],
 )
 
 async def list_page(
@@ -44,7 +44,7 @@ async def list_page(
     summary='新增工作类别接口',
     description='用于新增工作类别',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('basicdata:project:step:add')],
+    dependencies=[UserInterfaceAuthDependency('basicdata:project:work:cate:add')],
 )
 @Log(title="新增工作类别", business_type=BusinessType.INSERT)
 async def add_industry(
@@ -61,7 +61,7 @@ async def add_industry(
     summary='修改工作类别状态接口',
     description='用于修改工作类别状态',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('basicdata:project:step:del')],
+    dependencies=[UserInterfaceAuthDependency('basicdata:project:work:cate:del')],
 )
 @Log(title="修改工作类别状态", business_type=BusinessType.UPDATE)
 async def change_status_industry(
@@ -78,7 +78,7 @@ async def change_status_industry(
     summary='修改工作类别接口',
     description='用于修改工作类别',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('basicdata:project:step:edit')],
+    dependencies=[UserInterfaceAuthDependency('basicdata:project:work:cate:edit')],
 )
 @Log(title="修改工作类别", business_type=BusinessType.UPDATE)
 async def update_industry(
@@ -95,7 +95,7 @@ async def update_industry(
     summary='获取工作类别详情接口',
     description='用于获取工作类别详情',
     response_model=OaWorkCateBaseModel,
-    dependencies=[UserInterfaceAuthDependency('basicdata:project:step:detail')],
+    dependencies=[UserInterfaceAuthDependency('basicdata:project:work:cate:detail')],
 )
 async def get_info_by_id(
     request: Request,
@@ -103,8 +103,8 @@ async def get_info_by_id(
     id: Annotated[int, Path()],
 ) -> Response:
     try:
-        link_info = await WorkCateService.get_info_service(query_db, id)
-        return ResponseUtil.success(data=ModelConverter.time_format(ModelConverter.to_dict(link_info)))
+        info = await WorkCateService.get_info_service(query_db, id)
+        return ResponseUtil.success(data=ModelConverter.time_format(ModelConverter.to_dict(info)))
     except Exception as e:
         logger.error(e)
         return ResponseUtil.failure("查询失败")

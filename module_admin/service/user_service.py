@@ -306,7 +306,10 @@ class UserService:
                 query_user.get('user_basic_info').is_leader = True
             else:
                 query_user.get('user_basic_info').is_leader = False
-
+            if query_user.get('user_dept_info') and query_user.get('user_dept_info').leader_id and (str(query_user.get('user_basic_info').user_id) in query_user.get('user_dept_info').leader_id.split(',')):
+                query_user.get('user_basic_info').is_leader = True
+            else:
+                query_user.get('user_basic_info').is_leader = False
             return UserDetailModel(
                 data=UserInfoModel(
                     **CamelCaseUtil.transform_result(query_user.get('user_basic_info')),

@@ -20,13 +20,13 @@ from utils.log_util import logger
 from utils.response_util import ResponseUtil
 
 cost_cate_controller = APIRouterPro(
-    prefix='/basicdata/finance', order_num=3, tags=['基础数据-财务模块-报销类型'], dependencies=[PreAuthDependency()]
+    prefix='/basicdata/finance', order_num=3, tags=['基础数据-财务模块-费用类型'], dependencies=[PreAuthDependency()]
 )
 
 @cost_cate_controller.get(
     "/list",
-    summary='报销类型分页列表接口',
-    description='用于获取报销类型分页列表',
+    summary='费用类型分页列表接口',
+    description='用于获取费用类型分页列表',
     response_model=PageResponseModel[OaCostCateBaseModel],
     dependencies=[UserInterfaceAuthDependency('basicdata:finance:cost_cate:list')],
 )
@@ -40,12 +40,12 @@ async def list_page(
 
 @cost_cate_controller.post(
     "/add",
-    summary='新增报销类型接口',
-    description='用于新增报销类型',
+    summary='新增费用类型接口',
+    description='用于新增费用类型',
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('basicdata:finance:cost_cate:add')],
 )
-@Log(title="新增报销类型", business_type=BusinessType.INSERT)
+@Log(title="新增费用类型", business_type=BusinessType.INSERT)
 async def add_cost_cate(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
@@ -57,12 +57,12 @@ async def add_cost_cate(
 
 @cost_cate_controller.put(
     "/changeStatus",
-    summary='修改报销类型状态接口',
-    description='用于修改报销类型状态',
+    summary='修改费用类型状态接口',
+    description='用于修改费用类型状态',
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('basicdata:finance:cost_cate:del')],
 )
-@Log(title="修改报销类型状态", business_type=BusinessType.UPDATE)
+@Log(title="修改费用类型状态", business_type=BusinessType.UPDATE)
 async def change_cost_cate(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
@@ -74,12 +74,12 @@ async def change_cost_cate(
 
 @cost_cate_controller.put(
     "/update",
-    summary='修改报销类型接口',
-    description='用于修改报销类型',
+    summary='修改费用类型接口',
+    description='用于修改费用类型',
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('basicdata:finance:cost_cate:edit')],
 )
-@Log(title="修改报销类型", business_type=BusinessType.UPDATE)
+@Log(title="修改费用类型", business_type=BusinessType.UPDATE)
 async def update_cost_cate(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
@@ -91,8 +91,8 @@ async def update_cost_cate(
 
 @cost_cate_controller.get(
     "/detail/{id}",
-    summary='获取报销类型详情接口',
-    description='用于获取报销类型详情',
+    summary='获取费用类型详情接口',
+    description='用于获取费用类型详情',
     response_model=OaCostCateBaseModel,
     dependencies=[UserInterfaceAuthDependency('basicdata:finance:cost_cate:detail')],
 )

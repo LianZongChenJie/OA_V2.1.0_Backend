@@ -350,7 +350,7 @@ class CheckService:
         record.check_table = flow_cate['check_table'],
         record.step_id = 0,
         record.check_uid = user_id,
-        record.flow_id = flow_data['id'],
+        record.flow_id = query_model.flow_id,
         record.check_time = datetime.now().timestamp(),
         record.check_status = 0,
         record.check_files = query_model.check_files if query_model.check_files else '',
@@ -405,11 +405,11 @@ class CheckService:
                     check_type = 1
                 st = OaFlowStepBaseModel()
                 st.action_id = query_model.action_id
-                st.flow_id = flow_data['id']
+                st.flow_id = query_model.flow_id
                 st.flow_name = flow_name
                 st.check_position_id = check_position_id
                 st.check_role = int(flow_step['check_role'])
-                st.check_uids = ','.join(check_uids)
+                st.check_uids = ','.join([str(uid)for uid in check_uids])
                 st.create_time = int(datetime.now().timestamp())
                 st.sort = sort
                 st.check_types = flow_step['check_types']
@@ -442,7 +442,7 @@ class CheckService:
         if query_model.check_uids is not None:
             step = {
                 'action_id': query_model.action_id,
-                'flow_id': flow_data['id'],
+                'flow_id': query_model.flow_id,
                 'flow_name': '自由审批',
                 'check_uids': query_model.check_uids,
                 'create_time': datetime.now().timestamp()

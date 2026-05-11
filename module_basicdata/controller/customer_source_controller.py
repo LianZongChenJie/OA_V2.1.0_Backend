@@ -44,7 +44,7 @@ async def list_page(
     summary='新增客户来源接口',
     description='用于新增客户来源',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('basicdata:finance:cost_cate:add')],
+    dependencies=[UserInterfaceAuthDependency('basicdata:customer:source:add')],
 )
 @Log(title="新增客户来源", business_type=BusinessType.INSERT)
 async def add_customer(
@@ -61,7 +61,7 @@ async def add_customer(
     summary='修改客户来源状态接口',
     description='用于修改客户来源状态',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('basicdata:finance:cost_cate:del')],
+    dependencies=[UserInterfaceAuthDependency('basicdata:customer:source:del')],
 )
 @Log(title="修改客户来源状态", business_type=BusinessType.UPDATE)
 async def change_status_customer(
@@ -78,7 +78,7 @@ async def change_status_customer(
     summary='修改客户来源接口',
     description='用于修改客户来源',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('basicdata:finance:cost_cate:edit')],
+    dependencies=[UserInterfaceAuthDependency('basicdata:customer:source:edit')],
 )
 @Log(title="修改客户来源", business_type=BusinessType.UPDATE)
 async def update_customer(
@@ -95,7 +95,7 @@ async def update_customer(
     summary='获取客户来源详情接口',
     description='用于获取客户来源详情',
     response_model=OaCustomerSourceBaseModel,
-    dependencies=[UserInterfaceAuthDependency('basicdata:finance:cost_cate:detail')],
+    dependencies=[UserInterfaceAuthDependency('basicdata:customer:source:detail')],
 )
 async def get_customer_info(
     request: Request,

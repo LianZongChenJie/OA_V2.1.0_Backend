@@ -27,7 +27,7 @@ finance_expense_controller = APIRouterPro(
     summary='获取报销管理列表',
     description='用于获取报销管理列表',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:expense:query')],
+    dependencies=[UserInterfaceAuthDependency('finance:expense:list')],
 )
 async def get_page_list(
     request: Request,
@@ -43,7 +43,7 @@ async def get_page_list(
     summary='获取用户报销管理列表',
     description='用于用户获取报销管理列表',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:expense:query')],
+    dependencies=[UserInterfaceAuthDependency('finance:expense:list')],
 )
 async def get_page_list(
     request: Request,
@@ -62,7 +62,7 @@ async def get_page_list(
     summary='新增报销管理',
     description='用于新增报销管理',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:expense:add')],
+    dependencies=[UserInterfaceAuthDependency('finance:expense:add')],
 )
 @Log(title="新增报销管理", business_type=BusinessType.INSERT)
 async def add(
@@ -81,7 +81,7 @@ async def add(
     summary='更新报销管理',
     description='用于更新报销管理',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:expense:update')],
+    dependencies=[UserInterfaceAuthDependency('finance:expense:update')],
 )
 @Log(title="更新报销管理", business_type=BusinessType.UPDATE)
 async def update_expense(
@@ -100,7 +100,7 @@ async def update_expense(
     summary='获取报销管理详情',
     description='用于获取报销管理详情',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:expense:query')],
+    dependencies=[UserInterfaceAuthDependency('finance:expense:query')],
 )
 async def get_expense(
     request: Request,
@@ -115,7 +115,7 @@ async def get_expense(
     summary='删除报销管理',
     description='用于删除报销管理',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:expense:delete')],
+    dependencies=[UserInterfaceAuthDependency('finance:expense:delete')],
 )
 @Log(title="删除报销管理", business_type=BusinessType.DELETE)
 async def delete_expense(
@@ -126,63 +126,12 @@ async def delete_expense(
     result =  await OaExpenseService.del_by_id(query_db, id)
     return ResponseUtil.success(msg=result.message)
 
-# @finance_expense_controller.put(
-#     "/pass",
-#     summary='审核通过',
-#     description='用于审核通过',
-#     response_model=None,
-#     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:expense:pass')],
-# )
-# async def pass_expense(
-#         request: Request,
-#         query_db: Annotated[AsyncSession, DBSessionDependency()],
-#         data: Annotated[OaExpenseBaseModel, Body()],
-#         current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
-# ) -> Response:
-#     userId = current_user.user.user_id
-#     result =  await OaExpenseService.pass_expense(query_db, data, userId)
-#     return ResponseUtil.success(msg=result.message)
-#
-# @finance_expense_controller.put(
-#     "/reject",
-#     summary='审核拒绝',
-#     description='用于审核拒绝',
-#     response_model=None,
-#     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:expense:reject')],
-# )
-# async def reject_expense(
-#         request: Request,
-#         query_db: Annotated[AsyncSession, DBSessionDependency()],
-#         data: Annotated[OaExpenseBaseModel, Body()],
-#         current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
-# ) -> Response:
-#     userId = current_user.user.user_id
-#     result =  await OaExpenseService.reject_expense(query_db, data, userId)
-#     return ResponseUtil.success(msg=result.message)
-#
-# @finance_expense_controller.put(
-#     "/cancel",
-#     summary='撤销申请',
-#     description='用于撤销申请',
-#     response_model=None,
-#     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:expense:cancel')],
-# )
-# async def cancel_expense(
-#         request: Request,
-#         query_db: Annotated[AsyncSession, DBSessionDependency()],
-#         data: Annotated[OaExpenseBaseModel, Body()],
-#         current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
-# ) -> Response:
-#     userId = current_user.user.user_id
-#     result =  await OaExpenseService.cancel_expense(query_db, data, userId)
-#     return ResponseUtil.success(msg=result.message)
-
 @finance_expense_controller.put(
     "/pay",
     summary='打款',
     description='用于打款',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:expense:pay')],
+    dependencies=[UserInterfaceAuthDependency('finance:expense:pay')],
 )
 @Log(title="打款", business_type=BusinessType.UPDATE)
 async def pay_expense(

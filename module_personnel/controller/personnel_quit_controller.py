@@ -28,7 +28,7 @@ personnel_quit_controller = APIRouterPro(
     summary='获取离职申请列表',
     description='用于获取离职申请列表',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:personnel:quit:query')],
+    dependencies=[UserInterfaceAuthDependency('personnel:quit:list')],
 )
 async def get_page_list(
     query_db: Annotated[AsyncSession, DBSessionDependency()],
@@ -43,7 +43,7 @@ async def get_page_list(
     summary='新增离职申请',
     description='用于新增离职申请',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:personnel:quit:add')],
+    dependencies=[UserInterfaceAuthDependency('personnel:quit:add')],
 )
 @Log(title='离职申请-新增', business_type=BusinessType.INSERT)
 async def add_quit(
@@ -61,7 +61,7 @@ async def add_quit(
     summary='更新离职申请',
     description='用于更新离职申请',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:personnel:quit:update')],
+    dependencies=[UserInterfaceAuthDependency('personnel:quit:update')],
 )
 @Log(title='离职申请-更新', business_type=BusinessType.UPDATE)
 async def update_quit(
@@ -77,7 +77,7 @@ async def update_quit(
     summary='获取离职申请详情',
     description='用于获取离职申请详情',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:personnel:quit:query')],
+    dependencies=[UserInterfaceAuthDependency('personnel:quit:query')],
 )
 async def get_quit(
     query_db: Annotated[AsyncSession, DBSessionDependency()],
@@ -91,7 +91,7 @@ async def get_quit(
     summary='删除离职申请',
     description='用于删除离职申请',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:personnel:quit:delete')],
+    dependencies=[UserInterfaceAuthDependency('personnel:quit:delete')],
 )
 @Log(title='离职申请-删除', business_type=BusinessType.DELETE)
 async def delete_quit(
@@ -100,20 +100,3 @@ async def delete_quit(
 ) -> Response:
     result = await PersonnelQuitService.del_by_id(query_db, id)
     return ResponseUtil.success(msg=result.message)
-
-# @personnel_quit_controller.put(
-#     "/review",
-#     summary='审核',
-#     description='用于审核',
-#     response_model=None,
-#     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:personnel:quit:pass')],
-# )
-# async def review(
-#         request: Request,
-#         query_db: Annotated[AsyncSession, DBSessionDependency()],
-#         data: Annotated[OaPersonalQuitBaseModel, Body()],
-#         current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
-# ) -> Response:
-#     data.check_last_uid = current_user.user.user_id
-#     result = await PersonnelQuitService.review(query_db, data)
-#     return ResponseUtil.success(msg=result.message)

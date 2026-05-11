@@ -134,9 +134,9 @@ async def delete_message(
 async def send_update(
         request: Request,
         query_db: Annotated[AsyncSession, DBSessionDependency()],
-        messageId: int,
+        model: Annotated[OaMessageReadModel, Body()],
 )->Response:
-    result = await MessageService.send(query_db, messageId)
+    result = await MessageService.send(query_db, model.message_id)
     return ResponseUtil.success(msg=result.message)
 # ------------------------------------------- 垃圾箱 -------------------------------------------
 

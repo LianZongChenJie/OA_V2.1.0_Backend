@@ -35,7 +35,12 @@ class MessageDao:
         if query_object.begin_time and query_object.end_time:
             start_timestamp = int(datetime.strptime(query_object.begin_time, "%Y-%m-%d").timestamp())
             end_timestamp = int(datetime.strptime(query_object.end_time, "%Y-%m-%d").timestamp()) + (24 * 60 * 60 - 1)
-            conditions.append(OaMessage.create_time.between(start_timestamp, end_timestamp))
+            if query_object.is_draft == 1:
+                conditions.append(OaMessage.send_time >= start_timestamp)
+                conditions.append(OaMessage.send_time <= end_timestamp)
+            else:
+                conditions.append(OaMessage.create_time >= start_timestamp)
+                conditions.append(OaMessage.create_time <= end_timestamp)
         if query_object.keyword:
             conditions.append(OaMessage.title.like(f'%{query_object.keyword}%'))
         if query_object.from_uid:
@@ -148,7 +153,8 @@ class MessageDao:
         .where(
             OaMsg.delete_time != 0,
             OaMsg.clear_time == 0,
-            OaMsg.to_uid == user_id
+            OaMsg.to_uid == user_id,
+            OaMsg.title.like(f'%{query_object.keyword}%') if query_object.keyword else True,
         ))
 
         # 发件箱和草稿箱使用子查询处理抄送人
@@ -182,6 +188,7 @@ class MessageDao:
             OaMessage.from_uid == user_id,
             OaMessage.send_time != 0,
             OaMessage.clear_time == 0,
+            OaMessage.title.like(f'%{query_object.keyword}%') if query_object.keyword else True,
             data_scope_sql
         ))
 
@@ -204,6 +211,7 @@ class MessageDao:
             OaMessage.from_uid == user_id,
             OaMessage.send_time == 0,
             OaMessage.clear_time == 0,
+            OaMessage.title.like(f'%{query_object.keyword}%') if query_object.keyword else True,
             data_scope_sql
         ))
 

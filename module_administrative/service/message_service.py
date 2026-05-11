@@ -275,7 +275,10 @@ class MessageService:
                     row = dict(row)
                     row.update(row['OaMsg'].to_dict())
                     row.pop('OaMsg')
-                    row_list.append(ModelConverter.convert_to_camel_case(row))
+                    camel_row = ModelConverter.convert_to_camel_case(row)
+                    if camel_row['readTime'] is None:
+                        camel_row['readTime'] = 0
+                    row_list.append(camel_row)
                 receive_list.rows = row_list
             return ModelConverter.convert_to_camel_case(receive_list)
         except Exception as e:

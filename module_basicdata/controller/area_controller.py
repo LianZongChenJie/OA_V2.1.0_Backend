@@ -91,7 +91,7 @@ async def change_status(
     summary='根据级别获取区域信息',
     description='根据级别获取区域信息',
     response_model=AreaTreeModel,
-    dependencies=[UserInterfaceAuthDependency('basicdata:area:getDataByLevel')],
+    dependencies=[UserInterfaceAuthDependency('basicdata:area:export')],
 )
 async def get_area_by_level(
     query_db: Annotated[AsyncSession, DBSessionDependency()],
@@ -110,7 +110,7 @@ async def get_area_by_level(
     summary='根据ID获取区域信息',
     description='根据ID获取区域信息',
     response_model=AreaBaseModel,
-    dependencies=[UserInterfaceAuthDependency('basicdata:area:getById')],
+    dependencies=[UserInterfaceAuthDependency('basicdata:area:detail')],
 )
 async def get_area_by_id(
     request: Request,

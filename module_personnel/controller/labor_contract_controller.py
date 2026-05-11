@@ -29,7 +29,7 @@ labor_contrack_controller = APIRouterPro(
     summary='获取员工合同列表',
     description='用于获取员工合同列表',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:personnel:contract:query')],
+    dependencies=[UserInterfaceAuthDependency('personnel:contract:list')],
 )
 async def get_page_list(
     request: Request,
@@ -45,7 +45,7 @@ async def get_page_list(
     summary='新增员工合同',
     description='用于新增员工合同',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:personnel:contract:add')],
+    dependencies=[UserInterfaceAuthDependency('personnel:contract:add')],
 )
 @Log(title='人事管理-员工合同-新增',business_type=BusinessType.INSERT)
 async def add_labor_contract(
@@ -63,7 +63,7 @@ async def add_labor_contract(
     summary='更新员工合同',
     description='用于更新员工合同',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:personnel:contract:update')],
+    dependencies=[UserInterfaceAuthDependency('personnel:contract:update')],
 )
 async def update_labor_contract(
     request: Request,
@@ -78,7 +78,7 @@ async def update_labor_contract(
     summary='获取员工合同详情',
     description='用于获取员工合同详情',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:personnel:contract:query')],
+    dependencies=[UserInterfaceAuthDependency('personnel:contract:query')],
 )
 async def get_detail(
     request: Request,
@@ -93,7 +93,7 @@ async def get_detail(
     summary='删除员工合同',
     description='用于删除员工合同',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:personnel:contract:delete')],
+    dependencies=[UserInterfaceAuthDependency('personnel:contract:delete')],
 )
 async def delete_change(
     request: Request,

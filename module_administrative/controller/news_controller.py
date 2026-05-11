@@ -27,7 +27,7 @@ administrative_news_controller = APIRouterPro(
     summary='获取公司新闻列表',
     description='用于获取公司新闻列表',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:news:query')],
+    dependencies=[UserInterfaceAuthDependency('administration:news:list')],
 )
 async def get_page_list(
     request: Request,
@@ -43,7 +43,7 @@ async def get_page_list(
     summary='新增公司新闻',
     description='用于新增公司新闻',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:news:add')],
+    dependencies=[UserInterfaceAuthDependency('administration:news:add')],
 )
 @Log(title="添加公司新闻", business_type=BusinessType.INSERT)
 async def add_news(
@@ -61,7 +61,7 @@ async def add_news(
     summary='更新公司新闻',
     description='用于更新公司新闻',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:news:update')],
+    dependencies=[UserInterfaceAuthDependency('administration:news:update')],
 )
 @Log(title="修改公司新闻", business_type=BusinessType.UPDATE)
 async def update_news(
@@ -77,7 +77,7 @@ async def update_news(
     summary='获取公司新闻详情',
     description='用于获取公司新闻详情',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:news:query')],
+    dependencies=[UserInterfaceAuthDependency('administration:news:query')],
 )
 async def get_news_by_id(
     request: Request,
@@ -92,7 +92,7 @@ async def get_news_by_id(
     summary='删除公司新闻',
     description='用于删除公司新闻',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:news:delete')],
+    dependencies=[UserInterfaceAuthDependency('administration:news:delete')],
 )
 @Log(title="删除公司新闻", business_type=BusinessType.DELETE)
 async def delete_news(

@@ -25,10 +25,10 @@ gradle_controller = APIRouterPro(
 
 @gradle_controller.get(
     "/list",
-    summary='行业类型分页列表接口',
-    description='用于获取行业类型分页列表',
+    summary='客户等级分页列表接口',
+    description='用于获取客户等级分页列表',
     response_model=PageResponseModel[OaCustomerGradeBaseModel],
-    dependencies=[UserInterfaceAuthDependency('basicdata:finance:cost_cate:list')],
+    dependencies=[UserInterfaceAuthDependency('basicdata:finance:gradle:list')],
 )
 
 async def list_page(
@@ -36,17 +36,17 @@ async def list_page(
     query_db: Annotated[AsyncSession, DBSessionDependency()],
     data_scope_sql: Annotated[ColumnElement, DataScopeDependency(OaCustomerGrade)],
 ) -> Response:
-    cost_cate_list = await CustomerGradleService.get_page_list_service(query_db, link_page_query, data_scope_sql, True)
-    return ResponseUtil.success(model_content=cost_cate_list)
+    gradle_list = await CustomerGradleService.get_page_list_service(query_db, link_page_query, data_scope_sql, True)
+    return ResponseUtil.success(model_content=gradle_list)
 
 @gradle_controller.post(
     "/add",
-    summary='新增行业类型接口',
-    description='用于新增行业类型',
+    summary='新增客户等级接口',
+    description='用于新增客户等级',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('basicdata:finance:cost_cate:add')],
+    dependencies=[UserInterfaceAuthDependency('basicdata:finance:gradle:add')],
 )
-@Log(title="新增行业类型", business_type=BusinessType.INSERT)
+@Log(title="新增客户等级", business_type=BusinessType.INSERT)
 async def add_industry(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
@@ -58,44 +58,44 @@ async def add_industry(
 
 @gradle_controller.put(
     "/changeStatus",
-    summary='修改行业类型状态接口',
-    description='用于修改行业类型状态',
+    summary='修改客户等级状态接口',
+    description='用于修改客户等级状态',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('basicdata:finance:cost_cate:del')],
+    dependencies=[UserInterfaceAuthDependency('basicdata:finance:gradle:del')],
 )
-@Log(title="修改行业类型状态", business_type=BusinessType.UPDATE)
+@Log(title="修改客户等级状态", business_type=BusinessType.UPDATE)
 async def change_status_industry(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
     model: OaCustomerGradeBaseModel,
 ) -> Response:
-    cost_cate_result = await CustomerGradleService.change_status_service(query_db, model)
-    logger.info(cost_cate_result.message)
-    return ResponseUtil.success(data=cost_cate_result.message)
+    gradle_result = await CustomerGradleService.change_status_service(query_db, model)
+    logger.info(gradle_result.message)
+    return ResponseUtil.success(data=gradle_result.message)
 
 @gradle_controller.put(
     "/update",
-    summary='修改行业类型接口',
-    description='用于修改行业类型',
+    summary='修改客户等级接口',
+    description='用于修改客户等级',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('basicdata:finance:cost_cate:edit')],
+    dependencies=[UserInterfaceAuthDependency('basicdata:finance:gradle:edit')],
 )
-@Log(title="修改行业类型", business_type=BusinessType.UPDATE)
+@Log(title="修改客户等级", business_type=BusinessType.UPDATE)
 async def update_industry(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
     model: OaCustomerGradeBaseModel,
 ) -> Response:
-    cost_cate_result = await CustomerGradleService.update_service(query_db, model)
-    logger.info(cost_cate_result.message)
-    return ResponseUtil.success(data=cost_cate_result.message)
+    gradle_result = await CustomerGradleService.update_service(query_db, model)
+    logger.info(gradle_result.message)
+    return ResponseUtil.success(data=gradle_result.message)
 
 @gradle_controller.get(
     "/detail/{id}",
-    summary='获取行业类型详情接口',
-    description='用于获取行业类型详情',
+    summary='获取客户等级详情接口',
+    description='用于获取客户等级详情',
     response_model=OaCustomerGradeBaseModel,
-    dependencies=[UserInterfaceAuthDependency('basicdata:finance:cost_cate:detail')],
+    dependencies=[UserInterfaceAuthDependency('basicdata:finance:gradle:detail')],
 )
 async def get_industry_info(
     request: Request,

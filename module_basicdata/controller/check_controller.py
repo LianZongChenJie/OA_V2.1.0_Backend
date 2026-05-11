@@ -112,7 +112,7 @@ async def get_flow_nodes(
     summary='跳过审核步骤',
     description='跳过审核步骤',
     response_model=PageResponseModel[OaFlowBaseModel],
-    dependencies=[UserInterfaceAuthDependency('basicdata:flow:check')],
+    dependencies=[UserInterfaceAuthDependency('basicdata:flow:skipCheck')],
 )
 @Log(title="跳过审核步骤",business_type=BusinessType.UPDATE)
 async def skip_check(

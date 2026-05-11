@@ -9,7 +9,7 @@ from common.aspect.interface_auth import UserInterfaceAuthDependency
 from common.aspect.pre_auth import PreAuthDependency, CurrentUserDependency
 from common.router import APIRouterPro
 from module_dashboard.entity.do.work_do import OaWork
-from module_dashboard.entity.vo.work_vo import OaWorkBaseModel, OaWorkPageQueryModel, OaWorkQueryModel
+from module_dashboard.entity.vo.work_vo import OaWorkPageQueryModel, OaWorkQueryModel
 from module_dashboard.service.work_service import WorkService
 from module_admin.entity.vo.user_vo import (
     CurrentUserModel
@@ -30,7 +30,7 @@ dashboard_work_controller = APIRouterPro(
     summary='获取工作汇报列表',
     description='用于获取工作汇报分页列表',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('oa:work:list')],
+    dependencies=[UserInterfaceAuthDependency('dashboard:work:list')],
 )
 async def get_work_list(
         query_db: Annotated[AsyncSession, DBSessionDependency()],
@@ -63,7 +63,7 @@ async def get_work_list(
     summary='获取工作汇报列表',
     description='用于获取工作汇报分页列表（我发出的或我接收的）',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('oa:work:list')],
+    dependencies=[UserInterfaceAuthDependency('dashboard:work:list')],
 )
 async def get_work_list(
     request: Request,
@@ -101,7 +101,7 @@ async def get_work_list(
     summary='新增/编辑工作汇报',
     description='用于新增或编辑工作汇报，支持草稿和发送',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('oa:work:add')],
+    dependencies=[UserInterfaceAuthDependency('dashboard:work:add')],
 )
 @Log(title='工作汇报', business_type=BusinessType.INSERT)
 async def add_work(
@@ -137,7 +137,7 @@ async def add_work(
     summary='查看工作汇报详情',
     description='用于查看工作汇报详细信息，自动标记已读',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('oa:work:query')],
+    dependencies=[UserInterfaceAuthDependency('dashboard:work:query')],
 )
 async def view_work(
     request: Request,
@@ -166,7 +166,7 @@ async def view_work(
     summary='删除工作汇报',
     description='用于删除工作汇报（仅创建人可删除）',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('oa:work:delete')],
+    dependencies=[UserInterfaceAuthDependency('dashboard:work:delete')],
 )
 @Log(title='工作汇报', business_type=BusinessType.DELETE)
 async def delete_work(

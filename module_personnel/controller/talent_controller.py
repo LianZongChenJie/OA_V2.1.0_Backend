@@ -27,7 +27,7 @@ talent_controller = APIRouterPro(
     summary='获取入职申请列表',
     description='用于获取入职申请列表',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:personnel:talent:query')],
+    dependencies=[UserInterfaceAuthDependency('personnel:talent:list')],
 )
 async def get_page_list(
     request: Request,
@@ -43,7 +43,7 @@ async def get_page_list(
     summary='新增入职申请',
     description='用于新增入职申请',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:personnel:talent:add')],
+    dependencies=[UserInterfaceAuthDependency('personnel:talent:add')],
 )
 @Log(title='入职申请-新增', business_type=BusinessType.INSERT)
 async def add_talent(
@@ -61,7 +61,7 @@ async def add_talent(
     summary='更新入职申请',
     description='用于更新入职申请',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:personnel:talent:update')],
+    dependencies=[UserInterfaceAuthDependency('personnel:talent:update')],
 )
 @Log(title='入职申请-更新', business_type=BusinessType.UPDATE)
 async def update_talent(
@@ -77,7 +77,7 @@ async def update_talent(
     summary='获取入职申请详情',
     description='用于获取入职申请详情',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:personnel:talent:query')],
+    dependencies=[UserInterfaceAuthDependency('personnel:talent:query')],
 )
 async def get_talent(
     request: Request,
@@ -92,7 +92,7 @@ async def get_talent(
     summary='删除入职申请',
     description='用于删除入职申请',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:personnel:talent:delete')],
+    dependencies=[UserInterfaceAuthDependency('personnel:talent:delete')],
 )
 @Log(title='入职申请-删除', business_type=BusinessType.DELETE)
 async def delete_talent(
@@ -102,17 +102,3 @@ async def delete_talent(
 ) -> Response:
     result = await TalentService.del_by_id(query_db, id)
     return ResponseUtil.success(msg=result.message)
-
-# @talent_controller.put(
-#     "/review",
-#     summary='审核',
-#     description='用于审核入职申请',
-#     response_model=None,
-#     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:personnel:talent:pass')],
-# )
-# async def review(
-#         request: Request,
-#         query_db: Annotated[AsyncSession, DBSessionDependency()],
-#         data: Annotated[OaTalentBaseModel, Body()],
-# ) -> Response:
-#     return await TalentService.review(query_db, data)
