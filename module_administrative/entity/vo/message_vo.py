@@ -72,8 +72,8 @@ class OaMessageQueryModel(OaMessageBaseModel):
     """消息查询VO"""
 
     keyword: Optional[str] = Field(None, description='关键字（标题模糊查询）')
-    begin_time: Optional[int] = Field(None, description='开始时间')
-    end_time: Optional[int] = Field(None, description='结束时间')
+    begin_time: str | None = Field(None, description='开始时间')
+    end_time: str | None = Field(None, description='结束时间')
 
 class OaMessagePageQueryModel(OaMessageQueryModel):
     """

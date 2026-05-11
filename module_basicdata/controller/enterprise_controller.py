@@ -29,7 +29,7 @@ enterprise_controller = APIRouterPro(
     summary='获取审批类型分页列表接口',
     description='用于获取审批类型分页列表',
     response_model=PageResponseModel[OaEnterpriseBaseModel],
-    dependencies=[UserInterfaceAuthDependency('basicdata:flowCate:list')],
+    dependencies=[UserInterfaceAuthDependency('basicdata:enterprise:list')],
 )
 
 async def list_page(
@@ -45,7 +45,7 @@ async def list_page(
     summary='新增审批类型接口',
     description='用于新增审批类型',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('basicdata:flowCate:add')],
+    dependencies=[UserInterfaceAuthDependency('basicdata:enterprise:add')],
 )
 @Log(title="新增审批类型", business_type=BusinessType.INSERT)
 async def add_enterprise(
@@ -62,7 +62,7 @@ async def add_enterprise(
     summary='删除审批类型接口',
     description='用于删除审批类型',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('basicdata:flowCate:del')],
+    dependencies=[UserInterfaceAuthDependency('basicdata:enterprise:del')],
 )
 @Log(title="删除审批类型", business_type=BusinessType.DELETE)
 async def delete_enterprise(
@@ -79,7 +79,7 @@ async def delete_enterprise(
     summary='修改审批类型接口',
     description='用于修改审批类型',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('basicdata:flowCate:edit')],
+    dependencies=[UserInterfaceAuthDependency('basicdata:enterprise:edit')],
 )
 @Log(title="修改审批类型", business_type=BusinessType.UPDATE)
 async def update_enterprise(
@@ -97,7 +97,7 @@ async def update_enterprise(
     summary='启用禁用审批类型接口',
     description='用于启用禁用审批类型',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('basicdata:flowCate:edit')]
+    dependencies=[UserInterfaceAuthDependency('basicdata:enterprise:edit')]
 )
 @Log(title="修改审批类型", business_type=BusinessType.UPDATE)
 async def change_status_enterprise(
@@ -114,7 +114,7 @@ async def change_status_enterprise(
     summary='获取审批类型详情接口',
     description='用于获取审批类型详情',
     response_model=OaEnterpriseBaseModel,
-    dependencies=[UserInterfaceAuthDependency('basicdata:flowCate:detail')],
+    dependencies=[UserInterfaceAuthDependency('basicdata:enterprise:detail')],
 )
 async def get_enterprise_info(
     request: Request,

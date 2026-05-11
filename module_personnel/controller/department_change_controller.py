@@ -28,7 +28,7 @@ dept_change_controller = APIRouterPro(
     summary='获取人事调动列表',
     description='用于获取人事调动列表',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:deptChange:query')],
+    dependencies=[UserInterfaceAuthDependency('personnel:deptChange:list')],
 )
 async def get_page_list(
     request: Request,
@@ -44,7 +44,7 @@ async def get_page_list(
     summary='新增人事调动',
     description='用于新增人事调动',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:deptChange:add')],
+    dependencies=[UserInterfaceAuthDependency('personnel:deptChange:add')],
 )
 @Log(title='人事管理-人事调动-新增',business_type=BusinessType.INSERT)
 async def add_change(
@@ -62,7 +62,7 @@ async def add_change(
     summary='更新人事调动',
     description='用于更新人事调动',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:deptChange:update')],
+    dependencies=[UserInterfaceAuthDependency('personnel:deptChange:update')],
 )
 @Log(title='人事管理-人事调动-更新',business_type=BusinessType.UPDATE)
 async def update_change(
@@ -78,7 +78,7 @@ async def update_change(
     summary='获取人事调动详情',
     description='用于获取人事调动详情',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:deptChange:query')],
+    dependencies=[UserInterfaceAuthDependency('personnel:deptChange:query')],
 )
 async def get_change(
     request: Request,
@@ -93,7 +93,7 @@ async def get_change(
     summary='删除人事调动',
     description='用于删除人事调动',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:deptChange:delete')],
+    dependencies=[UserInterfaceAuthDependency('personnel:deptChange:delete')],
 )
 @Log(title='人事管理-人事调动-删除',business_type=BusinessType.DELETE)
 async def delete_change(
@@ -102,21 +102,4 @@ async def delete_change(
     id: int,
 ) -> Response:
     result =  await DepartmentChangeService.del_by_id(query_db, id)
-    return ResponseUtil.success(data=result.message)
-
-# @dept_change_controller.put(
-#     "/review",
-#     summary='审核',
-#     description='用于审核操作',
-#     response_model=None,
-#     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:deptChange:pass')],
-# )
-# async def review(
-#         request: Request,
-#         query_db: Annotated[AsyncSession, DBSessionDependency()],
-#         data: Annotated[OaDepartmentChangeBassModel, Body()],
-#         current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
-# ) -> Response:
-#     data.check_last_uid = current_user.user.user_id
-#     result =  await DepartmentChangeService.review(query_db, data)
-#     return ResponseUtil.success(data=result.message)
+    return ResponseUtil.success(msg=result.message)

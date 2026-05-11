@@ -107,12 +107,13 @@ class MsgDao:
         # 构建条件列表
         conditions = []
         conditions.append(OaMsg.delete_time == 0)
+        conditions.append(OaMsg.to_uid == query_object.to_uid)
 
         conditions.append(OaMsg.title.like(f'%{query_object.keyword}%')) if query_object.keyword else None
 
         if query_object.begin_time and query_object.end_time:
-            conditions.append(OaMsg.create_time >= query_object.begin_time)
-            conditions.append(OaMsg.create_time <= query_object.end_time)
+            conditions.append(OaMsg.create_time >= int(datetime.strptime(query_object.begin_time, "%Y-%m-%d").timestamp()))
+            conditions.append(OaMsg.create_time <= int(datetime.strptime(query_object.end_time, "%Y-%m-%d").timestamp()) + (24 * 60 * 60 - 1))
 
         if query_object.msg_type == 1:
             conditions.append(OaMsg.from_uid != 0)
@@ -123,6 +124,8 @@ class MsgDao:
             conditions.append(OaMsg.read_time == 0)
         elif query_object.read_status == 1:
             conditions.append(OaMsg.read_time != 0)
+        if query_object.is_star:
+            conditions.append(OaMsg.is_star == query_object.is_star)
 
 
 

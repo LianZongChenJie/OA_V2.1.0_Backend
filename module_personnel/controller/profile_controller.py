@@ -16,10 +16,10 @@ profile_controller = APIRouterPro(
 
 @profile_controller.put(
     "/update",
-    summary='更新个人信息',
-    description='用于更新个人信息',
+    summary='更新个人档案信息',
+    description='用于更新个人档案信息',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:profile:update')],
+    dependencies=[UserInterfaceAuthDependency('personnel:profile:update')],
 )
 async def update_profile(
     request: Request,
@@ -33,7 +33,7 @@ async def update_profile(
     summary='获取员工档案',
     description='用于获取员工档案',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:profile:uploadAvatar')],
+    dependencies=[UserInterfaceAuthDependency('personnel:profile:detail')],
 )
 async def get_profile(
     request: Request,

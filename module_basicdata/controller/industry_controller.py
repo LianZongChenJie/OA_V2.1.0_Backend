@@ -28,7 +28,7 @@ industry_controller = APIRouterPro(
     summary='行业类型分页列表接口',
     description='用于获取行业类型分页列表',
     response_model=PageResponseModel[OaIndustryBaseModel],
-    dependencies=[UserInterfaceAuthDependency('basicdata:finance:cost_cate:list')],
+    dependencies=[UserInterfaceAuthDependency('basicdata:finance:industry:list')],
 )
 
 async def list_page(
@@ -36,15 +36,15 @@ async def list_page(
     query_db: Annotated[AsyncSession, DBSessionDependency()],
     data_scope_sql: Annotated[ColumnElement, DataScopeDependency(OaIndustry)],
 ) -> Response:
-    cost_cate_list = await IndustryService.get_industry_list_service(query_db, link_page_query, data_scope_sql, True)
-    return ResponseUtil.success(model_content=cost_cate_list)
+    industry_list = await IndustryService.get_industry_list_service(query_db, link_page_query, data_scope_sql, True)
+    return ResponseUtil.success(model_content=industry_list)
 
 @industry_controller.post(
     "/add",
     summary='新增行业类型接口',
     description='用于新增行业类型',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('basicdata:finance:cost_cate:add')],
+    dependencies=[UserInterfaceAuthDependency('basicdata:finance:industry:add')],
 )
 @Log(title="新增行业类型", business_type=BusinessType.INSERT)
 async def add_industry(
@@ -61,7 +61,7 @@ async def add_industry(
     summary='修改行业类型状态接口',
     description='用于修改行业类型状态',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('basicdata:finance:cost_cate:del')],
+    dependencies=[UserInterfaceAuthDependency('basicdata:finance:industry:del')],
 )
 @Log(title="修改行业类型状态", business_type=BusinessType.UPDATE)
 async def change_status_industry(
@@ -69,16 +69,16 @@ async def change_status_industry(
     query_db: Annotated[AsyncSession, DBSessionDependency()],
     model: OaIndustryBaseModel,
 ) -> Response:
-    cost_cate_result = await IndustryService.change_status_industry_service(query_db, model)
-    logger.info(cost_cate_result.message)
-    return ResponseUtil.success(data=cost_cate_result.message)
+    industry_result = await IndustryService.change_status_industry_service(query_db, model)
+    logger.info(industry_result.message)
+    return ResponseUtil.success(data=industry_result.message)
 
 @industry_controller.put(
     "/update",
     summary='修改行业类型接口',
     description='用于修改行业类型',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('basicdata:finance:cost_cate:edit')],
+    dependencies=[UserInterfaceAuthDependency('basicdata:finance:industry:edit')],
 )
 @Log(title="修改行业类型", business_type=BusinessType.UPDATE)
 async def update_industry(
@@ -86,16 +86,16 @@ async def update_industry(
     query_db: Annotated[AsyncSession, DBSessionDependency()],
     model: OaIndustryBaseModel,
 ) -> Response:
-    cost_cate_result = await IndustryService.update_industry_service(query_db, model)
-    logger.info(cost_cate_result.message)
-    return ResponseUtil.success(data=cost_cate_result.message)
+    industry_result = await IndustryService.update_industry_service(query_db, model)
+    logger.info(industry_result.message)
+    return ResponseUtil.success(data=industry_result.message)
 
 @industry_controller.get(
     "/detail/{id}",
     summary='获取行业类型详情接口',
     description='用于获取行业类型详情',
     response_model=OaIndustryBaseModel,
-    dependencies=[UserInterfaceAuthDependency('basicdata:finance:cost_cate:detail')],
+    dependencies=[UserInterfaceAuthDependency('basicdata:finance:industry:detail')],
 )
 async def get_industry_info(
     request: Request,

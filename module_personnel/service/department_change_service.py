@@ -123,15 +123,17 @@ class DepartmentChangeService:
 
     @classmethod
     async def del_by_id(cls, db: AsyncSession, id: int):
+        change = await DepartmentChangeDao.get_info_by_id(db, id)
+        if change is None:
+            return CrudResponseModel(is_success=False, message='数据不存在')
+        if change['check_status'] != 0 and change['check_status'] != 4:
+            raise ServiceException(message='请先撤销申请再删除')
         try:
-            change = await DepartmentChangeDao.get_info_by_id(db, id)
-            if change['check_status'] != 0 or change['check_status'] != 4:
-                raise ServiceException(message='请先撤销申请再删除')
             await DepartmentChangeDao.del_by_id(db, id)
             return CrudResponseModel(is_success=True, message='删除成功')
         except Exception as e:
             await db.rollback()
-            return CrudResponseModel(is_success=True, message='删除失败')
+            return CrudResponseModel(is_success=False, message='删除失败')
 
 
     @classmethod

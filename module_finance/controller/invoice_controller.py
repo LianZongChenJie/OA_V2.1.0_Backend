@@ -11,7 +11,7 @@ from common.aspect.pre_auth import PreAuthDependency, CurrentUserDependency
 from common.enums import BusinessType
 from common.router import APIRouterPro
 from module_finance.entity.do.invoice_do import OaInvoice, OaInvoiceIncome
-from module_finance.entity.vo.invoice_vo import OaInvoiceBaseModel, OaInvoicePageQueryModel, OaInvoiceDetailModel, \
+from module_finance.entity.vo.invoice_vo import OaInvoiceBaseModel, OaInvoicePageQueryModel, \
     OaInvoiceIncomeBaseModel
 from module_finance.service.invoice_service import InvoiceService
 from module_admin.entity.vo.user_vo import (
@@ -28,7 +28,7 @@ finance_invoice_controller = APIRouterPro(
     summary='获取开票管理列表',
     description='用于获取开票管理列表',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:invoice:query')],
+    dependencies=[UserInterfaceAuthDependency('finance:invoice:list')],
 )
 async def get_page_list(
     request: Request,
@@ -44,7 +44,7 @@ async def get_page_list(
     summary='获取用户开票管理列表',
     description='用于用户获取开票管理列表',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:invoice:query')],
+    dependencies=[UserInterfaceAuthDependency('finance:invoice:list')],
 )
 async def get_page_list(
     request: Request,
@@ -63,7 +63,7 @@ async def get_page_list(
     summary='新增开票管理',
     description='用于新增开票管理',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:invoice:add')],
+    dependencies=[UserInterfaceAuthDependency('finance:invoice:add')],
 )
 @Log(title='开票管理-新增',business_type=BusinessType.INSERT)
 async def add(
@@ -82,7 +82,7 @@ async def add(
     summary='更新开票管理',
     description='用于更新开票管理',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:invoice:update')],
+    dependencies=[UserInterfaceAuthDependency('finance:invoice:update')],
 )
 @Log(title='开票管理-更新',business_type=BusinessType.UPDATE)
 async def update_expense(
@@ -101,7 +101,7 @@ async def update_expense(
     summary='获取开票管理详情',
     description='用于获取开票管理详情',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:invoice:query')],
+    dependencies=[UserInterfaceAuthDependency('finance:invoice:query')],
 )
 async def get_expense(
     request: Request,
@@ -116,7 +116,7 @@ async def get_expense(
     summary='删除开票管理',
     description='用于删除开票管理',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:invoice:delete')],
+    dependencies=[UserInterfaceAuthDependency('finance:invoice:delete')],
 )
 @Log(title='开票管理-删除',business_type=BusinessType.DELETE)
 async def delete_invoice(
@@ -127,47 +127,12 @@ async def delete_invoice(
     result =  await InvoiceService.del_by_id(query_db, id)
     return ResponseUtil.success(msg=result.message)
 
-# @finance_invoice_controller.put(
-#     "/review",
-#     summary='审核',
-#     description='用于审核',
-#     response_model=None,
-#     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:invoice:pass')],
-# )
-# async def review(
-#         request: Request,
-#         query_db: Annotated[AsyncSession, DBSessionDependency()],
-#         data: Annotated[OaInvoiceBaseModel, Body()],
-#         current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
-# ) -> Response:
-#     userId = current_user.user.user_id
-#     result =  await InvoiceService.review(query_db, data, userId)
-#     return ResponseUtil.success(msg=result.message)
-
-# @finance_invoice_controller.put(
-#     "/pay",
-#     summary='打款',
-#     description='用于打款',
-#     response_model=None,
-#     dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:invoice:pay')],
-# )
-# @Log(title='开票管理-打款',business_type=BusinessType.UPDATE)
-# async def payment(
-#         request: Request,
-#         query_db: Annotated[AsyncSession, DBSessionDependency()],
-#         data: Annotated[OaInvoiceBaseModel, Body()],
-#         current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
-# ) -> Response:
-#     userId = current_user.user.user_id
-#     result =  await InvoiceService.payment(query_db, data, userId)
-#     return ResponseUtil.success(msg=result.message)
-
 @finance_invoice_controller.put(
     "/openStatus",
     summary='开票状态',
     description='用于开票状态',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:invoice:edit')],
+    dependencies=[UserInterfaceAuthDependency('finance:invoice:openStatus')],
 )
 @Log(title='开票管理-开票状态',business_type=BusinessType.UPDATE)
 async def open_status(
@@ -189,7 +154,7 @@ async def open_status(
     summary='添加发票回款记录',
     description='用于添加发票回款记录',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:invoice:add')],
+    dependencies=[UserInterfaceAuthDependency('finance:invoice:income:add')],
 )
 @Log(title='开票管理-添加发票回款记录',business_type=BusinessType.INSERT)
 async def add_income(
@@ -207,13 +172,12 @@ async def add_income(
     summary='删除发票回款记录',
     description='用于删除发票回款记录',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:invoice:delete')],
+    dependencies=[UserInterfaceAuthDependency('finance:invoice:income:delete')],
 )
 @Log(title='开票管理-删除发票回款记录',business_type=BusinessType.DELETE)
 async def delete_income(
         request: Request,
         ids: Annotated[str, Query(description='要删除的ID，多个用逗号分隔')],
-        current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
         query_db: Annotated[AsyncSession, DBSessionDependency()],
 ) -> Response:
     income_ids = [int(i) for i in ids.split(',')]
@@ -225,7 +189,7 @@ async def delete_income(
     summary='获取发票回款记录',
     description='用于获取发票回款记录',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:invoice:query')],
+    dependencies=[UserInterfaceAuthDependency('finance:invoice:income:list')],
 )
 async def get_income_detail(
         request: Request,
@@ -240,7 +204,7 @@ async def get_income_detail(
     summary='获取发票汇款记录',
     description='获取发票汇款记录',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:invoice:update')],
+    dependencies=[UserInterfaceAuthDependency('finance:invoice:income:list')],
 )
 async def get_incomes_detail(
         request: Request,

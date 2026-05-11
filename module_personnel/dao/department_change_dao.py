@@ -51,7 +51,7 @@ class DepartmentChangeDao:
 
         # 构建条件列表
         conditions = []
-
+        conditions.append(OaDepartmentChange.delete_time == 0)
         if query_object.check_status is not None:
             conditions.append(OaDepartmentChange.check_status == query_object.check_status)
 
@@ -140,7 +140,16 @@ class DepartmentChangeDao:
         )
         await db.commit()
         return result.rowcount
-
+    @classmethod
+    async def update_by_entity(cls, db: AsyncSession, model: OaDepartmentChange):
+        """
+        更新部门变动
+        :param db:
+        :param model:
+        :return:
+        """
+        await db.merge(model)
+        await db.commit()
     @classmethod
     async def get_info_by_id(cls, db: AsyncSession, id: int):
         """

@@ -27,7 +27,7 @@ administrative_note_controller = APIRouterPro(
     summary='获取公告列表列表',
     description='用于获取公告列表列表',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:note:query')],
+    dependencies=[UserInterfaceAuthDependency('administration:note:list')],
 )
 async def get_page_list(
     request: Request,
@@ -43,7 +43,7 @@ async def get_page_list(
     summary='新增公告列表',
     description='用于新增公告列表',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:note:add')],
+    dependencies=[UserInterfaceAuthDependency('administration:note:add')],
 )
 @Log(title="新增公告列表", business_type=BusinessType.INSERT)
 async def add_note(
@@ -61,7 +61,7 @@ async def add_note(
     summary='更新公告列表',
     description='用于更新公告列表',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:note:update')],
+    dependencies=[UserInterfaceAuthDependency('administration:note:update')],
 )
 @Log(title="更新公告列表", business_type=BusinessType.UPDATE)
 async def update_note(
@@ -77,7 +77,7 @@ async def update_note(
     summary='获取公告列表详情',
     description='用于获取公告列表详情',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:note:query')],
+    dependencies=[UserInterfaceAuthDependency('administration:note:query')],
 )
 async def get_note_by_id(
     request: Request,
@@ -92,7 +92,7 @@ async def get_note_by_id(
     summary='删除公告列表',
     description='用于删除公告列表',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:note:delete')],
+    dependencies=[UserInterfaceAuthDependency('administration:note:delete')],
 )
 @Log(title="删除公告列表", business_type=BusinessType.DELETE)
 async def delete_note(

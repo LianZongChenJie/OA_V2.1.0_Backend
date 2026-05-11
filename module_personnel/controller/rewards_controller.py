@@ -14,7 +14,6 @@ from common.router import APIRouterPro
 from module_personnel.entity.do.rewards_do import OaRewards
 from module_personnel.entity.vo.rewards_vo import OaRewardsBaseModel, OaRewardsPageQueryModel
 from module_personnel.service.rewards_service import RewardsService
-from utils.camel_converter import ModelConverter
 from utils.response_util import ResponseUtil
 from module_admin.entity.vo.user_vo import (
     CurrentUserModel
@@ -29,7 +28,7 @@ personnel_rewards_controller = APIRouterPro(
     summary='获取奖罚管理列表',
     description='用于获取奖罚管理列表',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:personnel:rewards:query')],
+    dependencies=[UserInterfaceAuthDependency('personnel:rewards:list')],
 )
 async def get_page_list(
     request: Request,
@@ -45,7 +44,7 @@ async def get_page_list(
     summary='新增奖罚管理',
     description='用于新增奖罚管理',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:personnel:rewards:add')],
+    dependencies=[UserInterfaceAuthDependency('personnel:rewards:add')],
 )
 @Log(title='奖罚管理-新增', business_type=BusinessType.INSERT)
 async def add_reward(
@@ -63,7 +62,7 @@ async def add_reward(
     summary='更新奖罚管理',
     description='用于更新奖罚管理',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:personnel:rewards:update')],
+    dependencies=[UserInterfaceAuthDependency('personnel:rewards:update')],
 )
 @Log(title='奖罚管理-编辑', business_type=BusinessType.UPDATE)
 async def update_reward(
@@ -79,7 +78,7 @@ async def update_reward(
     summary='获取奖罚管理详情',
     description='用于获取奖罚管理详情',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:personnel:rewards:query')],
+    dependencies=[UserInterfaceAuthDependency('personnel:rewards:query')],
 )
 async def get_detail(
     request: Request,
@@ -94,7 +93,7 @@ async def get_detail(
     summary='删除奖罚管理',
     description='用于删除奖罚管理',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:personnel:rewards:delete')],
+    dependencies=[UserInterfaceAuthDependency('personnel:rewards:delete')],
 )
 @Log(title='奖罚管理-删除', business_type=BusinessType.DELETE)
 async def delete_change(
@@ -110,7 +109,7 @@ async def delete_change(
     summary='改变奖罚管理状态',
     description='用于设置奖罚管理的启用/禁用状态',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:personnel:rewards:changeStatus')],
+    dependencies=[UserInterfaceAuthDependency('personnel:rewards:changeStatus')],
 )
 @Log(title='奖罚管理-状态变更', business_type=BusinessType.UPDATE)
 async def change_status(

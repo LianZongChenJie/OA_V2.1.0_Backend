@@ -31,7 +31,7 @@ msg_controller = APIRouterPro(
     summary='获取发送列表',
     description='获取发送列表',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('oa:mian:message:query')],
+    dependencies=[UserInterfaceAuthDependency('oa:mian:send:message:list')],
 )
 async def get_send_list(
     query_db: Annotated[AsyncSession, DBSessionDependency()],
@@ -51,7 +51,7 @@ async def get_send_list(
     summary='获取发送详情',
     description='获取发送详情',
     response_model=OaMessageBaseModel,
-    dependencies=[UserInterfaceAuthDependency('oa:mian:message:query')],
+    dependencies=[UserInterfaceAuthDependency('oa:mian:send:message:query')],
 )
 async def get_send_detail(
         message_id: int,
@@ -67,29 +67,29 @@ async def get_send_detail(
 
 @msg_controller.put(
     '/send/update',
-    summary='更新发送',
-    description='更新发送',
+    summary='编辑草稿消息',
+    description='编辑草稿消息',
     response_model=CurrentUserModel,
-    dependencies=[UserInterfaceAuthDependency('oa:mian:message:edit')],
+    dependencies=[UserInterfaceAuthDependency('oa:mian:send:message:edit')],
 )
-@Log(title='编辑发送消息',business_type=BusinessType.UPDATE)
+@Log(title='编辑草稿消息',business_type=BusinessType.UPDATE)
 async def update_send_message(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
     update_model: Annotated[OaMessageBaseModel, Body()]
 )->Response:
     """
-    更新发送
+    编辑草稿消息
     """
     result = await MessageService.update(query_db, update_model)
     return ResponseUtil.success(msg=result.message)
 
 @msg_controller.post(
     '/send/add',
-    summary='新增发送',
-    description='新增发送',
+    summary='新增发送消息',
+    description='新增发送消息',
     response_model=CurrentUserModel,
-    dependencies=[UserInterfaceAuthDependency('oa:mian:message:add')],
+    dependencies=[UserInterfaceAuthDependency('oa:mian:send:message:add')],
 )
 @Log(title='新增发送消息',business_type=BusinessType.INSERT)
 async def add_send_message(
@@ -99,17 +99,17 @@ async def add_send_message(
     create_model: Annotated[OaMessageBaseModel, Body()]
 ) -> Response:
     """
-    新增发送
+    新增发送消息
     """
     create_model.from_uid = current_user.user.user_id
     result = await MessageService.add(query_db, create_model)
     return ResponseUtil.success(msg=result.message)
 @msg_controller.delete(
     '/delete',
-    summary='删除发送',
-    description='删除发送',
+    summary='删除发送消息',
+    description='删除发送消息',
     response_model=CurrentUserModel,
-    dependencies=[UserInterfaceAuthDependency('oa:mian:message:del')],
+    dependencies=[UserInterfaceAuthDependency('oa:mian:send:message:delete')],
 )
 @Log(title='删除发送消息',business_type=BusinessType.DELETE)
 async def delete_message(
@@ -118,25 +118,25 @@ async def delete_message(
     query_db: Annotated[AsyncSession, DBSessionDependency()]
 )->Response:
     """
-    删除发送
+    删除发送消息
     """
     result = await MessageService.delete(query_db, delete_model.message_ids, delete_model.table)
     return ResponseUtil.success(msg=result.message)
 
 @msg_controller.put(
     '/send',
-    summary='更新发送',
-    description='更新发送',
+    summary='草稿消息发送',
+    description='草稿消息发送',
     response_model=CurrentUserModel,
-    dependencies=[UserInterfaceAuthDependency('oa:mian:message:edit')],
+    dependencies=[UserInterfaceAuthDependency('oa:mian:send:message:send')],
 )
-@Log(title='发送消息',business_type=BusinessType.UPDATE)
+@Log(title='草稿消息发送',business_type=BusinessType.UPDATE)
 async def send_update(
         request: Request,
         query_db: Annotated[AsyncSession, DBSessionDependency()],
-        messageId: int,
+        model: Annotated[OaMessageReadModel, Body()],
 )->Response:
-    result = await MessageService.send(query_db, messageId)
+    result = await MessageService.send(query_db, model.message_id)
     return ResponseUtil.success(msg=result.message)
 # ------------------------------------------- 垃圾箱 -------------------------------------------
 
@@ -145,7 +145,7 @@ async def send_update(
     summary='获取回收站消息列表',
     description='获取回收站消息列表',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('oa:mian:message:query')],
+    dependencies=[UserInterfaceAuthDependency('oa:mian:rubbish:message:list')],
 )
 async def get_rubbish_list(
     query_db: Annotated[AsyncSession, DBSessionDependency()],
@@ -165,7 +165,7 @@ async def get_rubbish_list(
     summary='还原消息',
     description='还原消息',
     response_model=CurrentUserModel,
-    dependencies=[UserInterfaceAuthDependency('oa:mian:message:restore')],
+    dependencies=[UserInterfaceAuthDependency('oa:mian:rubbish:message:restore')],
 )
 @Log(title='还原消息',business_type=BusinessType.UPDATE)
 async def restore_message(
@@ -184,7 +184,7 @@ async def restore_message(
     summary='清空发送',
     description='清空发送',
     response_model=CurrentUserModel,
-    dependencies=[UserInterfaceAuthDependency('oa:mian:message:clear')],
+    dependencies=[UserInterfaceAuthDependency('oa:mian:rubbish:message:clear')],
 )
 @Log(title='清除消息',business_type=BusinessType.UPDATE)
 async def clear_message(
@@ -207,7 +207,7 @@ async def clear_message(
     summary='获取收件箱消息列表',
     description='获取收件箱消息列表',
     response_model=OaMsgBaseModel,
-    dependencies=[UserInterfaceAuthDependency('oa:mian:message:query')],
+    dependencies=[UserInterfaceAuthDependency('oa:mian:receive:message:list')],
 )
 async def get_res_list(
 query_db: Annotated[AsyncSession, DBSessionDependency()],
@@ -227,7 +227,7 @@ query_db: Annotated[AsyncSession, DBSessionDependency()],
     summary='批量设置消息标星',
     description='批量设置消息标星',
     response_model=CurrentUserModel,
-    dependencies=[UserInterfaceAuthDependency('oa:mian:message:edit')],
+    dependencies=[UserInterfaceAuthDependency('oa:mian:receive:message:edit')],
 )
 @Log(title='批量设置消息标星',business_type=BusinessType.UPDATE)
 async def set_stars(
@@ -245,7 +245,7 @@ async def set_stars(
     summary='设置消息标星',
     description='设置消息标星',
     response_model=CurrentUserModel,
-    dependencies=[UserInterfaceAuthDependency('oa:mian:message:edit')],
+    dependencies=[UserInterfaceAuthDependency('oa:mian:receive:message:edit')],
 )
 @Log(title='设置消息标星',business_type=BusinessType.UPDATE)
 async def set_star(
@@ -265,7 +265,7 @@ async def set_star(
     summary='设置消息已读',
     description='设置消息已读',
     response_model=CurrentUserModel,
-    dependencies=[UserInterfaceAuthDependency('oa:mian:message:edit')],
+    dependencies=[UserInterfaceAuthDependency('oa:mian:receive:message:edit')],
 )
 @Log(title='设置消息已读',business_type=BusinessType.UPDATE)
 async def set_reads(
@@ -284,7 +284,7 @@ async def set_reads(
     summary='查看消息',
     description='查看消息',
     response_model=CurrentUserModel,
-    dependencies=[UserInterfaceAuthDependency('oa:mian:message:read')],
+    dependencies=[UserInterfaceAuthDependency('oa:mian:receive:message:read')],
 )
 @Log(title='查看消息',business_type=BusinessType.UPDATE)
 async def read(
@@ -303,7 +303,7 @@ async def read(
     summary='批量删除消息',
     description='批量删除消息',
     response_model=CurrentUserModel,
-    dependencies=[UserInterfaceAuthDependency('oa:mian:message:del')],
+    dependencies=[UserInterfaceAuthDependency('oa:mian:receive:message:delete')],
 )
 @Log(title='批量删除消息',business_type=BusinessType.DELETE)
 async def deletes(
@@ -323,7 +323,7 @@ async def deletes(
     summary='删除消息',
     description='删除消息',
     response_model=CurrentUserModel,
-    dependencies=[UserInterfaceAuthDependency('oa:mian:message:del')],
+    dependencies=[UserInterfaceAuthDependency('oa:mian:receive:message:delete')],
 )
 @Log(title='删除消息',business_type=BusinessType.DELETE)
 async def delete(
