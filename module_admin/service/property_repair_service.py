@@ -214,6 +214,11 @@ class PropertyRepairService:
             # 格式化时间字段
             repair_dict = ModelConverter.time_format(repair_dict)
             
+            # 格式化维修日期字段
+            if 'repairTime' in repair_dict and repair_dict['repairTime']:
+                from utils.time_format_util import timestamp_to_datetime
+                repair_dict['repairTimeStr'] = timestamp_to_datetime(repair_dict['repairTime'], '%Y-%m-%d')
+            
             return PropertyRepairModel(**repair_dict)
         else:
             raise ServiceException(message=f'維修記錄 ID {repair_id} 不存在')

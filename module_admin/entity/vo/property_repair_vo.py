@@ -29,6 +29,9 @@ class PropertyRepairModel(BaseModel):
     cate_name: str | None = Field(default=None, description='資產分類名稱')
     brand_name: str | None = Field(default=None, description='資產品牌名稱')
     director_name: str | None = Field(default=None, description='跟進人姓名')
+    
+    # 时间字符串字段
+    repair_time_str: str | None = Field(default=None, description='維修日期字符串')
 
     @field_validator('repair_time', mode='before')
     @classmethod
