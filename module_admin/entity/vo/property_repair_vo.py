@@ -1,9 +1,10 @@
 from datetime import datetime
-from typing import Literal, Any, Union
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from typing import Literal, Any, Union, Optional
+from pydantic import BaseModel, ConfigDict, Field, field_validator, field_serializer
 from pydantic.alias_generators import to_camel
 from pydantic_validation_decorator import NotBlank, Size, Xss
 from decimal import Decimal
+from utils.time_format_util import timestamp_to_datetime
 
 class PropertyRepairModel(BaseModel):
     """
@@ -29,9 +30,54 @@ class PropertyRepairModel(BaseModel):
     cate_name: str | None = Field(default=None, description='資產分類名稱')
     brand_name: str | None = Field(default=None, description='資產品牌名稱')
     director_name: str | None = Field(default=None, description='跟進人姓名')
-    
-    # 时间字符串字段
-    repair_time_str: str | None = Field(default=None, description='維修日期字符串')
+
+    @field_serializer('repair_time')
+    def serialize_repair_time(self, value: Optional[int]) -> str | None:
+        """序列化维修时间"""
+        if value is None or value == '' or value == 0:
+            return None
+        try:
+            # 确保转换为整数
+            timestamp_value = int(value) if not isinstance(value, int) else value
+            return timestamp_to_datetime(timestamp_value, '%Y-%m-%d')
+        except (ValueError, TypeError):
+            return None
+
+    @field_serializer('create_time')
+    def serialize_create_time(self, value: Optional[int]) -> str | None:
+        """序列化创建时间"""
+        if value is None or value == '' or value == 0:
+            return None
+        try:
+            # 确保转换为整数
+            timestamp_value = int(value) if not isinstance(value, int) else value
+            return timestamp_to_datetime(timestamp_value, '%Y-%m-%d %H:%M:%S')
+        except (ValueError, TypeError):
+            return None
+
+    @field_serializer('update_time')
+    def serialize_update_time(self, value: Optional[int]) -> str | None:
+        """序列化更新时间"""
+        if value is None or value == '' or value == 0:
+            return None
+        try:
+            # 确保转换为整数
+            timestamp_value = int(value) if not isinstance(value, int) else value
+            return timestamp_to_datetime(timestamp_value, '%Y-%m-%d %H:%M:%S')
+        except (ValueError, TypeError):
+            return None
+
+    @field_serializer('delete_time')
+    def serialize_delete_time(self, value: Optional[int]) -> str | None:
+        """序列化删除时间"""
+        if value is None or value == '' or value == 0:
+            return None
+        try:
+            # 确保转换为整数
+            timestamp_value = int(value) if not isinstance(value, int) else value
+            return timestamp_to_datetime(timestamp_value, '%Y-%m-%d %H:%M:%S')
+        except (ValueError, TypeError):
+            return None
 
     @field_validator('repair_time', mode='before')
     @classmethod
