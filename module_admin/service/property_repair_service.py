@@ -211,8 +211,16 @@ class PropertyRepairService:
             repair_dict = CamelCaseUtil.transform_result(repair_obj)
             # 合并扩展字段
             repair_dict.update(extra_fields)
+            
             # 格式化时间字段
             repair_dict = ModelConverter.time_format(repair_dict)
+            
+            # 专门处理 repairTime 字段（确保它被格式化）
+            if 'repairTime' in repair_dict and repair_dict['repairTime']:
+                repair_time = repair_dict['repairTime']
+                if isinstance(repair_time, int):
+                    from utils.time_format_util import timestamp_to_datetime
+                    repair_dict['repairTime'] = timestamp_to_datetime(repair_time, '%Y-%m-%d')
             
             return PropertyRepairModel(**repair_dict)
         else:

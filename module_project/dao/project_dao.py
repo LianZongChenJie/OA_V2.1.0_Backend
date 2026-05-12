@@ -338,7 +338,9 @@ class ProjectDao:
             
             # 获取当前阶段信息
             step_info = await cls._get_current_step_info(db, project_id)
-            if project_dict.get('status') == 4:
+            # 当 status=1（未开始）或 status=4（已关闭）时，阶段显示为空
+            if project_dict.get('status') == 1 or project_dict.get('status') == 4:
+                project_dict['stepDirector'] = ''
                 project_dict['step'] = ''
             else:
                 project_dict['stepDirector'] = step_info.get('step_director', '')
@@ -468,9 +470,10 @@ class ProjectDao:
         # 获取当前阶段信息
         step_info = await cls._get_current_step_info(db, project.id)
         
-        # 当 status=4（已关闭）时，step 显示为空
-        if project.status == 4:
+        # 当 status=1（未开始）或 status=4（已关闭）时，step 显示为空
+        if project.status == 1 or project.status == 4:
             step_info = {
+                'step_director': '',
                 'step': ''
             }
         

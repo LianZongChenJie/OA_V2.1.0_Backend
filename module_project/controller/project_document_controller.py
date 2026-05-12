@@ -74,9 +74,14 @@ async def get_project_document_list(
     if project_document_page_query.project_id:
         conditions.append("d.project_id = :project_id")
         params['project_id'] = project_document_page_query.project_id
+    
+    # 创建人筛选（通过 uid 参数）
+    if project_document_page_query.uid:
+        conditions.append("d.admin_id = :uid")
+        params['uid'] = project_document_page_query.uid
     else:
-        # 如果没有指定项目ID，非管理员只能看自己的
-        if not is_admin:
+        # 如果没有指定项目ID且没有指定创建人，非管理员只能看自己的
+        if not project_document_page_query.project_id and not is_admin:
             conditions.append("d.admin_id = :user_id")
             params['user_id'] = user_id
     

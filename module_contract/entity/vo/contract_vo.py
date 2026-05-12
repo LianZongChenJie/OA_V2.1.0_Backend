@@ -165,17 +165,50 @@ class ContractPageQueryModel(ContractModel):
     page_size: int = Field(default=10, description='每页记录数')
     keywords: str | None = Field(default=None, description='搜索关键词')
     tab: int | None = Field(default=0, description='标签页：0 全部，1 待我审核，2 我已审核')
-    types_filter: int | None = Field(default=None, description='合同性质筛选')
-    cate_id_filter: int | None = Field(default=None, description='分类筛选')
-    check_status_filter: int | None = Field(default=None, description='审核状态筛选')
-    sign_time_start: int | None = Field(default=None, description='签订开始时间')
-    sign_time_end: int | None = Field(default=None, description='签订结束时间')
-    end_time_start: int | None = Field(default=None, description='结束开始时间')
-    end_time_end: int | None = Field(default=None, description='结束结束时间')
-    admin_id_filter: int | None = Field(default=None, description='创建人 ID 筛选')
+    types: int | None = Field(default=None, alias='types', description='合同性质筛选')
+    cate_id: int | None = Field(default=None, alias='cateId', description='分类筛选')
+    check_status: int | None = Field(default=None, alias='checkStatus', description='审核状态筛选')
+    sign_time_start: str | int | None = Field(default=None, alias='signTimeStart', description='签订开始时间')
+    sign_time_end: str | int | None = Field(default=None, alias='signTimeEnd', description='签订结束时间')
+    end_time_start: str | int | None = Field(default=None, alias='endTimeStart', description='结束开始时间')
+    end_time_end: str | int | None = Field(default=None, alias='endTimeEnd', description='结束结束时间')
+    sign_uid: int | None = Field(default=None, alias='signUid', description='签订人 ID 筛选')
     archive_status: int | None = Field(default=0, description='归档状态：0 正常，1 已归档')
     stop_status: int | None = Field(default=0, description='中止状态：0 正常，1 已中止')
     void_status: int | None = Field(default=0, description='作废状态：0 正常，1 已作废')
+
+    @field_validator('sign_time_start', 'sign_time_end', 'end_time_start', 'end_time_end', mode='before')
+    @classmethod
+    def validate_query_time_fields(cls, value: Any) -> int | None:
+        """
+        验证并转换查询时间字段，支持时间戳和日期字符串
+        """
+        if value is None or value == '' or value == 0:
+            return None
+
+        if isinstance(value, int):
+            return value
+
+        if isinstance(value, str):
+            try:
+                # 尝试解析 YYYY-MM-DD 格式的日期字符串
+                dt = datetime.strptime(value, '%Y-%m-%d')
+                return int(dt.timestamp())
+            except ValueError:
+                try:
+                    # 尝试解析 ISO 格式的日期时间字符串
+                    dt = datetime.fromisoformat(value)
+                    return int(dt.timestamp())
+                except ValueError:
+                    try:
+                        # 尝试直接转换为整数（时间戳）
+                        return int(value)
+                    except ValueError:
+                        pass
+
+        return None
+
+        return value
 
 
 class AddContractModel(ContractModel):
@@ -202,4 +235,3 @@ class DeleteContractModel(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
 
     id: int = Field(description='需要删除的合同 ID')
-

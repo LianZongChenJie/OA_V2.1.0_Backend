@@ -47,6 +47,7 @@ class ProjectDocumentPageQueryModel(ProjectDocumentModel):
     page_num: int = Field(default=1, description='当前页码')
     page_size: int = Field(default=10, description='每页记录数')
     keywords: str | None = Field(default=None, description='搜索关键字')
+    uid: int | None = Field(default=None, alias='uid', description='创建人ID筛选')
 
 
 class AddProjectDocumentModel(ProjectDocumentModel):

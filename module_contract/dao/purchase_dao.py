@@ -54,14 +54,14 @@ class PurchaseDao:
                 )
             )
 
-        if query_object.types_filter is not None:
-            conditions.append(OaPurchase.types == query_object.types_filter)
+        if query_object.types is not None:
+            conditions.append(OaPurchase.types == query_object.types)
 
-        if query_object.cate_id_filter is not None:
-            conditions.append(OaPurchase.cate_id == query_object.cate_id_filter)
+        if query_object.cate_id is not None:
+            conditions.append(OaPurchase.cate_id == query_object.cate_id)
 
-        if query_object.check_status_filter is not None:
-            conditions.append(OaPurchase.check_status == query_object.check_status_filter)
+        if query_object.check_status is not None:
+            conditions.append(OaPurchase.check_status == query_object.check_status)
 
         if query_object.sign_time_start is not None:
             conditions.append(OaPurchase.sign_time >= query_object.sign_time_start)
@@ -74,8 +74,8 @@ class PurchaseDao:
             conditions.append(OaPurchase.end_time <= query_object.end_time_end)
 
         if query_object.tab == 0:
-            if query_object.admin_id_filter is not None:
-                conditions.append(OaPurchase.sign_uid == query_object.admin_id_filter)
+            if query_object.sign_uid is not None:
+                conditions.append(OaPurchase.sign_uid == query_object.sign_uid)
         elif query_object.tab == 1:
             conditions.append(func.find_in_set(str(user_id), OaPurchase.check_uids))
         elif query_object.tab == 2:
@@ -344,5 +344,3 @@ class PurchaseDao:
         )
         await db.commit()
         return result.rowcount
-
-

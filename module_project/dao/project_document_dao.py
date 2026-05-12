@@ -64,9 +64,14 @@ class ProjectDocumentDao:
         if query_object.project_id:
             conditions.append("d.project_id = :project_id")
             params['project_id'] = query_object.project_id
+        
+        # 创建人筛选（通过 uid 参数）
+        if query_object.uid:
+            conditions.append("d.admin_id = :uid")
+            params['uid'] = query_object.uid
         else:
-            # 如果没有指定项目ID，则查询当前用户有权限的项目
-            if not is_project_admin:
+            # 如果没有指定项目ID且没有指定创建人，则查询当前用户有权限的项目
+            if not query_object.project_id and not is_project_admin:
                 conditions.append("d.admin_id = :user_id")
                 params['user_id'] = user_id
         

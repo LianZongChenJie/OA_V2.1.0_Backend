@@ -200,6 +200,25 @@ class TenderService:
             except ValueError:
                 raise ServiceException(message='bid_opening_date 日期格式错误，仅支持 YYYY-MM-DD')
 
+        # 枚举字段转换（支持 '是', 'YES', 'yes', 'Y', '1', 'true', 'TRUE' 等多种格式）
+        tender_dict = page_object.model_dump()
+        yes_values = ['是', 'YES', 'yes', 'Y', '1', 'true', 'TRUE']
+        enum_mapping = {
+            'is_tender_submitted': '是' if tender_dict.get('is_tender_submitted') in yes_values else '否',
+            'has_tender_invoice': '是' if tender_dict.get('has_tender_invoice') in yes_values else '否',
+            'is_deposit_paid': '是' if tender_dict.get('is_deposit_paid') in yes_values else '否',
+            'is_deposit_refunded': '是' if tender_dict.get('is_deposit_refunded') in yes_values else '否'
+        }
+        for field, value in enum_mapping.items():
+            setattr(page_object, field, value)
+
+        # 处理空字符串的日期时间字段，转换为 None
+        if page_object.deposit_paid_time == '':
+            page_object.deposit_paid_time = None
+        
+        if page_object.create_time == '':
+            page_object.create_time = None
+
         # 更新时间
         page_object.update_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 

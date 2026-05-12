@@ -192,16 +192,16 @@ class ContractDao:
             )
 
         # 合同性质筛选
-        if query_object.types_filter is not None:
-            conditions.append(OaContract.types == query_object.types_filter)
+        if query_object.types is not None:
+            conditions.append(OaContract.types == query_object.types)
 
         # 分类筛选
-        if query_object.cate_id_filter is not None:
-            conditions.append(OaContract.cate_id == query_object.cate_id_filter)
+        if query_object.cate_id is not None:
+            conditions.append(OaContract.cate_id == query_object.cate_id)
 
         # 审核状态筛选
-        if query_object.check_status_filter is not None:
-            conditions.append(OaContract.check_status == query_object.check_status_filter)
+        if query_object.check_status is not None:
+            conditions.append(OaContract.check_status == query_object.check_status)
 
         # 签订时间范围
         if query_object.sign_time_start is not None:
@@ -218,8 +218,8 @@ class ContractDao:
         # 根据 tab 参数设置查询条件
         if query_object.tab == 0:
             # 全部合同（根据权限过滤）
-            if query_object.admin_id_filter is not None:
-                conditions.append(OaContract.sign_uid == query_object.admin_id_filter)
+            if query_object.sign_uid is not None:
+                conditions.append(OaContract.sign_uid == query_object.sign_uid)
         elif query_object.tab == 1:
             # 待我审核
             conditions.append(func.find_in_set(str(user_id), OaContract.check_uids))
