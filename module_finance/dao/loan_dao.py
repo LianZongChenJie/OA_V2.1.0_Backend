@@ -28,8 +28,8 @@ class LoanDao:
                         dept.dept_name.label('dept_name'),
                         check.nick_name.label('check_name')
                         )
-        .join(pay, OaLoan.admin_id == pay.user_id, isouter=True)
-        .join(admin, OaLoan.pay_admin_id == admin.user_id, isouter=True)
+        .join(pay, OaLoan.pay_admin_id == pay.user_id, isouter=True)
+        .join(admin, OaLoan.admin_id == admin.user_id, isouter=True)
          .join(dept, OaLoan.did == dept.dept_id, isouter=True)
          .join(check, func.find_in_set(check.user_id, OaLoan.check_uids), isouter=True)
          )
@@ -37,6 +37,16 @@ class LoanDao:
         # 构建条件列表
         conditions = []
         conditions.append(OaLoan.delete_time == 0)
+        # 冲抵状态
+        if query_object.balance_status is not None:
+            conditions.append(OaLoan.balance_status == query_object.balance_status)
+        # 借支类型
+        if query_object.types is not None:
+            conditions.append(OaLoan.types == query_object.types)
+
+        # 打款状态
+        if query_object.pay_status is not None:
+            conditions.append(OaLoan.pay_status == query_object.pay_status)
         # 通用条件：审核状态
         if query_object.check_status is not None:
             conditions.append(OaLoan.check_status == query_object.check_status)
@@ -79,6 +89,7 @@ class LoanDao:
 
             if or_conditions:
                 conditions.append(or_(*or_conditions))
+
 
         # 添加数据权限条件
         if data_scope_sql is not None:
