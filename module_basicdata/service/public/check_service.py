@@ -420,7 +420,7 @@ class CheckService:
             result = await OaFlowStepDao.add_flow_step(db, step)
             # 添加审核记录信息，修改表审核状态
             if result:
-                await FlowRecordDao.add(db, record)
+                # await FlowRecordDao.add(db, record)
                 update_dict = {
                     'check_flow_id': query_model.flow_id,
                     "check_step_sort": 0,

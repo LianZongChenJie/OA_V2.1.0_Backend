@@ -21,10 +21,10 @@ from utils.timeformat import int_time
 class InvoiceService:
     @classmethod
     async def get_page_list_service(cls, query_db: AsyncSession, query_object: OaInvoicePageQueryModel,
-                                    data_scope_sql: ColumnElement, is_page: bool = False) -> PageModel[
+                                    data_scope_sql: ColumnElement, user_id: int, is_page: bool = False) -> PageModel[
                                                                                                  OaInvoiceBaseModel] | \
                                                                                              list[dict[str, Any]]:
-        query_list = await InvoiceDao.get_page_list(query_db, query_object, data_scope_sql, is_page)
+        query_list = await InvoiceDao.get_page_list(query_db, query_object, data_scope_sql, user_id, is_page)
         if is_page:
             row_list = []
             for row in query_list.rows:
@@ -199,11 +199,13 @@ class InvoiceService:
                 data.admin_id =userId
                 data.create_time = create_time
             amount = amount + invoice.enter_amount
-            await InvoiceDao.income_add(db, data_list)
+
             invoice.enter_amount = amount
             invoice.enter_time = enter_time
             if amount > old_amount:
-                return CrudResponseModel(is_success=False, message='回款金额不能大于发票金额')
+                raise ServiceException(message='回款金额不能大于发票金额')
+            else:
+                await InvoiceDao.income_add(db, data_list)
             if amount < old_amount:
                 invoice.enter_status = 1
             else:
