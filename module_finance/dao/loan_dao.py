@@ -14,7 +14,7 @@ from datetime import datetime
 class LoanDao:
     @classmethod
     async def get_page_list(cls, db: AsyncSession, query_object: OaLoanPageQueryModel,
-                            data_scope_sql: ColumnElement,
+                            data_scope_sql: ColumnElement,user_id: int,
                             is_page: bool = False) -> PageModel | list[list[dict[str, Any]]]:
 
         # 构建基础查询
@@ -26,7 +26,7 @@ class LoanDao:
                         pay.nick_name.label('pay_name'),
                         admin.nick_name.label('admin_name'),
                         dept.dept_name.label('dept_name'),
-                        check.nick_name.label('check_name')
+                        func.group_concat(check.nick_name, ',').label('check_name')
                         )
         .join(pay, OaLoan.pay_admin_id == pay.user_id, isouter=True)
         .join(admin, OaLoan.admin_id == admin.user_id, isouter=True)
@@ -51,15 +51,27 @@ class LoanDao:
         if query_object.check_status is not None:
             conditions.append(OaLoan.check_status == query_object.check_status)
 
+        if query_object.admin_id:
+            conditions.append(OaLoan.admin_id == query_object.admin_id)
+
         # 通用条件：审核时间范围
         if query_object.begin_time and query_object.end_time:
             start_timestamp = int(datetime.strptime(query_object.begin_time, "%Y-%m-%d %H:%M:%S").timestamp())
             end_timestamp = int(datetime.strptime(query_object.end_time, "%Y-%m-%d %H:%M:%S").timestamp())
             conditions.append(OaLoan.check_time.between(start_timestamp, end_timestamp))
 
+        if query_object.tab == 1:
+            conditions.append(OaLoan.admin_id == user_id)
+        elif query_object.tab == 2:
+            conditions.append(func.find_in_set(str(user_id), OaLoan.check_uids) > 0)
+        elif query_object.tab == 3:
+            conditions.append(func.find_in_set(str(user_id), OaLoan.check_history_uids) > 0)
+        elif query_object.tab == 4:
+            conditions.append(func.find_in_set(str(user_id), OaLoan.check_copy_uids) > 0)
+        elif query_object.tab == 5:
+            conditions.append(OaLoan.pay_status == 1)
+
         # 根据不同的查询条件添加特定条件
-        if query_object.admin_id:
-            conditions.append(OaLoan.admin_id == query_object.admin_id)
 
         elif query_object.check_uids:
             conditions.append(func.find_in_set(query_object.check_uids, OaLoan.check_uids) > 0)
@@ -97,7 +109,7 @@ class LoanDao:
 
         # 应用所有条件
         if conditions:
-            query = query.where(*conditions)
+            query = query.where(*conditions).group_by(OaLoan.id)
 
         # 排序
         query = query.order_by(desc(OaLoan.create_time))

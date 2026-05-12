@@ -22,16 +22,19 @@ from utils.timeformat import int_time
 class OaLoanService:
     @classmethod
     async def get_page_list_service(cls, query_db: AsyncSession, query_object: OaLoanPageQueryModel,
-                                    data_scope_sql: ColumnElement, is_page: bool = False) -> PageModel[
+                                    data_scope_sql: ColumnElement, user_id: int, is_page: bool = False) -> PageModel[
                                                                                                  OaLoanBaseModel] | \
                                                                                              list[dict[str, Any]]:
-        query_list = await LoanDao.get_page_list(query_db, query_object, data_scope_sql, is_page)
+        query_list = await LoanDao.get_page_list(query_db, query_object, data_scope_sql, user_id, is_page)
         if is_page:
             row_list = []
             for row in query_list.rows:
                 row = dict(row)
                 row.update(row['OaLoan'].to_dict())
                 row.pop('OaLoan')
+                if row.get('check_name') is not None:
+                    row['check_name'] = row['check_name'].strip(',')
+                    row['check_name'] = row['check_name'].replace(',,', ',')
                 row_list.append(ModelConverter.convert_to_camel_case(row))
             query_list.rows = row_list
             result_list =  query_list
@@ -62,17 +65,18 @@ class OaLoanService:
     async def update_service(cls, query_db: AsyncSession, model: OaLoanBaseModel) -> CrudResponseModel:
         try:
             loan = await LoanDao.get_info_by_id(query_db, model.id)
-            if loan['OaLoan'].check_status !=0 or loan['OaLoan'].plan_status !=4:
+            if loan['OaLoan'].check_status !=0 and loan['OaLoan'].check_status !=4:
                 return CrudResponseModel(is_success=False, message='原单据已审核，无法编辑')
             model.update_time = int(datetime.now().timestamp())
             model.loan_time = int_time(model.loan_time)
             model.plan_time = int_time(model.plan_time)
-            if model.loan_id:
+            if model.id:
                 loan = await LoanDao.get_info_by_id(query_db, model.id)
+                loan = loan['OaLoan']
                 model.cost = model.cost - loan.cost
                 if model.cost < 0:
                     model.cost = Decimal(0)
-            change = await LoanDao.update(query_db, model)
+            await LoanDao.update(query_db, model)
             await query_db.commit()
             return CrudResponseModel(is_success=True, message='修改成功')
         except Exception as e:
@@ -110,7 +114,7 @@ class OaLoanService:
     async def del_by_id(cls, db: AsyncSession, id: int):
         try:
             loan = await LoanDao.get_info_by_id(db, id)
-            if loan['OaLoan'].check_status !=0 or loan['OaLoan'].check_status !=4:
+            if loan['OaLoan'].check_status !=0 and loan['OaLoan'].check_status !=4:
                 return CrudResponseModel(is_success=False, message='原单据已经审核或者审核中，无法删除')
             await LoanDao.del_by_id(db, id)
             return CrudResponseModel(is_success=True, message='删除成功')

@@ -2,6 +2,7 @@ import json
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from exceptions.exception import ServiceException
 from module_admin.dao.dept_dao import DeptDao
 from module_admin.dao.post_dao import PostDao
 from module_admin.dao.user_dao import UserDao
@@ -372,7 +373,6 @@ class CheckService:
                     check_uid = await DeptDao.get_dept_manages(db, user_id,False)
                     if check_uid:
                         a_uids = check_uid.split(',')
-                        check_uids.extend(a_uids)
                     flow_name = '当前部门负责人'
                     check_position_id = 0
                 if flow_step['check_role'] == '2':
@@ -425,7 +425,7 @@ class CheckService:
                     'check_flow_id': query_model.flow_id,
                     "check_step_sort": 0,
                     "check_status": 1,
-                    "check_uids": ','.join(str(uid) for uid in step[0].check_uids) if step[0].check_uids else '',
+                    "check_uids": step[0].check_uids,
                     "check_copy_uids": query_model.check_copy_uids if query_model.check_copy_uids else '',
                     "action_id": query_model.action_id
                 }
@@ -492,6 +492,8 @@ class CheckService:
         else:
             check_table = flow_cate.check_table
             detail = await cls.get_check_table_detail(db, check_table, action_id)
+            if detail is None:
+                raise ServiceException(message='审核流程设置错误，流程与数据不对应！')
             detail = dict(detail)
 
             # 创建人

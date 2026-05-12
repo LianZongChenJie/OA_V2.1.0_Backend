@@ -93,6 +93,7 @@ class OaLoanQueryModel(OaLoanBaseModel):
 
     begin_time: str | None = Field(None, description='创建时间开始时间')
     end_time: str | None = Field(None, description='创建时间结束时间')
+    tab: int | None = Field(None, description='标签: 0全部，1我申请的，2待我审批的，3，我已审批，4抄送我的，5已打款的')
 
 class OaLoanPageQueryModel(OaLoanQueryModel):
     """借支分页VO"""
