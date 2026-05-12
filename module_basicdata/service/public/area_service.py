@@ -15,6 +15,8 @@ class AreaService:
 
     @classmethod
     async def save(cls, db: AsyncSession, area: AreaTreeModel) -> CrudResponseModel:
+        if not await cls.check_id_unique_services(db, area.id):
+            raise ServiceException(message=f'新增{area.name}失败，区域代码已存在')
         if not await cls.check_name_unique_services(db, area):
             raise ServiceException(message=f'新增{area.name}失败，名称已存在')
         result = await AreaDao.add(db, area)
@@ -89,3 +91,17 @@ class AreaService:
         if model and model.name == name:
             return CommonConstant.NOT_UNIQUE
         return CommonConstant.UNIQUE
+
+    @classmethod
+    async def check_id_unique_services(cls, query_db: AsyncSession, new_id: int) -> bool:
+        """
+                校验行政id是否唯一service
+
+                :param query_db: orm对象
+                :param new_id: 新建id
+                :return: 校验结果
+                """
+        model = await AreaDao.get_area_id_count(query_db, new_id)
+        if model == 0:
+            return CommonConstant.UNIQUE
+        return CommonConstant.NOT_UNIQUE
