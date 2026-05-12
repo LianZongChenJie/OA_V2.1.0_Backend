@@ -34,8 +34,10 @@ async def get_page_list(
     query_db: Annotated[AsyncSession, DBSessionDependency()],
     query_object: Annotated[OaExpensePageQueryModel, Query()],
     data_scope_sql: Annotated[ColumnElement, DataScopeDependency(OaExpense)],
+    current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
 ) -> Response:
-    result = await OaExpenseService.get_page_list_service(query_db,query_object,data_scope_sql,True)
+    user_id = current_user.user.user_id
+    result = await OaExpenseService.get_page_list_service(query_db,query_object,data_scope_sql,user_id,True)
     return ResponseUtil.success(model_content=result)
 
 @finance_expense_controller.get(
@@ -54,7 +56,7 @@ async def get_page_list(
 ) -> Response:
     user_id = current_user.user.user_id
     query_object.admin_id = user_id
-    result = await OaExpenseService.get_page_list_service(query_db,query_object,data_scope_sql,True)
+    result = await OaExpenseService.get_page_list_service(query_db,query_object,data_scope_sql,user_id,True)
     return ResponseUtil.success(model_content=result)
 
 @finance_expense_controller.post(

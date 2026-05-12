@@ -20,10 +20,10 @@ class OaExpenseService:
     time_fields = ['create_time', 'update_time', 'income_month', 'expense_time']
     @classmethod
     async def get_page_list_service(cls, query_db: AsyncSession, query_object: OaExpensePageQueryModel,
-                                    data_scope_sql: ColumnElement, is_page: bool = False) -> PageModel[
+                                    data_scope_sql: ColumnElement, user_id: int ,is_page: bool = False) -> PageModel[
                                                                                                  OaExpenseBaseModel] | \
                                                                                              list[dict[str, Any]]:
-        query_list = await ExpenseDao.get_page_list(query_db, query_object, data_scope_sql, is_page)
+        query_list = await ExpenseDao.get_page_list(query_db, query_object, data_scope_sql, user_id, is_page)
         if is_page:
             row_list = []
             for row in query_list.rows:
@@ -31,6 +31,9 @@ class OaExpenseService:
                 row.update(row['OaExpense'].to_dict())
                 row.pop('OaExpense')
                 row['income_month'] = format_month(row['income_month'])
+                if row.get('check_name') is not None:
+                    row['check_name'] = row['check_name'].strip(',')
+                    row['check_name'] = row['check_name'].replace(',,', ',')
                 row_list.append(ModelConverter.convert_to_camel_case(row))
             query_list.rows = row_list
             result_list = query_list
@@ -56,6 +59,11 @@ class OaExpenseService:
                 if model.cost < 0:
                     model.cost = Decimal(0)
                     model.expense_time = int_time(model.expense_time)
+            else:
+                model.loan_id = 0
+            if model.project_id is None or model.project_id == '':
+                model.project_id = 0
+
             model = await ExpenseDao.add(query_db, model)
             for item in interfix:
                 item.create_time = int(datetime.now().timestamp())

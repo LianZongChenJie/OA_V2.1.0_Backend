@@ -19,10 +19,10 @@ class OaExpenseBaseModel(BaseModel):
     expense_time: int| str | None= Field(None, description='原始单据日期')
     admin_id: int | None= Field(None, description='报销人')
     did: int | None= Field(None, description='报销部门ID')
-    loan_id: int | None= Field(None, description='关联借支ID')
+    loan_id: int | str |None= Field(None, description='关联借支ID')
     balance_cost:  Decimal | None= Field(None, description='冲账金额')
     pay_amount:  Decimal | None= Field(None, description='需打款金额')
-    project_id: int | None= Field(None, description='关联项目ID')
+    project_id: int | str |None= Field(None, description='关联项目ID')
     file_ids: str | None= Field(None, description='附件ID，如:1,2,3')
     pay_status: int | None= Field(None, description='打款状态 0待打款,1已打款')
     pay_admin_id: int | None= Field(None, description='打款人ID')
@@ -79,6 +79,7 @@ class OaExpensePageQueryModel(OaExpenseQueryModel):
     """报销分页查询VO"""
     page_num: int = Field(1, description="页码")
     page_size: int = Field(20, description="每页大小")
+    tab: int | None = Field(None, description="tab标识，1我申请的，2我审批的，3我已审批，4抄送我的，5已打款")
 
 class OaExpenseDetailModel(OaExpenseBaseModel):
     interfix: list[OaExpenseInterfixBaseModel] | None = Field([], description="费用明细")

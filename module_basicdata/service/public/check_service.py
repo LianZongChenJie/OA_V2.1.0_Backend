@@ -372,7 +372,7 @@ class CheckService:
                 if flow_step['check_role'] == '1':
                     check_uid = await DeptDao.get_dept_manages(db, user_id,False)
                     if check_uid:
-                        a_uids = check_uid.split(',')
+                        check_uids.extend(check_uid.split(','))
                     flow_name = '当前部门负责人'
                     check_position_id = 0
                 if flow_step['check_role'] == '2':
