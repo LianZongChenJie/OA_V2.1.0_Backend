@@ -40,4 +40,4 @@ class OaNewsQueryPageModel(OaNewsBaseModel):
 
     page_num: int | None = Field(1, description='页码')
     page_size: int | None = Field(20, description='页大小')
-    keywords: str | None = Field(None, description='关键字')
+    keyword: str | None = Field(None, description='关键字')
