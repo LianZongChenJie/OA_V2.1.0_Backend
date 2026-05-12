@@ -140,6 +140,10 @@ class TenderService:
         for field, value in enum_mapping.items():
             setattr(page_object, field, value)
 
+        # 处理空字符串的日期时间字段，转换为 None
+        if page_object.deposit_paid_time == '':
+            page_object.deposit_paid_time = None
+        
         # 时间字段处理（转为字符串匹配VO模型）
         page_object.create_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         page_object.update_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')

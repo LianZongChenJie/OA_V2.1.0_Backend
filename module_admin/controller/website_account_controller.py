@@ -59,6 +59,10 @@ async def get_website_account_list(
         # 添加查询条件
         if website_account_page_query.website_url and website_account_page_query.website_url.strip():
             query = query.where(OaWebsiteAccount.website_url.like(f'%{website_account_page_query.website_url.strip()}%'))
+        if website_account_page_query.website_name and website_account_page_query.website_name.strip():
+            query = query.where(OaWebsiteAccount.website_name.like(f'%{website_account_page_query.website_name.strip()}%'))
+        if website_account_page_query.has_uk and website_account_page_query.has_uk.strip():
+            query = query.where(OaWebsiteAccount.has_uk == website_account_page_query.has_uk.strip())
         
         # 排序
         query = query.order_by(OaWebsiteAccount.sort.asc())
