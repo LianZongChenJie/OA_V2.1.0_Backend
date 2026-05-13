@@ -94,7 +94,7 @@ async def add_ticket(
 )->Response:
     model.admin_id = current_user.user.user_id
     model.did = current_user.user.dept.dept_id
-    result = await TicketService().add_service(query_db, model)
+    result = await TicketService.add_service(query_db, model)
     return ResponseUtil.success(msg=result.message)
 
 @finance_invoice_controller.get(

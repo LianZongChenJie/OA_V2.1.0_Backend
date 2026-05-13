@@ -155,9 +155,9 @@ class InvoiceDao:
     async def add(cls, db: AsyncSession, model: OaInvoiceBaseModel):
         db_model = OaInvoice(**model.model_dump(exclude={"id", "create_time",'open_time', 'enter_time'}, exclude_none=True),
                                  create_time=model.create_time, open_time=model.open_time, enter_time=model.enter_time)
-        if db_model.project_id is None:
+        if db_model.project_id is None or db_model.project_id == '':
             db_model.project_id = 0
-        if db_model.contract_id is None:
+        if db_model.contract_id is None or db_model.contract_id == '':
             db_model.contract_id = 0
         db.add(db_model)
         await db.commit()
@@ -169,8 +169,8 @@ class InvoiceDao:
         result = await db.execute(
             update(OaInvoice)
             .values(
-                **model.model_dump(exclude={"id", "update_time",'open_time', 'enter_time'}, exclude_none=True),
-                update_time=model.update_time,  open_time=model.open_time, enter_time=model.enter_time,
+                **model.model_dump(exclude={"id", "update_time",'open_time', 'enter_time', 'project_id', 'contract_id'}, exclude_none=True),
+                update_time=model.update_time,  open_time=model.open_time, enter_time=model.enter_time, project_id = model.project_id, contract_id = model.contract_id
             )
             .where(OaInvoice.id == model.id)
         )

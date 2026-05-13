@@ -134,8 +134,8 @@ class TicketDao:
         result = await db.execute(
             update(OaTicket)
             .values(
-                **model.model_dump(exclude={"id", "update_time",'open_time', 'pay_time'}, exclude_none=True),
-                update_time=model.update_time,  open_time=model.open_time, pay_time=model.pay_time
+                **model.model_dump(exclude={"id", "update_time",'open_time', 'pay_time','purchase_id', 'project_id'}, exclude_none=True),
+                update_time=model.update_time,  open_time=model.open_time, pay_time=model.pay_time, purchase_id = model.purchase_id, project_id = model.project_id
             )
             .where(OaTicket.id == model.id)
         )

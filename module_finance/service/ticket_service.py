@@ -47,6 +47,10 @@ class TicketService:
                 model.update_time = int(datetime.now().timestamp())
                 model.open_time = int_time(model.open_time)
                 model.pay_time = int_time(model.pay_time)
+                if model.project_id == '':
+                    model.project_id = 0
+                if model.purchase_id == '':
+                    model.purchase_id = 0
                 await TicketDao.update(query_db, model)
                 return CrudResponseModel(is_success=True, message='修改成功')
             else:

@@ -47,6 +47,10 @@ class InvoiceService:
                 model.update_time = int(datetime.now().timestamp())
                 model.open_time = int_time(model.open_time)
                 model.enter_time = int_time(model.enter_time)
+                if model.project_id == '':
+                    model.project_id = 0
+                if model.contract_id == '':
+                    model.contract_id = 0
                 await InvoiceDao.update(query_db, model)
                 return CrudResponseModel(is_success=True, message='修改成功')
             else:

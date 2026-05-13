@@ -67,9 +67,6 @@ class OaLoanService:
             model.loan_time = int_time(model.loan_time)
             model.plan_time = int_time(model.plan_time)
             if model.id:
-                loan = await LoanDao.get_info_by_id(query_db, model.id)
-                loan = loan['OaLoan']
-                model.cost = model.cost - loan.cost
                 if model.cost < 0:
                     model.cost = Decimal(0)
             await LoanDao.update(query_db, model)
