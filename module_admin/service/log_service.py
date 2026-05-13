@@ -30,6 +30,7 @@ from module_admin.entity.vo.log_vo import (
     UnlockUser,
 )
 from module_admin.service.dict_service import DictDataService
+from utils.camel_converter import ModelConverter
 from utils.excel_util import ExcelUtil
 from utils.log_util import logger
 
@@ -52,7 +53,13 @@ class OperationLogService:
         :return: 操作日志列表信息对象
         """
         operation_log_list_result = await OperationLogDao.get_operation_log_list(query_db, query_object, is_page)
-
+        log_list = []
+        for log in operation_log_list_result.rows:
+            log = dict(log)
+            log.update(log['SysOperLog'].to_dict())
+            log.pop('SysOperLog')
+            log_list.append(ModelConverter.convert_to_camel_case(log))
+        operation_log_list_result.rows = log_list
         return operation_log_list_result
 
     @classmethod
@@ -259,6 +266,13 @@ class LoginLogService:
         :return: 登录日志列表信息对象
         """
         operation_log_list_result = await LoginLogDao.get_login_log_list(query_db, query_object, is_page)
+        log_list = []
+        for log in operation_log_list_result.rows:
+            log = dict(log)
+            log.update(log['SysLogininfor'].to_dict())
+            log.pop('SysLogininfor')
+            log_list.append(ModelConverter.convert_to_camel_case(log))
+        operation_log_list_result.rows = log_list
 
         return operation_log_list_result
 

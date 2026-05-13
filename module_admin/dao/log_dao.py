@@ -39,12 +39,17 @@ class OperationLogDao:
         else:
             order_by_column = desc(SysOperLog.oper_time)
         query = (
-            select(SysOperLog)
+            select(SysOperLog,
+                   SysUser.nick_name.label("oper_nick_name")
+                   )
+            .join(SysUser, SysUser.user_name == SysOperLog.oper_name, isouter=True)
             .where(
                 SysOperLog.title.like(f'%{query_object.title}%') if query_object.title else True,
                 SysOperLog.oper_name.like(f'%{query_object.oper_name}%') if query_object.oper_name else True,
                 SysOperLog.business_type == query_object.business_type if query_object.business_type else True,
                 SysOperLog.status == query_object.status if query_object.status else True,
+                SysOperLog.oper_ip.like(f'%{query_object.oper_ip}%') if query_object.oper_ip else True,
+                SysUser.nick_name.like(f'%{query_object.oper_nick_name}%') if query_object.oper_nick_name else True,
                 SysOperLog.oper_time.between(
                     datetime.combine(TimeFormatUtil.parse_date(query_object.begin_time), time(00, 00, 00)),
                     datetime.combine(TimeFormatUtil.parse_date(query_object.end_time), time(23, 59, 59)),
@@ -55,7 +60,7 @@ class OperationLogDao:
             .distinct()
             .order_by(order_by_column)
         )
-        operation_log_list: PageModel | list[dict[str, Any]] = await PageUtil.paginate(
+        operation_log_list: PageModel | list[dict[str, Any]] = await PageUtil.paginate_dict(
             db, query, query_object.page_num, query_object.page_size, is_page
         )
 
@@ -212,11 +217,15 @@ class LoginLogDao:
         else:
             order_by_column = desc(SysLogininfor.login_time)
         query = (
-            select(SysLogininfor)
+            select(SysLogininfor,
+                   SysUser.nick_name.label("oper_nick_name")
+                   )
+            .join(SysUser, SysUser.user_name == SysLogininfor.user_name, isouter=True)
             .where(
                 SysLogininfor.ipaddr.like(f'%{query_object.ipaddr}%') if query_object.ipaddr else True,
                 SysLogininfor.user_name.like(f'%{query_object.user_name}%') if query_object.user_name else True,
                 SysLogininfor.status == query_object.status if query_object.status else True,
+                SysUser.nick_name.like(f'%{query_object.oper_nick_name}%') if query_object.oper_nick_name else True,
                 SysLogininfor.login_time.between(
                     datetime.combine(TimeFormatUtil.parse_date(query_object.begin_time), time(00, 00, 00)),
                     datetime.combine(TimeFormatUtil.parse_date(query_object.end_time), time(23, 59, 59)),
@@ -227,7 +236,7 @@ class LoginLogDao:
             .distinct()
             .order_by(order_by_column)
         )
-        login_log_list: PageModel | list[dict[str, Any]] = await PageUtil.paginate(
+        login_log_list: PageModel | list[dict[str, Any]] = await PageUtil.paginate_dict(
             db, query, query_object.page_num, query_object.page_size, is_page
         )
 

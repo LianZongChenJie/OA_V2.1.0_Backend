@@ -29,10 +29,11 @@ class OperLogModel(BaseModel):
     oper_location: str | None = Field(default=None, description='操作地点')
     oper_param: str | None = Field(default=None, description='请求参数')
     json_result: str | None = Field(default=None, description='返回参数')
-    status: Literal[0, 1] | None = Field(default=None, description='操作状态（0正常 1异常）')
+    status: Literal[0, 1,"0","1"] | None = Field(default=None, description='操作状态（0正常 1异常）')
     error_msg: str | None = Field(default=None, description='错误消息')
     oper_time: datetime | None = Field(default=None, description='操作时间')
     cost_time: int | None = Field(default=None, description='消耗时间')
+    oper_nick_name: str | None = Field(default=None, description='操作人员昵称')
 
 
 class SimpleOperLogModel(BaseModel):
@@ -101,6 +102,8 @@ class LogininforModel(BaseModel):
     status: Literal['0', '1'] | None = Field(default=None, description='登录状态（0成功 1失败）')
     msg: str | None = Field(default=None, description='提示消息')
     login_time: datetime | None = Field(default=None, description='访问时间')
+    oper_nick_name: str | None = Field(default=None, description='操作人员昵称')
+
 
 
 class LoginLogPageQueryModel(LogininforModel):
