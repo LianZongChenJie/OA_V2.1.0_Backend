@@ -60,6 +60,7 @@ class TicketService:
                 model.create_time = int(datetime.now().timestamp())
                 model.open_time = int_time(model.open_time)
                 model.pay_time = int_time(model.pay_time)
+                model.open_status = 0
                 await TicketDao.add(query_db, model)
                 await query_db.commit()
                 return CrudResponseModel(is_success=True, message='新增成功')

@@ -20,7 +20,7 @@ class OaTicketBaseModel(BaseModel):
     amount: Decimal | None = Field(None, description='发票金额')
     did: int | None = Field(None, description='发票接受部门')
     admin_id: int | None = Field(None, description='发票接受人')
-    open_status: int | None = Field(None, description='开票状态：1正常 2已作废')
+    open_status: int | None = Field(None, description='开票状态：0未开票，1正常 2已作废')
     open_time: int | str |None = Field(None, description='发票开具时间')
     invoice_type: int | None = Field(None, description='发票类型：1增值税专用发票,2普通发票,3专用发票')
     invoice_subject: int | None = Field(None, description='关联发票主体ID')
