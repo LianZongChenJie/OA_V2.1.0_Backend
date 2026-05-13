@@ -133,8 +133,8 @@ class ExpenseDao:
         result = await db.execute(
             update(OaExpense)
             .values(
-                **model.model_dump(exclude={"id", "update_time",'income_month', 'expense_time','pay_time'}, exclude_none=True),
-                update_time=model.update_time,  income_month=model.income_month, expense_time=model.expense_time,
+                **model.model_dump(exclude={"id", "update_time",'income_month', 'expense_time','pay_time','project_id'}, exclude_none=True),
+                update_time=model.update_time,  income_month=model.income_month, expense_time=model.expense_time,project_id=model.project_id,
             )
             .where(OaExpense.id == model.id)
         )

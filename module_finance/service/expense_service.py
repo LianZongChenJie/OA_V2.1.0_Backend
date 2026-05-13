@@ -98,6 +98,8 @@ class OaExpenseService:
                     model.expense_time = int_time(model.expense_time)
             else:
                 model.loan_id = 0
+            if model_detail.project_id == '':
+                model.project_id = 0
             await ExpenseInterfixDao.delete_by_exid(query_db, model.id)
             await ExpenseDao.update(query_db, model)
             for item in interfix:
