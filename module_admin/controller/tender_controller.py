@@ -81,25 +81,15 @@ async def get_tender_list(
                 else:
                     row_dict = jsonable_encoder(item)
                 
-                # 时间格式化：处理多种时间格式
+                # 时间格式化：将时间戳转换为可读格式
                 if 'createTime' in row_dict and row_dict['createTime']:
                     try:
-                        # 处理 ISO 8601 格式（包含T）
-                        if isinstance(row_dict['createTime'], str) and 'T' in row_dict['createTime']:
-                            row_dict['createTime'] = row_dict['createTime'].replace('T', ' ').split('.')[0]
-                        # 处理时间戳格式
-                        elif isinstance(row_dict['createTime'], (int, float)):
-                            row_dict['createTime'] = datetime.fromtimestamp(row_dict['createTime']).strftime('%Y-%m-%d %H:%M:%S')
+                        row_dict['createTime'] = datetime.fromtimestamp(row_dict['createTime']).strftime('%Y-%m-%d %H:%M:%S')
                     except:
                         pass
                 if 'updateTime' in row_dict and row_dict['updateTime']:
                     try:
-                        # 处理 ISO 8601 格式（包含T）
-                        if isinstance(row_dict['updateTime'], str) and 'T' in row_dict['updateTime']:
-                            row_dict['updateTime'] = row_dict['updateTime'].replace('T', ' ').split('.')[0]
-                        # 处理时间戳格式
-                        elif isinstance(row_dict['updateTime'], (int, float)):
-                            row_dict['updateTime'] = datetime.fromtimestamp(row_dict['updateTime']).strftime('%Y-%m-%d %H:%M:%S')
+                        row_dict['updateTime'] = datetime.fromtimestamp(row_dict['updateTime']).strftime('%Y-%m-%d %H:%M:%S')
                     except:
                         pass
                 

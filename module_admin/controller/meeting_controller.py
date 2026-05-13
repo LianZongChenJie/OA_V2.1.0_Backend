@@ -251,11 +251,15 @@ async def add_meeting_order(
     request: Request,
     page_object: AddMeetingOrderModel,
     db: Annotated[AsyncSession, DBSessionDependency()],
+    current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
 ) -> Response:
     """
     新增预定接口
     """
     try:
+        # 设置发布人为当前用户
+        if not page_object.admin_id:
+            page_object.admin_id = current_user.user.user_id
         result = await MeetingOrderService.add_meeting_order_services(request, db, page_object)
         logger.info(result.message)
         return ResponseUtil.success(msg=result.message)
