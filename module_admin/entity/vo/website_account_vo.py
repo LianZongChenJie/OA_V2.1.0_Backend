@@ -34,6 +34,8 @@ class WebsiteAccountModel(BaseModel):
 class WebsiteAccountPageQueryModel(PageQueryModel):
     """网站账号信息分页查询模型"""
     website_url: Optional[str] = Field(None, description='网址（模糊查询）')
+    website_name: Optional[str] = Field(None, description='网站名称（模糊查询）')
+    has_uk: Optional[str] = Field(None, description='是否有UK（精确匹配）')
 
 # 新增/编辑/删除模型
 class AddWebsiteAccountModel(BaseModel):

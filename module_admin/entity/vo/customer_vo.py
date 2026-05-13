@@ -1,4 +1,4 @@
-from typing import Literal, Optional
+from typing import Literal, Optional, Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from pydantic.alias_generators import to_camel
@@ -31,6 +31,14 @@ class CustomerModel(BaseModel):
     """
 
     model_config = ConfigDict(alias_generator=to_camel, from_attributes=True)
+
+    @field_validator('belong_uid', 'belong_did', mode='before')
+    @classmethod
+    def validate_belong_fields(cls, value: Any) -> int | None:
+        """处理 belongUid 和 belongDid 字段，将空字符串转换为 None"""
+        if value == '' or value == 'null':
+            return None
+        return value
 
     id: int | None = Field(default=None, description='客户 ID')
     name: str | None = Field(default=None, description='客户名称')
@@ -116,12 +124,18 @@ class CustomerPageQueryModel(CustomerModel):
     page_num: int = Field(default=1, description='当前页码')
     page_size: int = Field(default=10, description='每页记录数')
     keywords: str | None = Field(default=None, description='搜索关键词')
+    name: str | None = Field(default=None, description='客户名称（兼容前端）')
     tab: int | None = Field(default=0, description='标签页：0 全部，1 我的客户，2 下属客户，3 分享客户')
     customer_status_filter: int | None = Field(default=None, description='客户状态筛选')
+    customer_status: int | None = Field(default=None, description='客户状态（兼容前端）')
     industry_id_filter: int | None = Field(default=None, description='行业筛选')
+    industry_id: int | None = Field(default=None, description='行业（兼容前端）')
     source_id_filter: int | None = Field(default=None, description='来源筛选')
+    source_id: int | None = Field(default=None, description='来源（兼容前端）')
     grade_id_filter: int | None = Field(default=None, description='等级筛选')
+    grade_id: int | None = Field(default=None, description='等级（兼容前端）')
     intent_status_filter: int | None = Field(default=None, description='意向状态筛选')
+    intent_status: int | None = Field(default=None, description='意向状态（兼容前端）')
     follow_time_start: int | None = Field(default=None, description='跟进开始时间')
     follow_time_end: int | None = Field(default=None, description='跟进结束时间')
     next_time_start: int | None = Field(default=None, description='下次跟进开始时间')

@@ -162,6 +162,17 @@ async def sea_customer_list(
 ) -> Response:
     """公海客户列表"""
     try:
+        from module_basicdata.dao.custom.customer_gradle_dao import CustomerGradleDao
+        from module_basicdata.dao.custom.customer_source_dao import CustomerSourceDao
+        from module_basicdata.dao.custom.industry_dao import IndustryDao
+        from module_admin.entity.do.customer_contact_do import OaCustomerContact
+        from utils.time_format_util import timestamp_to_datetime
+        from utils.common_util import CamelCaseUtil
+        
+        # 状态映射
+        status_map = {0: '未设置', 1: '待跟进', 2: '跟进中', 3: '已成交', 4: '已流失'}
+        intent_map = {0: '未设置', 1: '低', 2: '中', 3: '高', 4: '极高'}
+        
         # 基础查询条件：未删除、未废弃、无归属人
         conditions = [
             OaCustomer.delete_time == 0,
@@ -214,31 +225,131 @@ async def sea_customer_list(
         result = await query_db.execute(query)
         customer_list = result.scalars().all()
         
-        # 转换结果
-        customers = [
-            CustomerModel(
-                id=c.id,
-                name=c.name,
-                source_id=c.source_id,
-                grade_id=c.grade_id,
-                industry_id=c.industry_id,
-                address=c.address,
-                content=c.content,
-                market=c.market,
-                create_time=c.create_time,
-                belong_uid=c.belong_uid,
-                belong_did=c.belong_did,
-                belong_time=c.belong_time,
-                delete_time=c.delete_time,
-            )
-            for c in customer_list
-        ]
+        # 转换结果，添加扩展信息
+        customers = []
+        for c in customer_list:
+            customer_dict = {
+                'id': c.id,
+                'name': c.name,
+                'source_id': c.source_id,
+                'grade_id': c.grade_id,
+                'industry_id': c.industry_id,
+                'services_id': c.services_id,
+                'provinceid': c.provinceid,
+                'cityid': c.cityid,
+                'distid': c.distid,
+                'townid': c.townid,
+                'address': c.address,
+                'customer_status': c.customer_status,
+                'intent_status': c.intent_status,
+                'contact_first': c.contact_first,
+                'admin_id': c.admin_id,
+                'belong_uid': c.belong_uid,
+                'belong_did': c.belong_did,
+                'belong_time': c.belong_time,
+                'distribute_time': c.distribute_time,
+                'follow_time': c.follow_time,
+                'next_time': c.next_time,
+                'discard_time': c.discard_time,
+                'share_ids': c.share_ids,
+                'content': c.content,
+                'market': c.market,
+                'remark': c.remark,
+                'tax_bank': c.tax_bank,
+                'tax_banksn': c.tax_banksn,
+                'tax_num': c.tax_num,
+                'tax_mobile': c.tax_mobile,
+                'tax_address': c.tax_address,
+                'is_lock': c.is_lock,
+                'create_time': c.create_time,
+                'update_time': c.update_time,
+                'delete_time': c.delete_time,
+            }
+            
+            # 获取行业名称
+            if c.industry_id and int(c.industry_id) > 0:
+                industry_info = await IndustryDao.get_industry_info(query_db, int(c.industry_id))
+                customer_dict['industry'] = industry_info.title if industry_info else None
+            
+            # 获取等级名称
+            if c.grade_id and int(c.grade_id) > 0:
+                grade_info = await CustomerGradleDao.get_info_by_id(query_db, int(c.grade_id))
+                customer_dict['grade'] = grade_info.title if grade_info else None
+            
+            # 获取来源名称
+            if c.source_id and int(c.source_id) > 0:
+                source_info = await CustomerSourceDao.get_info_by_id(query_db, int(c.source_id))
+                customer_dict['source'] = source_info.title if source_info else None
+            
+            # 获取客户状态名称
+            if c.customer_status is not None:
+                customer_dict['customer_status_name'] = status_map.get(int(c.customer_status), '未知')
+            else:
+                customer_dict['customer_status_name'] = '未设置'
+            
+            # 获取意向状态名称
+            if c.intent_status is not None:
+                customer_dict['intent_status_name'] = intent_map.get(int(c.intent_status), '未知')
+            else:
+                customer_dict['intent_status_name'] = '未设置'
+            
+            # 获取第一联系人信息
+            if c.contact_first and int(c.contact_first) > 0:
+                contact_query = select(OaCustomerContact).where(
+                    OaCustomerContact.id == c.contact_first,
+                    OaCustomerContact.delete_time == 0
+                )
+                contact_result = await query_db.execute(contact_query)
+                contact_info = contact_result.scalars().first()
+                if contact_info:
+                    customer_dict['contact_name'] = contact_info.name
+                    customer_dict['contact_mobile'] = contact_info.mobile
+                    customer_dict['contact_email'] = contact_info.email
+            
+            # 获取所属员工和所属部门（公海客户通常为空，显示'未分配'）
+            if c.belong_uid and int(c.belong_uid) > 0:
+                from module_admin.entity.do.user_do import OaUser
+                user_query = select(OaUser).where(OaUser.user_id == c.belong_uid)
+                user_result = await query_db.execute(user_query)
+                user_info = user_result.scalars().first()
+                if user_info:
+                    customer_dict['belong_name'] = user_info.nick_name
+            else:
+                customer_dict['belong_name'] = '未分配'
+            
+            if c.belong_did and int(c.belong_did) > 0:
+                from module_admin.entity.do.dept_do import OaDept
+                dept_query = select(OaDept).where(OaDept.dept_id == c.belong_did)
+                dept_result = await query_db.execute(dept_query)
+                dept_info = dept_result.scalars().first()
+                if dept_info:
+                    customer_dict['belong_department'] = dept_info.dept_name
+            else:
+                customer_dict['belong_department'] = '未分配'
+            
+            # 格式化时间
+            if c.create_time and int(c.create_time) > 0:
+                customer_dict['create_time_str'] = timestamp_to_datetime(int(c.create_time), '%Y-%m-%d %H:%M:%S')
+            if c.belong_time and int(c.belong_time) > 0:
+                customer_dict['belong_time_str'] = timestamp_to_datetime(int(c.belong_time), '%Y-%m-%d %H:%M:%S')
+            if c.follow_time and int(c.follow_time) > 0:
+                customer_dict['follow_time_str'] = timestamp_to_datetime(int(c.follow_time), '%Y-%m-%d %H:%M:%S')
+            if c.next_time and int(c.next_time) > 0:
+                customer_dict['next_time_str'] = timestamp_to_datetime(int(c.next_time), '%Y-%m-%d %H:%M:%S')
+            if c.distribute_time and int(c.distribute_time) > 0:
+                customer_dict['distribute_time_str'] = timestamp_to_datetime(int(c.distribute_time), '%Y-%m-%d %H:%M:%S')
+            if c.update_time and int(c.update_time) > 0:
+                customer_dict['update_time_str'] = timestamp_to_datetime(int(c.update_time), '%Y-%m-%d %H:%M:%S')
+            
+            # 转换为驼峰命名
+            customer_dict = CamelCaseUtil.transform_result(customer_dict)
+            customers.append(customer_dict)
         
         # 计算是否有下一页
         has_next = (page_num * page_size) < total
         
         return ResponseUtil.success(
-            rows=[customer.model_dump(by_alias=True) for customer in customers],
+            rows=customers,
             dict_content={
                 'pageNum': page_num,
                 'pageSize': page_size,

@@ -553,12 +553,6 @@ async def add_task_hour(
     
     logger.info(f'新增工时 - 开始处理，任务ID: {hour_data.tid}')
     
-    # 先物理删除该任务下的所有工时记录
-    from sqlalchemy import text as sql_text
-    delete_sql = sql_text("DELETE FROM oa_schedule WHERE tid = :tid")
-    await query_db.execute(delete_sql, {'tid': hour_data.tid})
-    logger.info(f'新增工时 - 已删除任务 {hour_data.tid} 下的所有工时记录')
-    
     # 验证时间字段
     if not hour_data.start_time or not hour_data.end_time:
         raise ServiceException(message='开始时间和结束时间不能为空')
