@@ -20,6 +20,8 @@ class TenderDao:
             cls, db: AsyncSession, query_object: TenderPageQueryModel, is_page: bool = False
     ) -> PageModel | list[dict[str, Any]]:
         """获取投标信息列表"""
+        from module_admin.entity.do.user_do import SysUser
+        
         query = select(OaProjectTender).where(OaProjectTender.delete_time == 0)
 
         # 添加查询条件
@@ -30,7 +32,17 @@ class TenderDao:
         if query_object.project_name and query_object.project_name.strip():
             query = query.where(OaProjectTender.project_name.like(f'%{query_object.project_name.strip()}%'))
         if query_object.tender_leader and query_object.tender_leader.strip():
-            query = query.where(OaProjectTender.tender_leader.like(f'%{query_object.tender_leader.strip()}%'))
+            # 根据username查找用户姓名
+            user_result = await db.execute(
+                select(SysUser.nick_name)
+                .where(SysUser.user_name == query_object.tender_leader.strip())
+            )
+            user_name = user_result.scalar_one_or_none()
+            # 如果找到用户姓名，用姓名查询；否则用传入的值直接查询
+            if user_name:
+                query = query.where(OaProjectTender.tender_leader.like(f'%{user_name}%'))
+            else:
+                query = query.where(OaProjectTender.tender_leader.like(f'%{query_object.tender_leader.strip()}%'))
         if query_object.is_tender_submitted:
             query = query.where(OaProjectTender.is_tender_submitted == query_object.is_tender_submitted)
         if query_object.bid_result and query_object.bid_result.strip():
