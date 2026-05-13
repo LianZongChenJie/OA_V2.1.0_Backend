@@ -80,7 +80,6 @@ async def update_basicdata_template(
     request: Request,
     add_template: TemplateBaseModel,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
-    current_user: Annotated[CurrentUserModel, CurrentUserDependency()]
 ) -> Response:
     # add_template.admin_id = current_user.user.user_name
     add_template_result = await TemplateService.update_template_services(query_db, add_template)

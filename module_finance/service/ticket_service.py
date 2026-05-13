@@ -7,7 +7,7 @@ from module_finance.entity.do.ticket_do import OaTicket
 from module_personnel.dao.flow_record_dao import FlowRecordDao
 from sqlalchemy.sql import ColumnElement
 from module_finance.entity.vo.ticket_vo import OaTicketBaseModel, \
-    OaTicketPageQueryModel, OaTicketPayMentDetailModel, OaTicketPaymentBaseModel
+    OaTicketPageQueryModel, OaTicketPaymentBaseModel
 from common.vo import PageModel, CrudResponseModel
 from datetime import datetime
 from utils.camel_converter import ModelConverter
@@ -17,10 +17,10 @@ from utils.timeformat import int_time
 class TicketService:
     @classmethod
     async def get_page_list_service(cls, query_db: AsyncSession, query_object: OaTicketPageQueryModel,
-                                    data_scope_sql: ColumnElement, is_page: bool = False) -> PageModel[
+                                    data_scope_sql: ColumnElement,user_id:int, is_page: bool = False) -> PageModel[
                                                                                                  OaTicketBaseModel] | \
                                                                                              list[dict[str, Any]]:
-        query_list = await TicketDao.get_page_list(query_db, query_object, data_scope_sql, is_page)
+        query_list = await TicketDao.get_page_list(query_db, query_object, data_scope_sql, user_id, is_page)
         if is_page:
             row_list = []
             for row in query_list.rows:
@@ -200,14 +200,19 @@ class TicketService:
             return CrudResponseModel(is_success=False, message='操作失败')
 
     @classmethod
-    async def ticket_get_payment(cls, db: AsyncSession, invoice_id: int):
+    async def ticket_get_payment(cls, db: AsyncSession, ticket_id: int):
         try:
-            incomes = await TicketDao.ticket_get_payments(db, invoice_id)
-            invoice = await TicketDao.get_info_by_id(db, invoice_id)
-            detail = OaTicketPayMentDetailModel(invoice=None, ticket_list=None)
-            detail.ticket_list = incomes
-            detail.invoice = invoice
-            return detail
+            payments = await TicketDao.ticket_get_payments(db, ticket_id)
+            ticket = await TicketDao.get_info_dict(db, ticket_id)
+            detail = {}
+            detail.update(ticket)
+            payment_list = []
+            if payments is not None:
+                for pay in payments:
+                    pay = pay.to_dict()
+                    payment_list.append(pay)
+            detail['payments'] = payment_list
+            return ModelConverter.convert_to_camel_case(detail)
         except Exception as e:
             await db.rollback()
             raise e

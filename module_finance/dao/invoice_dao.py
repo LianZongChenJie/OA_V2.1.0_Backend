@@ -75,6 +75,10 @@ class InvoiceDao:
         if query_object.check_status is not None:
             conditions.append(OaInvoice.check_status == query_object.check_status)
 
+        if query_object.open_status is not None:
+            conditions.append(OaInvoice.open_status == query_object.open_status)
+
+
         # 通用条件：审核时间范围
         if query_object.begin_time and query_object.end_time:
             start_timestamp = int(datetime.strptime(query_object.begin_time, "%Y-%m-%d %H:%M:%S").timestamp())
