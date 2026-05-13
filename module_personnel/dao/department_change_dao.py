@@ -234,7 +234,7 @@ class DepartmentChangeDao:
         info = await ReviewUtil.enrich_checker_names(db, info)
 
         # 查询审批记录
-        records = await FlowRecordDao.get_records_by_action_id(
+        records = await FlowRecordDao.get_records_dict(
             db, dept_change.id, dept_change.check_flow_id
         )
         info['records'] = records
