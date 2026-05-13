@@ -108,3 +108,12 @@ class FlowRecordDao:
                                             OaFlowRecord.flow_id == flow_id).order_by(desc(OaFlowRecord.check_time))
         records = (await db.execute(query)).mappings().all()
         return records
+
+    @classmethod
+    async def get_count_by_action_id_flow_id_user_id_step_id(cls, db: AsyncSession, action_id: int, flow_id: int, user_id: int, step_id: int) -> int:
+        """
+        获取流程某一步，某个用户是否审批过此流程
+        """
+        query = select(func.count()).select_from(OaFlowRecord).where(OaFlowRecord.action_id == action_id, OaFlowRecord.flow_id == flow_id, OaFlowRecord.check_uid == user_id, OaFlowRecord.step_id == step_id)
+        result = await db.execute(query)
+        return result.scalar()
