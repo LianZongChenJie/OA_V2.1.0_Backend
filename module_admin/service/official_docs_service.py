@@ -396,7 +396,7 @@ class OfficialDocsService:
             raise ServiceException(message='传入公文 id 为空')
 
     @classmethod
-    async def official_docs_detail_services(cls, query_db: AsyncSession, docs_id: int) -> OfficialDocsModel:
+    async def official_docs_detail_services(cls, query_db: AsyncSession, docs_id: int) -> dict:
         """
         获取公文详细信息 service
 
@@ -407,7 +407,7 @@ class OfficialDocsService:
         docs_detail = await OfficialDocsDao.get_official_docs_detail_by_id(query_db, docs_id)
 
         if not docs_detail:
-            return OfficialDocsModel()
+            return {}
 
         docs_info = docs_detail.get('docs_info')
         result_dict = CamelCaseUtil.transform_result(docs_info)
@@ -475,6 +475,11 @@ class OfficialDocsService:
         else:
             result_dict['checkTime'] = ''
 
-        result = OfficialDocsModel(**result_dict)
+        # 查询审批记录
+        from module_personnel.dao.flow_record_dao import FlowRecordDao
+        check_flow_id = result_dict.get('checkFlowId', 0)
+        docs_id_val = docs_info.id if hasattr(docs_info, 'id') else 0
+        records = await FlowRecordDao.get_records_dict(query_db, docs_id_val, check_flow_id)
+        result_dict['records'] = CamelCaseUtil.transform_result(records)
 
-        return result
+        return result_dict

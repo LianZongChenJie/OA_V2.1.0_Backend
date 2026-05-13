@@ -66,6 +66,73 @@ class MeetingRoomService:
         获取会议室列表信息 service
         """
         room_list_result = await MeetingRoomDao.get_meeting_room_list(query_db, query_object, is_page)
+        
+        if isinstance(room_list_result, PageModel):
+            formatted_rows = []
+            for row in room_list_result.rows:
+                if isinstance(row, (list, tuple)) and len(row) >= 1:
+                    room_obj = row[0]
+                    extra_fields = list(row[1:]) if len(row) > 1 else []
+                    
+                    room_dict = CamelCaseUtil.transform_result(room_obj)
+                    
+                    if isinstance(room_dict, dict):
+                        # 格式化时间字段
+                        def format_time(timestamp):
+                            if timestamp and isinstance(timestamp, (int, float)) and timestamp > 0:
+                                try:
+                                    if timestamp > 1e12:
+                                        timestamp = timestamp / 1000
+                                    return datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')
+                                except:
+                                    return timestamp
+                            return timestamp
+                        
+                        room_dict['createTime'] = format_time(room_dict.get('createTime'))
+                        room_dict['updateTime'] = format_time(room_dict.get('updateTime'))
+                        room_dict['deleteTime'] = format_time(room_dict.get('deleteTime'))
+                        
+                        # 添加额外字段
+                        if len(extra_fields) > 0:
+                            room_dict['adminName'] = extra_fields[0] if extra_fields[0] is not None else ''
+                    
+                    formatted_rows.append(room_dict)
+            
+            room_list_result.rows = formatted_rows
+            return room_list_result
+        elif isinstance(room_list_result, list):
+            formatted_list = []
+            for row in room_list_result:
+                if isinstance(row, (list, tuple)) and len(row) >= 1:
+                    room_obj = row[0]
+                    extra_fields = list(row[1:]) if len(row) > 1 else []
+                    
+                    room_dict = CamelCaseUtil.transform_result(room_obj)
+                    
+                    if isinstance(room_dict, dict):
+                        # 格式化时间字段
+                        def format_time(timestamp):
+                            if timestamp and isinstance(timestamp, (int, float)) and timestamp > 0:
+                                try:
+                                    if timestamp > 1e12:
+                                        timestamp = timestamp / 1000
+                                    return datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')
+                                except:
+                                    return timestamp
+                            return timestamp
+                        
+                        room_dict['createTime'] = format_time(room_dict.get('createTime'))
+                        room_dict['updateTime'] = format_time(room_dict.get('updateTime'))
+                        room_dict['deleteTime'] = format_time(room_dict.get('deleteTime'))
+                        
+                        # 添加额外字段
+                        if len(extra_fields) > 0:
+                            room_dict['adminName'] = extra_fields[0] if extra_fields[0] is not None else ''
+                    
+                    formatted_list.append(room_dict)
+            
+            return formatted_list
+        
         return CamelCaseUtil.transform_result(room_list_result)
 
     @classmethod
@@ -254,12 +321,15 @@ class MeetingOrderService:
                             else:
                                 order_dict[field] = ''
                         
-                        # 确保申请人名称返回（admin_name）
-                        if not order_dict.get('adminName'):
-                            order_dict['adminName'] = extra_fields[1] if len(extra_fields) > 1 else None
+                        # 添加额外字段
+                        if len(extra_fields) > 0:
+                            order_dict['roomName'] = extra_fields[0] if extra_fields[0] is not None else ''
+                        if len(extra_fields) > 1:
+                            order_dict['adminName'] = extra_fields[1] if extra_fields[1] is not None else ''
+                        if len(extra_fields) > 2:
+                            order_dict['deptName'] = extra_fields[2] if extra_fields[2] is not None else ''
                     
-                    formatted_row = [order_dict] + extra_fields
-                    formatted_rows.append(formatted_row)
+                    formatted_rows.append(order_dict)
             
             order_list_result.rows = formatted_rows
             return order_list_result
@@ -325,12 +395,15 @@ class MeetingOrderService:
                             else:
                                 order_dict[field] = ''
                         
-                        # 确保申请人名称返回（admin_name）
-                        if not order_dict.get('adminName'):
-                            order_dict['adminName'] = extra_fields[1] if len(extra_fields) > 1 else None
+                        # 添加额外字段
+                        if len(extra_fields) > 0:
+                            order_dict['roomName'] = extra_fields[0] if extra_fields[0] is not None else ''
+                        if len(extra_fields) > 1:
+                            order_dict['adminName'] = extra_fields[1] if extra_fields[1] is not None else ''
+                        if len(extra_fields) > 2:
+                            order_dict['deptName'] = extra_fields[2] if extra_fields[2] is not None else ''
                     
-                    formatted_row = [order_dict] + extra_fields
-                    formatted_list.append(formatted_row)
+                    formatted_list.append(order_dict)
             
             return formatted_list
         
@@ -377,7 +450,7 @@ class MeetingOrderService:
             order_data['create_time'] = current_time
             order_data['update_time'] = current_time
             order_data['delete_time'] = 0
-            order_data['check_status'] = 1  # 待审核
+            order_data['check_status'] = 0  # 待审核
 
             await MeetingOrderDao.add_meeting_order_dao(query_db, order_data)
             await query_db.commit()
@@ -448,13 +521,44 @@ class MeetingOrderService:
             raise ServiceException(message='传入预定记录 id 为空')
 
     @classmethod
-    async def meeting_order_detail_services(cls, query_db: AsyncSession, order_id: int) -> MeetingOrderPageQueryModel:
+    async def meeting_order_detail_services(cls, query_db: AsyncSession, order_id: int) -> dict:
         """
         获取预定详细信息 service
         """
         order = await MeetingOrderDao.get_meeting_order_detail_by_id(query_db, order_id)
-        result = MeetingOrderPageQueryModel(**CamelCaseUtil.transform_result(order)) if order else MeetingOrderPageQueryModel()
-        return result
+        
+        if not order:
+            return {}
+        
+        # 转换为字典
+        order_dict = CamelCaseUtil.transform_result(order)
+        
+        # 格式化时间字段
+        def format_time(timestamp):
+            if timestamp and isinstance(timestamp, (int, float)) and timestamp > 0:
+                try:
+                    if timestamp > 1e12:
+                        timestamp = timestamp / 1000
+                    return datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')
+                except:
+                    return timestamp
+            return timestamp
+        
+        order_dict['startDate'] = format_time(order_dict.get('startDate'))
+        order_dict['endDate'] = format_time(order_dict.get('endDate'))
+        order_dict['createTime'] = format_time(order_dict.get('createTime'))
+        order_dict['updateTime'] = format_time(order_dict.get('updateTime'))
+        order_dict['checkTime'] = format_time(order_dict.get('checkTime'))
+        
+        # 查询审批记录
+        from module_personnel.dao.flow_record_dao import FlowRecordDao
+        check_flow_id = order_dict.get('checkFlowId', 0)
+        order_id_val = order_dict.get('id', 0)
+        records = await FlowRecordDao.get_records_dict(query_db, order_id_val, check_flow_id)
+        # 将审批记录转换为驼峰命名
+        order_dict['records'] = CamelCaseUtil.transform_result(records)
+        
+        return order_dict
 
 
 class MeetingRecordsService:
@@ -523,8 +627,17 @@ class MeetingRecordsService:
                         else:
                             record_dict['meetingDate'] = ''
                     
-                    formatted_row = [record_dict] + extra_fields
-                    formatted_rows.append(formatted_row)
+                    # 添加额外字段
+                    if len(extra_fields) > 0:
+                        record_dict['roomName'] = extra_fields[0] if extra_fields[0] is not None else ''
+                    if len(extra_fields) > 1:
+                        record_dict['anchorName'] = extra_fields[1] if extra_fields[1] is not None else ''
+                    if len(extra_fields) > 2:
+                        record_dict['recorderName'] = extra_fields[2] if extra_fields[2] is not None else ''
+                    if len(extra_fields) > 3:
+                        record_dict['deptName'] = extra_fields[3] if extra_fields[3] is not None else ''
+                    
+                    formatted_rows.append(record_dict)
             
             records_list_result.rows = formatted_rows
             return records_list_result
@@ -580,8 +693,17 @@ class MeetingRecordsService:
                         else:
                             record_dict['meetingDate'] = ''
                     
-                    formatted_row = [record_dict] + extra_fields
-                    formatted_list.append(formatted_row)
+                    # 添加额外字段
+                    if len(extra_fields) > 0:
+                        record_dict['roomName'] = extra_fields[0] if extra_fields[0] is not None else ''
+                    if len(extra_fields) > 1:
+                        record_dict['anchorName'] = extra_fields[1] if extra_fields[1] is not None else ''
+                    if len(extra_fields) > 2:
+                        record_dict['recorderName'] = extra_fields[2] if extra_fields[2] is not None else ''
+                    if len(extra_fields) > 3:
+                        record_dict['deptName'] = extra_fields[3] if extra_fields[3] is not None else ''
+                    
+                    formatted_list.append(record_dict)
             
             return formatted_list
         
