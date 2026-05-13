@@ -42,7 +42,7 @@ class InvoiceDao:
                         open.nick_name.label('open_name'),
                         dept.dept_name.label('dept_name'),
                         enter.title.label('enter_name'),
-                        check.nick_name.label('check_name'),
+                        func.group_concat(check.nick_name, ',').label('check_name'),
                         # 添加最新回款时间字段
                         func.coalesce(latest_income_subq.c.latest_enter_time, 0).label('latest_enter_time'),
                         # 可选：添加最新回款金额
@@ -140,7 +140,7 @@ class InvoiceDao:
 
         # 应用所有条件
         if conditions:
-            query = query.where(*conditions)
+            query = query.where(*conditions).group_by(OaInvoice.id)
 
         # 排序
         query = query.order_by(desc(OaInvoice.create_time))

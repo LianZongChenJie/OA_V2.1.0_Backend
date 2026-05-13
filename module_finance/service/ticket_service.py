@@ -27,6 +27,9 @@ class TicketService:
                 row = dict(row)
                 row.update(row['OaTicket'].to_dict())
                 row.pop('OaTicket')
+                if row.get('check_name') is not None:
+                    row['check_name'] = row['check_name'].strip(',')
+                    row['check_name'] = row['check_name'].replace(',,', ',')
                 row_list.append(ModelConverter.convert_to_camel_case(row))
             query_list.rows = row_list
             result_list = ModelConverter.convert_to_camel_case(query_list)

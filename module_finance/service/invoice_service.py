@@ -31,6 +31,9 @@ class InvoiceService:
                 row = dict(row)
                 row.update(row['OaInvoice'].to_dict())
                 row.pop('OaInvoice')
+                if row.get('check_name') is not None:
+                    row['check_name'] = row['check_name'].strip(',')
+                    row['check_name'] = row['check_name'].replace(',,', ',')
                 row_list.append(row)
             query_list.rows = ModelConverter.convert_to_camel_case(row_list)
             result_list = query_list

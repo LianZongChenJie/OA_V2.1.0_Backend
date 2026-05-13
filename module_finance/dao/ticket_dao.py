@@ -27,7 +27,7 @@ class TicketDao:
                        customer.name.label('customer_name'),
                        admin.nick_name.label('admin_name'),
                        dept.dept_name.label('dept_name'),
-                       check.nick_name.label('check_name'),
+                       func.group_concat(check.nick_name, ',').label('check_name'),
                        )
                  .join(customer, customer.id == OaTicket.supplier_id, isouter=True)
                  .join(admin, admin.user_id == OaTicket.admin_id, isouter=True)
@@ -105,7 +105,7 @@ class TicketDao:
 
         # 应用所有条件
         if conditions:
-            query = query.where(*conditions)
+            query = query.where(*conditions).group_by(OaTicket.id)
 
         # 排序
         query = query.order_by(desc(OaTicket.create_time))
