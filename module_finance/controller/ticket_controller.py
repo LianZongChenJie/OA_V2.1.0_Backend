@@ -11,7 +11,8 @@ from common.aspect.pre_auth import PreAuthDependency, CurrentUserDependency
 from common.enums import BusinessType
 from common.router import APIRouterPro
 from module_finance.entity.do.ticket_do import OaTicket
-from module_finance.entity.vo.ticket_vo import OaTicketBaseModel, OaTicketPageQueryModel, OaTicketPaymentBaseModel
+from module_finance.entity.vo.ticket_vo import OaTicketBaseModel, OaTicketPageQueryModel, OaTicketPaymentBaseModel, \
+    OaTicketPaymentPageQueryModel
 from module_finance.service.ticket_service import TicketService
 from module_admin.entity.vo.user_vo import (
     CurrentUserModel
@@ -227,7 +228,7 @@ async def get_payment_detail(
 async def get_payment_list(
         request: Request,
         query_db: Annotated[AsyncSession, DBSessionDependency()],
-        query_object: Annotated[OaTicketPageQueryModel, Query()],
+        query_object: Annotated[OaTicketPaymentPageQueryModel, Query()],
         data_scope_sql: Annotated[ColumnElement, DataScopeDependency(OaTicket)],
 ) -> Response:
     result =await TicketService.ticket_get_payment_list(query_db, query_object, data_scope_sql, True)

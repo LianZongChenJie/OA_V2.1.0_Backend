@@ -300,13 +300,14 @@ class TicketDao:
                  .join(SysUser, SysUser.user_id == OaTicket.admin_id, isouter=True)
                  .where(
                     OaTicketPayment.status == 1,
-                    OaTicket.id == query_object.id if query_object.id else True,
-                    OaTicket.code.like(f'%{query_object.code}%') if query_object.code else True,
-                    OaTicket.invoice_title.like(f'%{query_object.invoice_title}%') if query_object.invoice_title else True,
-                    OaTicket.invoice_subject == query_object.invoice_subject if query_object.invoice_subject else True,
-                    OaTicket.invoice_type !=0 if query_object.is_ticket else True,
-                    OaTicket.invoice_type == query_object.invoice_type if query_object.invoice_type else True,
-                    OaTicket.id == query_object.id if query_object.id else True,
+                    OaTicketPayment.ticket_id == query_object.ticket_id if query_object.ticket_id else True,
+                    # OaTicket.id == query_object.id if query_object.id else True,
+                    # OaTicket.code.like(f'%{query_object.code}%') if query_object.code else True,
+                    # OaTicket.invoice_title.like(f'%{query_object.invoice_title}%') if query_object.invoice_title else True,
+                    # OaTicket.invoice_subject == query_object.invoice_subject if query_object.invoice_subject else True,
+                    # OaTicket.invoice_type !=0 if query_object.is_ticket else True,
+                    # OaTicket.invoice_type == query_object.invoice_type if query_object.invoice_type else True,
+                    # OaTicket.id == query_object.id if query_object.id else True,
                     data_scope_sql
         )
                  .order_by(desc(OaTicketPayment.create_time)))

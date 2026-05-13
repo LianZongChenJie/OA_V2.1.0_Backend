@@ -116,3 +116,13 @@ class OaTicketPaymentBaseModel(BaseModel):
 class OaTicketPayMentDetailModel(OaTicketBaseModel):
     """收票付款详情VO"""
     payments: list[OaTicketPaymentBaseModel] | None = Field([], description='付款记录')
+
+class OaTicketPaymentQueryModel(OaTicketPaymentBaseModel):
+    """收票查询VO"""
+    begin_time: str | None = Field(None, description='查询时间开始时间')
+    end_time: str | None = Field(None, description='查询时间结束时间')
+
+class OaTicketPaymentPageQueryModel(OaTicketPaymentQueryModel):
+
+    page_num: int = Field(1, description='页码')
+    page_size: int = Field(20, description='每页条数')
