@@ -3,7 +3,6 @@ from typing import Any
 
 from common.constant import CommonConstant
 from exceptions.exception import ServiceException
-from module_basicdata.dao.public.flow_step_dao import OaFlowStepDao
 from module_personnel.dao.flow_record_dao import FlowRecordDao
 from module_personnel.dao.talent_dao import TalentDao
 from sqlalchemy.sql import ColumnElement
@@ -11,9 +10,6 @@ from module_personnel.entity.vo.talent_vo import OaTalentBaseModel, \
     OaTalentPageQueryModel, OaTalentDetailModel
 from common.vo import PageModel, CrudResponseModel
 from datetime import datetime
-from module_basicdata.dao.public.flow_cate_dao import FlowCateDao
-
-from module_personnel.entity.vo.flow_record_vo import OaFlowRecordBaseModel
 from utils.camel_converter import ModelConverter
 from utils.timeformat import int_time
 
@@ -73,7 +69,7 @@ class TalentService:
         try:
             detail = OaTalentDetailModel()
             info = await TalentDao.get_info_by_id(query_db, id)
-            records = await FlowRecordDao.get_records_by_action_id(query_db, info.id, info.check_flow_id)
+            records = await FlowRecordDao.get_records_dict(query_db, info.id, info.check_flow_id)
             detail = {}
             detail.update(info)
             detail['records'] = records

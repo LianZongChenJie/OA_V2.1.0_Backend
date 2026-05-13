@@ -34,8 +34,10 @@ async def get_page_list(
     query_db: Annotated[AsyncSession, DBSessionDependency()],
     query_object: Annotated[OaTicketPageQueryModel, Query()],
     data_scope_sql: Annotated[ColumnElement, DataScopeDependency(OaTicket)],
+    current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
 ) -> Response:
-    result = await TicketService.get_page_list_service(query_db,query_object,data_scope_sql,True)
+    user_id = current_user.user.user_id
+    result = await TicketService.get_page_list_service(query_db,query_object,data_scope_sql,user_id,True)
     return ResponseUtil.success(model_content=result)
 
 @finance_invoice_controller.get(
@@ -54,7 +56,7 @@ async def get_page_list(
 ) -> Response:
     user_id = current_user.user.user_id
     query_object.admin_id = user_id
-    result = await TicketService.get_page_list_service(query_db,query_object,data_scope_sql,True)
+    result = await TicketService.get_page_list_service(query_db,query_object,data_scope_sql,user_id,True)
     return ResponseUtil.success(model_content=result)
 
 @finance_invoice_controller.post(
@@ -92,7 +94,7 @@ async def add_ticket(
 )->Response:
     model.admin_id = current_user.user.user_id
     model.did = current_user.user.dept.dept_id
-    result = await TicketService().add_service(query_db, model)
+    result = await TicketService.add_service(query_db, model)
     return ResponseUtil.success(msg=result.message)
 
 @finance_invoice_controller.get(
@@ -201,7 +203,7 @@ async def delete_payment(
     return ResponseUtil.success(msg=result.message)
 
 @finance_invoice_controller.get(
-    "/payment/detail/{invoice_id}",
+    "/payment/detail/{ticket_id}",
     summary='获取收票付款记录',
     description='用于获取收票付款记录',
     response_model=None,
@@ -209,10 +211,10 @@ async def delete_payment(
 )
 async def get_payment_detail(
         request: Request,
-        invoice_id: int,
+        ticket_id: int,
         query_db: Annotated[AsyncSession, DBSessionDependency()],
 )->Response:
-    result =  await TicketService.ticket_get_payment(query_db, invoice_id)
+    result =  await TicketService.ticket_get_payment(query_db, ticket_id)
     return ResponseUtil.success(data=result)
 
 @finance_invoice_controller.get(

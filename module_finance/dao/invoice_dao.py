@@ -15,7 +15,7 @@ from datetime import datetime
 class InvoiceDao:
     @classmethod
     async def get_page_list(cls, db: AsyncSession, query_object: OaInvoicePageQueryModel,
-                            data_scope_sql: ColumnElement,
+                            data_scope_sql: ColumnElement, user_id: int,
                             is_page: bool = False) -> PageModel | list[list[dict[str, Any]]]:
 
         # 创建子查询获取每个发票的最新回款时间
@@ -61,15 +61,35 @@ class InvoiceDao:
         # 构建条件列表
         conditions = []
         conditions.append(OaInvoice.delete_time == 0)
+        if query_object.tab == 1:
+            conditions.append(OaInvoice.admin_id == user_id)
+        if query_object.tab == 2:
+            conditions.append(func.find_in_set(user_id, OaInvoice.check_uids) > 0)
+        if query_object.tab == 3:
+            conditions.append(func.find_in_set(user_id, OaInvoice.check_history_uids) > 0)
+        if query_object.tab == 4:
+            conditions.append(func.find_in_set(user_id, OaInvoice.check_copy_uids) > 0)
+        if query_object.tab == 5:
+            conditions.append(OaInvoice.enter_status == 2)
         # 通用条件：审核状态
         if query_object.check_status is not None:
             conditions.append(OaInvoice.check_status == query_object.check_status)
+
+        if query_object.open_status is not None:
+            conditions.append(OaInvoice.open_status == query_object.open_status)
+
 
         # 通用条件：审核时间范围
         if query_object.begin_time and query_object.end_time:
             start_timestamp = int(datetime.strptime(query_object.begin_time, "%Y-%m-%d %H:%M:%S").timestamp())
             end_timestamp = int(datetime.strptime(query_object.end_time, "%Y-%m-%d %H:%M:%S").timestamp())
             conditions.append(OaInvoice.check_time.between(start_timestamp, end_timestamp))
+        # 打款状态
+        if query_object.enter_status is not None:
+            conditions.append(OaInvoice.enter_status == query_object.enter_status)
+        # 开票状态
+        if query_object.open_status is not None:
+            conditions.append(OaInvoice.open_status == query_object.open_status)
 
         # 根据不同的查询条件添加特定条件
         if query_object.invoice_type ==0:
@@ -135,6 +155,10 @@ class InvoiceDao:
     async def add(cls, db: AsyncSession, model: OaInvoiceBaseModel):
         db_model = OaInvoice(**model.model_dump(exclude={"id", "create_time",'open_time', 'enter_time'}, exclude_none=True),
                                  create_time=model.create_time, open_time=model.open_time, enter_time=model.enter_time)
+        if db_model.project_id is None or db_model.project_id == '':
+            db_model.project_id = 0
+        if db_model.contract_id is None or db_model.contract_id == '':
+            db_model.contract_id = 0
         db.add(db_model)
         await db.commit()
         await db.refresh(db_model)
@@ -145,8 +169,8 @@ class InvoiceDao:
         result = await db.execute(
             update(OaInvoice)
             .values(
-                **model.model_dump(exclude={"id", "update_time",'open_time', 'enter_time'}, exclude_none=True),
-                update_time=model.update_time,  open_time=model.open_time, enter_time=model.enter_time,
+                **model.model_dump(exclude={"id", "update_time",'open_time', 'enter_time', 'project_id', 'contract_id'}, exclude_none=True),
+                update_time=model.update_time,  open_time=model.open_time, enter_time=model.enter_time, project_id = model.project_id, contract_id = model.contract_id
             )
             .where(OaInvoice.id == model.id)
         )
@@ -184,15 +208,6 @@ class InvoiceDao:
         await db.commit()
         return result.rowcount
 
-    # @classmethod
-    # async def review(cls, db: AsyncSession, query_model: OaInvoiceBaseModel):
-    #     result = await db.execute(update(OaInvoice).values(
-    #         update_time=int(datetime.now().timestamp()),
-    #         check_status=query_model.check_status,
-    #         remark=query_model.remark
-    #     ).where(OaInvoice.id == query_model.id))
-    #     await db.commit()
-    #     return result.rowcount
 
     @classmethod
     async def open_status(cls, db: AsyncSession, query_model: OaInvoiceBaseModel):

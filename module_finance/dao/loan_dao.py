@@ -14,7 +14,7 @@ from datetime import datetime
 class LoanDao:
     @classmethod
     async def get_page_list(cls, db: AsyncSession, query_object: OaLoanPageQueryModel,
-                            data_scope_sql: ColumnElement,
+                            data_scope_sql: ColumnElement,user_id: int,
                             is_page: bool = False) -> PageModel | list[list[dict[str, Any]]]:
 
         # 构建基础查询
@@ -26,10 +26,10 @@ class LoanDao:
                         pay.nick_name.label('pay_name'),
                         admin.nick_name.label('admin_name'),
                         dept.dept_name.label('dept_name'),
-                        check.nick_name.label('check_name')
+                        func.group_concat(check.nick_name, ',').label('check_name')
                         )
-        .join(pay, OaLoan.admin_id == pay.user_id, isouter=True)
-        .join(admin, OaLoan.pay_admin_id == admin.user_id, isouter=True)
+        .join(pay, OaLoan.pay_admin_id == pay.user_id, isouter=True)
+        .join(admin, OaLoan.admin_id == admin.user_id, isouter=True)
          .join(dept, OaLoan.did == dept.dept_id, isouter=True)
          .join(check, func.find_in_set(check.user_id, OaLoan.check_uids), isouter=True)
          )
@@ -37,9 +37,22 @@ class LoanDao:
         # 构建条件列表
         conditions = []
         conditions.append(OaLoan.delete_time == 0)
+        # 冲抵状态
+        if query_object.balance_status is not None:
+            conditions.append(OaLoan.balance_status == query_object.balance_status)
+        # 借支类型
+        if query_object.types is not None:
+            conditions.append(OaLoan.types == query_object.types)
+
+        # 打款状态
+        if query_object.pay_status is not None:
+            conditions.append(OaLoan.pay_status == query_object.pay_status)
         # 通用条件：审核状态
         if query_object.check_status is not None:
             conditions.append(OaLoan.check_status == query_object.check_status)
+
+        if query_object.admin_id:
+            conditions.append(OaLoan.admin_id == query_object.admin_id)
 
         # 通用条件：审核时间范围
         if query_object.begin_time and query_object.end_time:
@@ -47,9 +60,18 @@ class LoanDao:
             end_timestamp = int(datetime.strptime(query_object.end_time, "%Y-%m-%d %H:%M:%S").timestamp())
             conditions.append(OaLoan.check_time.between(start_timestamp, end_timestamp))
 
+        if query_object.tab == 1:
+            conditions.append(OaLoan.admin_id == user_id)
+        elif query_object.tab == 2:
+            conditions.append(func.find_in_set(str(user_id), OaLoan.check_uids) > 0)
+        elif query_object.tab == 3:
+            conditions.append(func.find_in_set(str(user_id), OaLoan.check_history_uids) > 0)
+        elif query_object.tab == 4:
+            conditions.append(func.find_in_set(str(user_id), OaLoan.check_copy_uids) > 0)
+        elif query_object.tab == 5:
+            conditions.append(OaLoan.pay_status == 1)
+
         # 根据不同的查询条件添加特定条件
-        if query_object.admin_id:
-            conditions.append(OaLoan.admin_id == query_object.admin_id)
 
         elif query_object.check_uids:
             conditions.append(func.find_in_set(query_object.check_uids, OaLoan.check_uids) > 0)
@@ -80,13 +102,14 @@ class LoanDao:
             if or_conditions:
                 conditions.append(or_(*or_conditions))
 
+
         # 添加数据权限条件
         if data_scope_sql is not None:
             conditions.append(data_scope_sql)
 
         # 应用所有条件
         if conditions:
-            query = query.where(*conditions)
+            query = query.where(*conditions).group_by(OaLoan.id)
 
         # 排序
         query = query.order_by(desc(OaLoan.create_time))
@@ -146,56 +169,6 @@ class LoanDao:
         result = await db.execute(update(OaLoan).values(delete_time=int(datetime.now().timestamp())).where(OaLoan.id == id))
         await db.commit()
         return result.rowcount
-
-    # @classmethod
-    # async def cancel_loan(cls, db: AsyncSession, query_model: OaLoanBaseModel):
-    #     result = await db.execute(update(OaLoan).values(
-    #         update_time=int(datetime.now().timestamp()),
-    #         check_status=query_model.check_status,
-    #         content=query_model.content,
-    #     ).where(OaLoan.id == query_model.id))
-    #     await db.commit()
-    #     return result.rowcount
-    #
-    # # @classmethod
-    # # async def count_by_uid(cls, db: AsyncSession, uid: str):
-    # #     result = await db.execute(select(func.count()).where(OaLoan.uid == uid))
-    # #     return result.scalar()
-    # @classmethod
-    # async def pass_loan(cls, db: AsyncSession, data: OaLoanBaseModel):
-    #     try:
-    #         result = await db.execute(
-    #             update(OaLoan)
-    #             .values(
-    #                 check_status=2,
-    #                 check_time=data.check_time,
-    #                 content=data.content,
-    #             )
-    #             .where(OaLoan.id == data.id)
-    #         )
-    #         await db.commit()
-    #     except Exception as e:
-    #         await db.rollback()
-    #         raise e
-    #     return result.rowcount
-    #
-    # @classmethod
-    # async def reject_loan(cls, db: AsyncSession, data: OaLoanBaseModel):
-    #     try:
-    #         result = await db.execute(
-    #             update(OaLoan)
-    #             .values(
-    #                 check_status=3,
-    #                 check_time=data.check_time,
-    #                 content=data.content,
-    #             )
-    #             .where(OaLoan.id == data.id)
-    #         )
-    #         await db.commit()
-    #         return result.rowcount
-    #     except Exception as e:
-    #         await db.rollback()
-    #         raise e
 
     @classmethod
     async def pay_loan(cls, db: AsyncSession, data: OaLoanBaseModel, userId: int):

@@ -1,5 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update, desc
+from sqlalchemy import select, update, desc,func
 
 from module_basicdata.entity.do.public.arae_do import OaArea
 from module_basicdata.entity.vo.public.area_vo import AreaBaseModel, AreaTreeModel
@@ -29,6 +29,7 @@ class AreaDao:
                 'longitude': area.longitude,
                 'latitude': area.latitude,
                 'sort': area.sort,
+                'status': area.status,
                 'children': []
             }
 
@@ -74,7 +75,7 @@ class AreaDao:
 
     @classmethod
     async def add(cls, db: AsyncSession, area: AreaBaseModel) -> AreaTreeModel:
-        db_area = OaArea(**area.model_dump(exclude={"id"}, exclude_none=True))
+        db_area = OaArea(**area.model_dump(exclude_none=True))
         db.add(db_area)
         await db.commit()
         await db.refresh(db_area)
@@ -84,7 +85,7 @@ class AreaDao:
     async def update(cls, db: AsyncSession, area: AreaBaseModel) -> AreaTreeModel:
         result = await db.execute(
             update(OaArea)
-            .values(**area.model_dump(exclude={"id"}, exclude_none=True))
+            .values(**area.model_dump(exclude_none=True))
             .where(OaArea.id == area.id)
         )
         await db.commit()
@@ -143,3 +144,10 @@ class AreaDao:
         )
 
         return query_info
+
+    @classmethod
+    async def get_area_id_count(cls, db: AsyncSession, new_id: int) -> AreaBaseModel:
+        query = (select(func.count()).select_from(OaArea).where(OaArea.id == new_id))
+        result = await db.execute(query)
+        area_num = result.scalar()
+        return area_num

@@ -6,10 +6,9 @@ from exceptions.exception import ServiceException
 from module_basicdata.dao.public.flow_step_dao import OaFlowStepDao
 from module_personnel.dao.flow_record_dao import FlowRecordDao
 from module_personnel.dao.personnel_quit_dao import PersonnelQuitDao
-from module_personnel.entity.do.personnel_quit_do import OaPersonalQuit
 from sqlalchemy.sql import ColumnElement
 from module_personnel.entity.vo.personnel_quit_vo import OaPersonalQuitBaseModel, \
-    OaPersonnelQuitPageQueryModel, OaPersonnelQuitDetailModel
+    OaPersonnelQuitPageQueryModel
 from common.vo import PageModel, CrudResponseModel
 from datetime import datetime
 from module_basicdata.dao.public.flow_cate_dao import FlowCateDao
@@ -74,7 +73,7 @@ class PersonnelQuitService:
         try:
 
             info = await PersonnelQuitDao.get_info_by_id(query_db, id)
-            records = await FlowRecordDao.get_records_by_action_id(query_db, info.id, info.check_flow_id)
+            records = await FlowRecordDao.get_records_dict(query_db, info.id, info.check_flow_id)
             detail = {}
             detail.update(info)
             detail['records'] = records

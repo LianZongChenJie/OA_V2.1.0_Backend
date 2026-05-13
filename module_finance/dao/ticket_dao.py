@@ -15,7 +15,7 @@ from datetime import datetime
 class TicketDao:
     @classmethod
     async def get_page_list(cls, db: AsyncSession, query_object: OaTicketPageQueryModel,
-                            data_scope_sql: ColumnElement,
+                            data_scope_sql: ColumnElement, user_id: int,
                             is_page: bool = False) -> PageModel | list[list[dict[str, Any]]]:
 
         # 构建基础查询
@@ -41,6 +41,8 @@ class TicketDao:
         # 通用条件：审核状态
         if query_object.check_status is not None:
             conditions.append(OaTicket.check_status == query_object.check_status)
+        if query_object.open_status is not None:
+            conditions.append(OaTicket.open_status == query_object.open_status)
 
         # 通用条件：审核时间范围
         if query_object.begin_time and query_object.end_time:
@@ -51,6 +53,17 @@ class TicketDao:
         # 根据不同的查询条件添加特定条件
         if query_object.admin_id:
             conditions.append(OaTicket.admin_id == query_object.admin_id)
+
+        if query_object.tab == 1:
+            conditions.append(OaTicket.admin_id == user_id)
+        if query_object.tab == 2:
+            conditions.append(func.find_in_set(str(user_id), OaTicket.check_uids) > 0)
+        if query_object.tab == 3:
+            conditions.append(func.find_in_set(str(user_id), OaTicket.check_history_uids) > 0)
+        if query_object.tab == 4:
+            conditions.append(func.find_in_set(str(user_id), OaTicket.check_copy_uids) > 0)
+        if query_object.tab == 5:
+            conditions.append(OaTicket.pay_status == 2)
 
         elif query_object.check_uids:
             conditions.append(func.find_in_set(query_object.check_uids, OaTicket.check_uids) > 0)
@@ -107,6 +120,10 @@ class TicketDao:
     async def add(cls, db: AsyncSession, model: OaTicketBaseModel):
         db_model = OaTicket(**model.model_dump(exclude={"id", "create_time",'open_time', 'pay_time'}, exclude_none=True),
                                  create_time=model.create_time, open_time=model.open_time, pay_time=model.pay_time)
+        if db_model.purchase_id is None or db_model.purchase_id == '':
+            db_model.purchase_id = 0
+        if db_model.project_id is None or db_model.project_id == '':
+            db_model.project_id = 0
         db.add(db_model)
         await db.commit()
         await db.refresh(db_model)
@@ -117,8 +134,8 @@ class TicketDao:
         result = await db.execute(
             update(OaTicket)
             .values(
-                **model.model_dump(exclude={"id", "update_time",'open_time', 'pay_time'}, exclude_none=True),
-                update_time=model.update_time,  open_time=model.open_time, pay_time=model.pay_time
+                **model.model_dump(exclude={"id", "update_time",'open_time', 'pay_time','purchase_id', 'project_id'}, exclude_none=True),
+                update_time=model.update_time,  open_time=model.open_time, pay_time=model.pay_time, purchase_id = model.purchase_id, project_id = model.project_id
             )
             .where(OaTicket.id == model.id)
         )
@@ -151,21 +168,22 @@ class TicketDao:
             OaTicket.id == id))
         info = await db.execute(query)
         return info.mappings().first()
+
+    @classmethod
+    async def get_info_dict(cls,db: AsyncSession, id: int):
+        info = await cls.get_info_by_id(db, id)
+        if info is None:
+            return {}
+        info = dict(info)
+        info.update(info['OaTicket'].to_dict())
+        info.pop('OaTicket')
+        return info
+
     @classmethod
     async def del_by_id(cls, db: AsyncSession, id: int):
         result = await db.execute(update(OaTicket).values(delete_time=int(datetime.now().timestamp())).where(OaTicket.id == id))
         await db.commit()
         return result.rowcount
-
-    # @classmethod
-    # async def review(cls, db: AsyncSession, query_model: OaTicketBaseModel):
-    #     result = await db.execute(update(OaTicket).values(
-    #         update_time=int(datetime.now().timestamp()),
-    #         check_status=query_model.check_status,
-    #         remark=query_model.remark
-    #     ).where(OaTicket.id == query_model.id))
-    #     await db.commit()
-    #     return result.rowcount
 
     @classmethod
     async def open_status(cls, db: AsyncSession, query_model: OaTicketBaseModel):
@@ -232,8 +250,8 @@ class TicketDao:
         # 构建基础查询
         query = select(OaTicketPayment).where(OaTicketPayment.ticket_id == ticket_id, OaTicketPayment.status == 1)
         result = await db.execute(query)
-        incomes = result.scalars().all()
-        return incomes
+        payments = result.scalars().all()
+        return payments
 
     @classmethod
     async def payment_get_id(cls, db: AsyncSession, id: int):
@@ -288,6 +306,7 @@ class TicketDao:
                     OaTicket.invoice_subject == query_object.invoice_subject if query_object.invoice_subject else True,
                     OaTicket.invoice_type !=0 if query_object.is_ticket else True,
                     OaTicket.invoice_type == query_object.invoice_type if query_object.invoice_type else True,
+                    OaTicket.id == query_object.id if query_object.id else True,
                     data_scope_sql
         )
                  .order_by(desc(OaTicketPayment.create_time)))

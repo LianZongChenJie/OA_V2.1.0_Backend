@@ -34,8 +34,10 @@ async def get_page_list(
     query_db: Annotated[AsyncSession, DBSessionDependency()],
     query_object: Annotated[OaLoanPageQueryModel, Query()],
     data_scope_sql: Annotated[ColumnElement, DataScopeDependency(OaLoan)],
+    current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
 ) -> Response:
-    result = await OaLoanService.get_page_list_service(query_db,query_object,data_scope_sql,True)
+    user_id = current_user.user.user_id
+    result = await OaLoanService.get_page_list_service(query_db,query_object,data_scope_sql,user_id,True)
     return ResponseUtil.success(model_content=result)
 
 @finance_loan_controller.get(
@@ -47,15 +49,15 @@ async def get_page_list(
 )
 async def get_page_list(
     request: Request,
-    query_db: Annotated[AsyncSession, DBSessionDependency()],
-    query_object: Annotated[OaLoanPageQueryModel, Query()],
-    data_scope_sql: Annotated[ColumnElement, DataScopeDependency(OaLoan)],
-    current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
+    query_db: Annotated[AsyncSession, DBSessionDependency()],  # 数据库会话
+    query_object: Annotated[OaLoanPageQueryModel, Query()],  # 查询参数对象
+    data_scope_sql: Annotated[ColumnElement, DataScopeDependency(OaLoan)],  # 数据权限SQL
+    current_user: Annotated[CurrentUserModel, CurrentUserDependency()],  # 当前用户信息
 ) -> Response:
-    user_id = current_user.user.user_id
-    query_object.admin_id = user_id
-    result = await OaLoanService.get_page_list_service(query_db,query_object,data_scope_sql,True)
-    return ResponseUtil.success(model_content=result)
+    user_id = current_user.user.user_id  # 获取当前用户ID
+    query_object.admin_id = user_id  # 设置查询对象的管理员ID
+    result = await OaLoanService.get_page_list_service(query_db,query_object,data_scope_sql,user_id,True)  # 调用服务获取分页列表
+    return ResponseUtil.success(model_content=result)  # 返回成功响应
 
 @finance_loan_controller.post(
     "/add",

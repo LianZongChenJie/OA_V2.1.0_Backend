@@ -6,6 +6,7 @@ from decimal import Decimal
 
 class OaExpenseInterfixBaseModel(BaseModel):
     """报销关联数据基础VO"""
+    model_config = ConfigDict(from_attributes=True, alias_generator=to_camel)
     id: int | None = Field(None, description='ID')
     exid: int | None = Field(None, description='报销ID')
     amount: Decimal | None = Field(None, description='金额')

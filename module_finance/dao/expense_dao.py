@@ -15,7 +15,7 @@ from datetime import datetime
 class ExpenseDao:
     @classmethod
     async def get_page_list(cls, db: AsyncSession, query_object: OaExpensePageQueryModel,
-                            data_scope_sql: ColumnElement,
+                            data_scope_sql: ColumnElement, user_id: int,
                             is_page: bool = False) -> PageModel | list[list[dict[str, Any]]]:
 
         # 构建基础查询
@@ -27,10 +27,10 @@ class ExpenseDao:
                         pay.nick_name.label('pay_name'),
                         admin.nick_name.label('admin_name'),
                         dept.dept_name.label('dept_name'),
-                        check.nick_name.label('check_name')
+                        func.group_concat(check.nick_name, ',').label('check_name')
                         )
-                 .join(pay, OaExpense.admin_id == pay.user_id, isouter=True)
-                 .join(admin, OaExpense.pay_admin_id == admin.user_id, isouter=True)
+                 .join(pay, OaExpense.pay_admin_id == pay.user_id, isouter=True)
+                 .join(admin, OaExpense.admin_id == admin.user_id, isouter=True)
                  .join(dept, OaExpense.did == dept.dept_id, isouter=True)
                  .join(check, func.find_in_set(check.user_id, OaExpense.check_uids), isouter=True))
 
@@ -40,16 +40,33 @@ class ExpenseDao:
         # 通用条件：审核状态
         if query_object.check_status is not None:
             conditions.append(OaExpense.check_status == query_object.check_status)
+        # 报销人员
+        if query_object.admin_id is not None:
+            conditions.append(OaExpense.admin_id == query_object.admin_id)
+        # 打款状态
+        if query_object.pay_status is not None:
+            conditions.append(OaExpense.pay_status == query_object.pay_status)
+
+        # 根据不同的查询条件添加特定条件
+        if query_object.admin_id:
+            conditions.append(OaExpense.admin_id == query_object.admin_id)
 
         # 通用条件：审核时间范围
         if query_object.begin_time and query_object.end_time:
             start_timestamp = int(datetime.strptime(query_object.begin_time, "%Y-%m-%d %H:%M:%S").timestamp())
             end_timestamp = int(datetime.strptime(query_object.end_time, "%Y-%m-%d %H:%M:%S").timestamp())
             conditions.append(OaExpense.check_time.between(start_timestamp, end_timestamp))
-
-        # 根据不同的查询条件添加特定条件
-        if query_object.admin_id:
-            conditions.append(OaExpense.admin_id == query_object.admin_id)
+        # 页签条件
+        if query_object.tab == 1:
+            conditions.append(OaExpense.admin_id == user_id)
+        elif query_object.tab == 2:
+            conditions.append(func.find_in_set(user_id, OaExpense.check_uids) > 0)
+        elif query_object.tab == 3:
+            conditions.append(func.find_in_set(user_id, OaExpense.check_history_uids) > 0)
+        elif query_object.tab == 4:
+            conditions.append(func.find_in_set(user_id, OaExpense.check_copy_uids) > 0)
+        elif query_object.tab == 5:
+            conditions.append(OaExpense.pay_status == 1)
 
         elif query_object.check_uids:
             conditions.append(func.find_in_set(query_object.check_uids, OaExpense.check_uids) > 0)
@@ -87,7 +104,7 @@ class ExpenseDao:
 
         # 应用所有条件
         if conditions:
-            query = query.where(*conditions)
+            query = query.where(*conditions).group_by(OaExpense.id)
 
         # 排序
         query = query.order_by(desc(OaExpense.create_time))
@@ -102,6 +119,10 @@ class ExpenseDao:
     async def add(cls, db: AsyncSession, model: OaExpenseBaseModel):
         db_model = OaExpense(**model.model_dump(exclude={"id", "create_time",'income_month', 'expense_time'}, exclude_none=True),
                                  create_time=model.create_time, income_month=model.income_month, expense_time=model.expense_time)
+        if db_model.loan_id is None:
+            db_model.loan_id = 0
+        if db_model.project_id is None:
+            db_model.project_id = 0
         db.add(db_model)
         await db.commit()
         await db.refresh(db_model)
@@ -137,8 +158,8 @@ class ExpenseDao:
                         dept.dept_name.label('dept_name'),
                         OaLoan.cost.label('loan_cost'),
                         )
-                 .join(pay, OaExpense.admin_id == pay.user_id, isouter=True)
-                 .join(admin, OaExpense.pay_admin_id == admin.user_id, isouter=True)
+                 .join(pay, OaExpense.pay_admin_id == pay.user_id, isouter=True)
+                 .join(admin, OaExpense.admin_id == admin.user_id, isouter=True)
                  .join(dept, OaExpense.did == dept.dept_id, isouter=True)
                  .join(OaLoan, OaExpense.loan_id == OaLoan.id, isouter=True)
 
@@ -151,56 +172,6 @@ class ExpenseDao:
         result = await db.execute(update(OaExpense).values(delete_time=int(datetime.now().timestamp())).where(OaExpense.id == id))
         await db.commit()
         return result.rowcount
-
-    # @classmethod
-    # async def cancel_expense(cls, db: AsyncSession, query_model: OaExpenseBaseModel):
-    #     result = await db.execute(update(OaExpense).values(
-    #         update_time=int(datetime.now().timestamp()),
-    #         check_status=query_model.check_status,
-    #         remark=query_model.remark
-    #     ).where(OaExpense.id == query_model.id))
-    #     await db.commit()
-    #     return result.rowcount
-    #
-    # # @classmethod
-    # # async def count_by_uid(cls, db: AsyncSession, uid: str):
-    # #     result = await db.execute(select(func.count()).where(OaExpense.uid == uid))
-    # #     return result.scalar()
-    # @classmethod
-    # async def pass_expense(cls, db: AsyncSession, data: OaExpenseBaseModel):
-    #     try:
-    #         result = await db.execute(
-    #             update(OaExpense)
-    #             .values(
-    #                 check_status=2,
-    #                 check_time=data.check_time,
-    #                 remark=data.remark
-    #             )
-    #             .where(OaExpense.id == data.id)
-    #         )
-    #         await db.commit()
-    #     except Exception as e:
-    #         await db.rollback()
-    #         raise e
-    #     return result.rowcount
-    #
-    # @classmethod
-    # async def reject_expense(cls, db: AsyncSession, data: OaExpenseBaseModel):
-    #     try:
-    #         result = await db.execute(
-    #             update(OaExpense)
-    #             .values(
-    #                 check_status=3,
-    #                 check_time=data.check_time,
-    #                 remark=data.remark
-    #             )
-    #             .where(OaExpense.id == data.id)
-    #         )
-    #         await db.commit()
-    #         return result.rowcount
-    #     except Exception as e:
-    #         await db.rollback()
-    #         raise e
 
     @classmethod
     async def pay_expense(cls, db: AsyncSession, data: OaExpenseBaseModel, userId: int):

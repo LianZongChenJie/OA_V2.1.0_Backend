@@ -233,10 +233,8 @@ class SealDao:
         info = await ReviewUtil.enrich_checker_names(db, info)
 
         # 查询审批记录
-        records = await FlowRecordDao.get_records_by_action_id(
-            db, seal.id, seal.check_flow_id
-        )
-        info['records'] = records
+        record_list = await FlowRecordDao.get_records_dict(db, seal.id, seal.check_flow_id)
+        info['records'] = record_list
         return info
 
     @classmethod

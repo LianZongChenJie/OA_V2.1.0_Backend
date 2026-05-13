@@ -84,6 +84,8 @@ class TemplateService:
         """
         name = -1 if update_model.name is None else update_model.name
         template = await OaTemplateDao.get_template_by_info(query_db, TemplateBaseModel(name=update_model.name))
+        if not template:
+            return CommonConstant.UNIQUE
         if template.id == update_model.id:
             return CommonConstant.UNIQUE
         if template and template.name == name:

@@ -14,9 +14,9 @@ class OaTicketBaseModel(BaseModel):
     id: int | None = Field(None, description='ID')
     code: str | None = Field(None, description='发票号码')
     supplier_id: int | None = Field(None, description='关联供应商ID')
-    purchase_id: int | None = Field(None, description='关联采购合同协议ID')
+    purchase_id: int | str |None = Field(None, description='关联采购合同协议ID')
     customer_id: int | None = Field(None, description='关联客户ID')
-    project_id: int | None = Field(None, description='关联项目ID')
+    project_id: int | str | None = Field(None, description='关联项目ID')
     amount: Decimal | None = Field(None, description='发票金额')
     did: int | None = Field(None, description='发票接受部门')
     admin_id: int | None = Field(None, description='发票接受人')
@@ -84,6 +84,7 @@ class OaTicketQueryModel(OaTicketBaseModel):
     begin_time: str | None = Field(None, description='查询时间开始时间')
     end_time: str | None = Field(None, description='查询时间结束时间')
     is_ticket: int | None = Field(default=1, description='是否室有发票付款 1是，0不是')
+    tab: int | None = Field(None, description="tab标识，1我申请的，2我审批的，3我已审批，4抄送我的，5已打款")
 
 class OaTicketPageQueryModel(OaTicketQueryModel):
 
@@ -112,7 +113,6 @@ class OaTicketPaymentBaseModel(BaseModel):
     update_time: int | None = Field(None, description='更新时间')
     status: int | None = Field(None, description='状态：-1删除 0禁用 1正常 6作废')
 
-class OaTicketPayMentDetailModel(BaseModel):
+class OaTicketPayMentDetailModel(OaTicketBaseModel):
     """收票付款详情VO"""
-    ticket: OaTicketBaseModel | None = Field(None, description='收票信息')
     payments: list[OaTicketPaymentBaseModel] | None = Field([], description='付款记录')

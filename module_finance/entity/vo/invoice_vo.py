@@ -12,8 +12,8 @@ class OaInvoiceBaseModel(BaseModel):
     id: int | None = Field(None, description='ID')
     code: str | None = Field(None, description='发票号码')
     customer_id: int | None = Field(None, description='关联客户ID')
-    contract_id: int | None = Field(None, description='关联合同协议ID')
-    project_id: int | None = Field(None, description='关联项目ID')
+    contract_id: int | str |None = Field(None, description='关联合同协议ID')
+    project_id: int | str |None = Field(None, description='关联项目ID')
     amount: Decimal | None = Field(None, description='发票金额')
     did: int | None = Field(None, description='发票申请部门')
     admin_id: int | None = Field(None, description='发票申请人')
@@ -83,6 +83,7 @@ class OaInvoiceQueryModel(OaInvoiceBaseModel):
     begin_time: str | None= Field(None, description='创建时间开始')
     end_time: str | None= Field(None, description='创建时间结束')
     is_code: bool | None = Field(None, description='是否为发票回款is_code 1发票回款，0非发票回款is_code')
+    tab: int | None = Field(None,  description="tab标识，1我申请的，2我审批的，3我已审批，4抄送我的，5已打款")
 
 class OaInvoicePageQueryModel(OaInvoiceQueryModel):
     """OaInvoicePageQueryModel"""
