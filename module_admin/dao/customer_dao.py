@@ -233,28 +233,40 @@ class CustomerDao:
             OaCustomer.discard_time == 0
         ]
 
-        if query_object.keywords:
+        # 获取关键词，兼容 keywords 和 name 两种参数名
+        search_keyword = query_object.keywords or query_object.name
+        if search_keyword:
             conditions.append(
                 or_(
-                    OaCustomer.id.like(f'%{query_object.keywords}%'),
-                    OaCustomer.name.like(f'%{query_object.keywords}%')
+                    OaCustomer.id.like(f'%{search_keyword}%'),
+                    OaCustomer.name.like(f'%{search_keyword}%')
                 )
             )
 
-        if query_object.customer_status_filter is not None:
-            conditions.append(OaCustomer.customer_status == query_object.customer_status_filter)
+        # 获取客户状态，兼容 customer_status_filter 和 customer_status
+        customer_status = query_object.customer_status_filter if query_object.customer_status_filter is not None else query_object.customer_status
+        if customer_status is not None:
+            conditions.append(OaCustomer.customer_status == customer_status)
 
-        if query_object.industry_id_filter is not None:
-            conditions.append(OaCustomer.industry_id == query_object.industry_id_filter)
+        # 获取行业，兼容 industry_id_filter 和 industry_id
+        industry_id = query_object.industry_id_filter if query_object.industry_id_filter is not None else query_object.industry_id
+        if industry_id is not None:
+            conditions.append(OaCustomer.industry_id == industry_id)
 
-        if query_object.source_id_filter is not None:
-            conditions.append(OaCustomer.source_id == query_object.source_id_filter)
+        # 获取来源，兼容 source_id_filter 和 source_id
+        source_id = query_object.source_id_filter if query_object.source_id_filter is not None else query_object.source_id
+        if source_id is not None:
+            conditions.append(OaCustomer.source_id == source_id)
 
-        if query_object.grade_id_filter is not None:
-            conditions.append(OaCustomer.grade_id == query_object.grade_id_filter)
+        # 获取等级，兼容 grade_id_filter 和 grade_id
+        grade_id = query_object.grade_id_filter if query_object.grade_id_filter is not None else query_object.grade_id
+        if grade_id is not None:
+            conditions.append(OaCustomer.grade_id == grade_id)
 
-        if query_object.intent_status_filter is not None:
-            conditions.append(OaCustomer.intent_status == query_object.intent_status_filter)
+        # 获取意向状态，兼容 intent_status_filter 和 intent_status
+        intent_status = query_object.intent_status_filter if query_object.intent_status_filter is not None else query_object.intent_status
+        if intent_status is not None:
+            conditions.append(OaCustomer.intent_status == intent_status)
 
         if query_object.follow_time_start is not None:
             conditions.append(OaCustomer.follow_time >= query_object.follow_time_start)
@@ -490,6 +502,3 @@ class CustomerDao:
             .where(OaCustomer.id.in_([customer.id]))
             .values(discard_time=discard_time, update_time=update_time)
         )
-
-
-

@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from common.vo import PageModel
 from module_admin.entity.do.customer_contact_do import OaCustomerContact
+from module_admin.entity.do.customer_do import OaCustomer
 from module_admin.entity.vo.customer_contact_vo import CustomerContactModel, CustomerContactPageQueryModel
 from utils.page_util import PageUtil
 
@@ -83,13 +84,23 @@ class CustomerContactDao:
         if where_conditions:
             conditions.extend(where_conditions)
 
-        if query_object.keywords:
+        # 获取关键词，兼容 keywords 和 keyword 两种参数名
+        search_keyword = query_object.keywords or query_object.keyword
+        
+        if search_keyword:
+            # 使用子查询获取匹配客户名称的联系人cid
+            customer_subquery = select(OaCustomer.id).where(
+                OaCustomer.delete_time == 0,
+                OaCustomer.name.like(f'%{search_keyword}%')
+            ).subquery()
+            
             conditions.append(
                 or_(
-                    OaCustomerContact.id.like(f'%{query_object.keywords}%'),
-                    OaCustomerContact.name.like(f'%{query_object.keywords}%'),
-                    OaCustomerContact.mobile.like(f'%{query_object.keywords}%'),
-                    OaCustomerContact.email.like(f'%{query_object.keywords}%')
+                    OaCustomerContact.id.like(f'%{search_keyword}%'),
+                    OaCustomerContact.name.like(f'%{search_keyword}%'),
+                    OaCustomerContact.mobile.like(f'%{search_keyword}%'),
+                    OaCustomerContact.email.like(f'%{search_keyword}%'),
+                    OaCustomerContact.cid.in_(customer_subquery)
                 )
             )
 
@@ -123,8 +134,7 @@ class CustomerContactDao:
                 cid = contact_dict.get('cid')
                 if cid and int(cid) > 0:
                     try:
-                        from module_admin.entity.do.customer_do import OaCustomer
-                        customer_query = select(OaCustomer).where(OaCustomer.id == cid)
+                        customer_query = select(OaCustomer).where(OaCustomer.id == cid, OaCustomer.delete_time == 0)
                         customer_info = (await db.execute(customer_query)).scalars().first()
                         if customer_info:
                             contact_dict['customer_name'] = customer_info.name
@@ -149,8 +159,7 @@ class CustomerContactDao:
                 cid = contact_dict.get('cid')
                 if cid and int(cid) > 0:
                     try:
-                        from module_admin.entity.do.customer_do import OaCustomer
-                        customer_query = select(OaCustomer).where(OaCustomer.id == cid)
+                        customer_query = select(OaCustomer).where(OaCustomer.id == cid, OaCustomer.delete_time == 0)
                         customer_info = (await db.execute(customer_query)).scalars().first()
                         if customer_info:
                             contact_dict['customer_name'] = customer_info.name
@@ -214,4 +223,3 @@ class CustomerContactDao:
             .where(OaCustomerContact.id.in_([contact.id]))
             .values(delete_time=delete_time, update_time=update_time)
         )
-

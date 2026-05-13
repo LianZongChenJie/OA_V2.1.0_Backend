@@ -65,7 +65,16 @@ class CustomerContactPageQueryModel(CustomerContactModel):
     page_num: int = Field(default=1, description='当前页码')
     page_size: int = Field(default=10, description='每页记录数')
     keywords: str | None = Field(default=None, description='搜索关键词')
+    keyword: str | None = Field(default=None, description='搜索关键词（兼容前端）')
     cid: int | None = Field(default=None, description='客户 ID')
+
+    @field_validator('keywords', mode='before')
+    @classmethod
+    def validate_keywords(cls, v, values):
+        """兼容前端传 keyword 的情况"""
+        if v is None:
+            return values.get('keyword')
+        return v
 
 
 class AddCustomerContactModel(CustomerContactModel):
@@ -92,4 +101,3 @@ class DeleteCustomerContactModel(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel)
 
     id: int = Field(description='需要删除的联系人 ID')
-
