@@ -4,17 +4,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Any
 
 from exceptions.exception import ServiceException
-from module_basicdata.dao.public.flow_cate_dao import FlowCateDao
-from module_basicdata.dao.public.flow_step_dao import OaFlowStepDao
 from module_finance.dao.loan_dao import LoanDao
 from module_personnel.dao.flow_record_dao import FlowRecordDao
 from sqlalchemy.sql import ColumnElement
 from module_finance.entity.vo.loan_vo import OaLoanBaseModel, \
-    OaLoanPageQueryModel, OaLoanDetailModel
+    OaLoanPageQueryModel
 from common.vo import PageModel, CrudResponseModel
 from datetime import datetime
-
-from module_personnel.entity.vo.flow_record_vo import OaFlowRecordBaseModel
 from utils.camel_converter import ModelConverter
 from utils.timeformat import int_time
 
@@ -92,16 +88,13 @@ class OaLoanService:
             info = await LoanDao.get_info_by_id(query_db, id)
             if not info:
                 raise ServiceException(message="未找到该数据")
-            records = await FlowRecordDao.get_records_by_action_id(query_db, info['OaLoan'].id, info['OaLoan'].check_flow_id)
+            check_records = await FlowRecordDao.get_records_dict(query_db, info['OaLoan'].id, info['OaLoan'].check_flow_id)
             detail = {}
             info = dict(info)
             info.update(info['OaLoan'].to_dict())
             info.pop('OaLoan')
             detail.update(info)
-            record_list = []
-            for record in records:
-                record_list.append(record.to_dict())
-            detail['records'] = record_list
+            detail['records'] = check_records
             if not detail:
                 raise ServiceException(message="未找到该数据")
             return ModelConverter.convert_to_camel_case(detail)
@@ -121,47 +114,6 @@ class OaLoanService:
         except Exception as e:
             await db.rollback()
             raise e
-
-    # @classmethod
-    # async def pass_loan(cls, db: AsyncSession, data: OaLoanBaseModel, userId: int):
-    #     try:
-    #         data.check_time = int(datetime.now().timestamp())
-    #         await cls.set_check_uid(db, data, userId)
-    #         await LoanDao.pass_loan(db, data)
-    #         seal = await LoanDao.get_info_by_id(db, data.id)
-    #         await cls.add_record(db, seal, data, userId)
-    #         await db.commit()
-    #         return CrudResponseModel(is_success=True, message='审核通过成功')
-    #     except Exception as e:
-    #         await db.rollback()
-    #         raise e
-    #
-    # @classmethod
-    # async def reject_loan(cls, db: AsyncSession, data: OaLoanBaseModel, userId: int):
-    #     try:
-    #         data.check_time = int(datetime.now().timestamp())
-    #         await cls.set_check_uid(db, data, userId)
-    #         await LoanDao.reject_loan(db, data)
-    #         seal = await LoanDao.get_info_by_id(db, data.id)
-    #         await cls.add_record(db, seal, data, userId)
-    #         await db.commit()
-    #         return CrudResponseModel(is_success=True, message='审核拒绝成功')
-    #     except Exception as e:
-    #         await db.rollback()
-    #         raise e
-    #
-    # @classmethod
-    # async def cancel_loan(cls, db: AsyncSession, data: OaLoanBaseModel, userId: int):
-    #     try:
-    #         await cls.set_check_uid(db, data, userId)
-    #         await LoanDao.cancel_loan(db, data)
-    #         loan = await LoanDao.get_info_by_id(db, data.id)
-    #         await cls.add_record(db, loan, data, userId)
-    #         await db.commit()
-    #         return CrudResponseModel(is_success=True, message='撤销申请成功')
-    #     except Exception as e:
-    #         await db.rollback()
-    #         raise e
 
     @classmethod
     async def pay_loan(cls, db: AsyncSession, data: OaLoanBaseModel, userId: int):
@@ -188,26 +140,6 @@ class OaLoanService:
         except Exception as e:
             await db.rollback()
             return CrudResponseModel(is_success=False, message='还款失败')
-
-    # @classmethod
-    # async def add_record(cls, db: AsyncSession, change: OaFlowRecordBaseModel, model: OaLoanBaseModel, userId: int):
-    #     try:
-    #         flow_cate = await FlowCateDao.get_flow_cate_info(db, change.check_flow_id)
-    #         step = await OaFlowStepDao.get_info_by_flow_id(db, change.check_flow_id)
-    #         record = OaFlowRecordBaseModel()
-    #         record.action_id = change.id
-    #         record.check_table = flow_cate.check_table
-    #         record.flow_id = change.check_flow_id
-    #         record.check_files = model.file_ids
-    #         record.check_uid = userId
-    #         record.check_status = model.check_status
-    #         record.step_id = step.id if step is not None else 0
-    #         record.content = model.content
-    #         record.check_time = int(datetime.now().timestamp())
-    #         await FlowRecordDao.add(db, record)
-    #     except Exception as e:
-    #         await db.rollback()
-    #         raise e
 
     @classmethod
     async def set_check_uid(cls, query_db: AsyncSession, query_object: OaLoanBaseModel, userId: int):

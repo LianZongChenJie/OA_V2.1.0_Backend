@@ -209,10 +209,10 @@ async def delete_payment(
 )
 async def get_payment_detail(
         request: Request,
-        invoice_id: int,
+        ticket_id: int,
         query_db: Annotated[AsyncSession, DBSessionDependency()],
 )->Response:
-    result =  await TicketService.ticket_get_payment(query_db, invoice_id)
+    result =  await TicketService.ticket_get_payment(query_db, ticket_id)
     return ResponseUtil.success(data=result)
 
 @finance_invoice_controller.get(

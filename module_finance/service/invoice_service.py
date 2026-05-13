@@ -64,15 +64,12 @@ class InvoiceService:
             AsyncSession, id: int) -> dict[str, Any]:
         try:
             info = await InvoiceDao.get_info_by_id(query_db, id)
-            records = await FlowRecordDao.get_records_by_action_id(query_db, info['OaInvoice'].id, info['OaInvoice'].check_flow_id)
+            records = await FlowRecordDao.get_records_dict(query_db, info['OaInvoice'].id, info['OaInvoice'].check_flow_id)
             detail = OaInvoiceDetailModel(info=None, records=None)
             info = dict(info)
             info.update(info['OaInvoice'].to_dict())
             info.pop('OaInvoice')
-            record_list = []
-            for record in records:
-                record_list.append(record.to_dict())
-            records = record_list
+            records = records
             detail = {}
             detail.update(info)
             detail['records'] = records
@@ -96,20 +93,6 @@ class InvoiceService:
             await db.rollback()
             raise e
 
-    # @classmethod
-    # async def review(cls, db: AsyncSession, data: OaInvoiceBaseModel, userId: int):
-    #     try:
-    #         data.check_time = int(datetime.now().timestamp())
-    #         await cls.set_check_uid(db, data, userId)
-    #         await InvoiceDao.review(db, data)
-    #         invoice = await InvoiceDao.get_info_by_id(db, data.id)
-    #         await cls.add_record(db, invoice, data, userId)
-    #         await db.commit()
-    #         return CrudResponseModel(is_success=True, message='操作成功！')
-    #     except Exception as e:
-    #         await db.rollback()
-    #         return CrudResponseModel(is_success=False, message='操作失败')
-
     @classmethod
     async def payment(cls, db: AsyncSession, data: OaInvoiceBaseModel, userId: int):
         try:
@@ -122,16 +105,6 @@ class InvoiceService:
         except Exception as e:
             await db.rollback()
             return CrudResponseModel(is_success=False, message='打款失败')
-
-    # @classmethod
-    # async def back_expense(cls, db: AsyncSession, data: OaInvoiceBaseModel, userId: int):
-    #     try:
-    #         await InvoiceDao.back_expense(db, data, userId)
-    #         await db.commit()
-    #         return CrudResponseModel(is_success=True, message='还款成功')
-    #     except Exception as e:
-    #         await db.rollback()
-    #         return CrudResponseModel(is_success=False, message='还款失败')
 
     @classmethod
     async def add_record(cls, db: AsyncSession, change: OaFlowRecordBaseModel, model: OaInvoiceBaseModel, userId: int):

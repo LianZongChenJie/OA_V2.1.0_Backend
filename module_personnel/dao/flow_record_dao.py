@@ -28,6 +28,30 @@ class FlowRecordDao:
         return records
 
     @classmethod
+    async def get_check_records_by_action_id(cls, db: AsyncSession, action_id: int, flow_id: int):
+        """获取审批记录和审核人"""
+        query = (select(OaFlowRecord,
+                       SysUser.nick_name.label('check_user')
+                       ).join(SysUser, OaFlowRecord.check_uid == SysUser.user_id, isouter=True)
+                 .filter(OaFlowRecord.action_id == action_id, OaFlowRecord.flow_id == flow_id)
+                 .order_by(desc(OaFlowRecord.check_time)))
+        check_records = (await db.execute(query)).mappings().all()
+        return check_records
+
+    @classmethod
+    async def get_records_dict(cls, db: AsyncSession, action_id: int, flow_id: int) -> list[dict[str, Any]] | None:
+        records = await cls.get_check_records_by_action_id(db=db, action_id=action_id, flow_id=flow_id)
+        record_list = []
+        if records is None:
+            return None
+        for record in records:
+            record = dict(record)
+            record.update(record['OaFlowRecord'].to_dict())
+            record.pop('OaFlowRecord')
+            record_list.append(record)
+        return record_list
+
+    @classmethod
     async def get_count_by_action_id_flow_id_step_id(cls, db: AsyncSession, action_id: int, flow_id: int, step_id: int) -> int:
         """
         获取同意步骤审批记录数量

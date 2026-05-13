@@ -158,8 +158,8 @@ class ExpenseDao:
                         dept.dept_name.label('dept_name'),
                         OaLoan.cost.label('loan_cost'),
                         )
-                 .join(pay, OaExpense.admin_id == pay.user_id, isouter=True)
-                 .join(admin, OaExpense.pay_admin_id == admin.user_id, isouter=True)
+                 .join(pay, OaExpense.pay_admin_id == pay.user_id, isouter=True)
+                 .join(admin, OaExpense.admin_id == admin.user_id, isouter=True)
                  .join(dept, OaExpense.did == dept.dept_id, isouter=True)
                  .join(OaLoan, OaExpense.loan_id == OaLoan.id, isouter=True)
 
@@ -172,56 +172,6 @@ class ExpenseDao:
         result = await db.execute(update(OaExpense).values(delete_time=int(datetime.now().timestamp())).where(OaExpense.id == id))
         await db.commit()
         return result.rowcount
-
-    # @classmethod
-    # async def cancel_expense(cls, db: AsyncSession, query_model: OaExpenseBaseModel):
-    #     result = await db.execute(update(OaExpense).values(
-    #         update_time=int(datetime.now().timestamp()),
-    #         check_status=query_model.check_status,
-    #         remark=query_model.remark
-    #     ).where(OaExpense.id == query_model.id))
-    #     await db.commit()
-    #     return result.rowcount
-    #
-    # # @classmethod
-    # # async def count_by_uid(cls, db: AsyncSession, uid: str):
-    # #     result = await db.execute(select(func.count()).where(OaExpense.uid == uid))
-    # #     return result.scalar()
-    # @classmethod
-    # async def pass_expense(cls, db: AsyncSession, data: OaExpenseBaseModel):
-    #     try:
-    #         result = await db.execute(
-    #             update(OaExpense)
-    #             .values(
-    #                 check_status=2,
-    #                 check_time=data.check_time,
-    #                 remark=data.remark
-    #             )
-    #             .where(OaExpense.id == data.id)
-    #         )
-    #         await db.commit()
-    #     except Exception as e:
-    #         await db.rollback()
-    #         raise e
-    #     return result.rowcount
-    #
-    # @classmethod
-    # async def reject_expense(cls, db: AsyncSession, data: OaExpenseBaseModel):
-    #     try:
-    #         result = await db.execute(
-    #             update(OaExpense)
-    #             .values(
-    #                 check_status=3,
-    #                 check_time=data.check_time,
-    #                 remark=data.remark
-    #             )
-    #             .where(OaExpense.id == data.id)
-    #         )
-    #         await db.commit()
-    #         return result.rowcount
-    #     except Exception as e:
-    #         await db.rollback()
-    #         raise e
 
     @classmethod
     async def pay_expense(cls, db: AsyncSession, data: OaExpenseBaseModel, userId: int):
