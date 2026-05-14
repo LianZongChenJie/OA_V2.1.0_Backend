@@ -109,7 +109,14 @@ class ServicesDao:
         :param services: 需要更新的服务字典
         :return:
         """
-        await db.execute(update(OaServices), [services])
+        services_copy = services.copy()
+        services_id = services_copy.pop('id', None)
+        if services_id:
+            await db.execute(
+                update(OaServices)
+                .where(OaServices.id == services_id)
+                .values(**services_copy)
+            )
 
     @classmethod
     async def delete_services_dao(cls, db: AsyncSession, services: ServicesModel, del_type: int = 0) -> None:

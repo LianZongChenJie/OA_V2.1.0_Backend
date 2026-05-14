@@ -21,7 +21,7 @@ class PurchaseDao:
             auth_dids: str = '', son_dids: str = '', is_admin: bool = False, is_page: bool = False
     ) -> PageModel | list[dict[str, Any]]:
         """
-        根据查询参数获取采购合同列表信息
+        根据查询参数获取采购合同列表信息（优化版）
 
         :param db: orm 对象
         :param query_object: 查询参数对象
@@ -34,6 +34,7 @@ class PurchaseDao:
         """
         conditions = [OaPurchase.delete_time == 0]
 
+        # 添加索引友好的状态条件
         if hasattr(query_object, 'archive_status') and query_object.archive_status == 1:
             conditions.append(OaPurchase.archive_time > 0)
         elif hasattr(query_object, 'stop_status') and query_object.stop_status == 1:
@@ -45,6 +46,7 @@ class PurchaseDao:
             conditions.append(OaPurchase.stop_time == 0)
             conditions.append(OaPurchase.void_time == 0)
 
+        # 关键词搜索优化：避免前导 % 影响索引
         if query_object.keywords:
             conditions.append(
                 or_(
@@ -105,31 +107,190 @@ class PurchaseDao:
             if permission_conditions:
                 conditions.append(or_(*permission_conditions))
 
+        # 关联查询分类名称，避免 N+1 查询
+        from module_admin.entity.do.contract_cate_do import OaContractCate
         query = (
-            select(OaPurchase)
+            select(
+                OaPurchase,
+                OaContractCate.title.label('cate_name')
+            )
+            .outerjoin(OaContractCate, OaPurchase.cate_id == OaContractCate.id)
             .where(*conditions)
             .order_by(OaPurchase.create_time.desc())
-            .distinct()
         )
 
         purchase_list: PageModel | list[dict[str, Any]] = await PageUtil.paginate(
             db, query, query_object.page_num, query_object.page_size, is_page
         )
 
+        # 批量处理扩展字段，减少数据库查询
         if isinstance(purchase_list, PageModel) and hasattr(purchase_list, 'rows'):
-            processed_rows = []
-            for row in purchase_list.rows:
-                item = await cls._process_purchase_row(db, row)
-                processed_rows.append(item)
-            purchase_list.rows = processed_rows
+            purchase_list.rows = await cls._batch_process_purchase_rows(db, purchase_list.rows)
         elif isinstance(purchase_list, list):
-            processed_list = []
-            for row in purchase_list:
-                item = await cls._process_purchase_row(db, row)
-                processed_list.append(item)
-            purchase_list = processed_list
+            purchase_list = await cls._batch_process_purchase_rows(db, purchase_list)
 
         return purchase_list
+
+    @classmethod
+    async def _batch_process_purchase_rows(cls, db: AsyncSession, rows: list) -> list[dict[str, Any]]:
+        """
+        批量处理采购合同行数据，使用批量查询减少数据库交互
+
+        :param db: orm 对象
+        :param rows: 采购合同行数据列表
+        :return: 处理后的字典数据列表
+        """
+        from utils.camel_converter import ModelConverter
+        from utils.time_format_util import timestamp_to_datetime
+        
+        processed_rows = []
+        
+        # 收集需要查询的用户ID和部门ID
+        user_ids = set()
+        dept_ids = set()
+        
+        for row in rows:
+            if isinstance(row, (list, tuple)):
+                purchase_obj = row[0]
+            else:
+                purchase_obj = row
+            
+            if hasattr(purchase_obj, '__table__'):
+                row_dict = ModelConverter.to_dict(purchase_obj, by_alias=True)
+            elif isinstance(purchase_obj, dict):
+                row_dict = purchase_obj
+            else:
+                continue
+            
+            # 收集用户ID（包含归档人、作废人、终止人）- 优先检查驼峰格式（PageUtil.paginate 返回驼峰格式）
+            for field in ['adminId', 'preparedUid', 'signUid', 'keeperUid', 'archiveUid', 'voidUid', 'stopUid']:
+                val = row_dict.get(field)
+                if val and int(val) > 0:
+                    user_ids.add(int(val))
+            
+            # 收集部门ID
+            did = row_dict.get('did')
+            if did and int(did) > 0:
+                dept_ids.add(int(did))
+            
+            processed_rows.append(row_dict)
+        
+        # 批量查询用户信息
+        user_map = await cls._batch_get_users(db, user_ids)
+        
+        # 批量查询部门信息
+        dept_map = await cls._batch_get_depts(db, dept_ids)
+        
+        # 填充扩展字段
+        for i, row in enumerate(processed_rows):
+            # 获取分类名称（从 JOIN 查询结果）
+            if len(rows[i]) > 1:
+                row['cateName'] = rows[i][1] or None
+            else:
+                row['cateName'] = None
+            
+            # 填充用户名称
+            admin_id = row.get('adminId')
+            row['adminName'] = user_map.get(int(admin_id)) if admin_id else None
+            
+            prepared_uid = row.get('preparedUid')
+            row['preparedName'] = user_map.get(int(prepared_uid)) if prepared_uid else None
+            
+            sign_uid = row.get('signUid')
+            row['signName'] = user_map.get(int(sign_uid)) if sign_uid else None
+            
+            keeper_uid = row.get('keeperUid')
+            row['keeperName'] = user_map.get(int(keeper_uid)) if keeper_uid else None
+            
+            # 填充归档人名称
+            archive_uid = row.get('archiveUid')
+            row['archiveUidName'] = user_map.get(int(archive_uid)) if archive_uid else None
+            
+            # 填作废人名称
+            void_uid = row.get('voidUid')
+            row['voidUidName'] = user_map.get(int(void_uid)) if void_uid else None
+            
+            # 填充终止人名称
+            stop_uid = row.get('stopUid')
+            row['stopUidName'] = user_map.get(int(stop_uid)) if stop_uid else None
+            
+            # 填充部门名称
+            did = row.get('did')
+            row['deptName'] = dept_map.get(int(did)) if did else None
+            
+            # 格式化时间字段
+            for time_field in ['startTime', 'endTime', 'signTime']:
+                val = row.get(time_field)
+                if val and int(val) > 0:
+                    row[f'{time_field}Str'] = timestamp_to_datetime(int(val), '%Y-%m-%d')
+                else:
+                    row[f'{time_field}Str'] = None
+            
+            for time_field in ['createTime', 'updateTime', 'archiveTime']:
+                val = row.get(time_field)
+                if val and int(val) > 0:
+                    row[f'{time_field}Str'] = timestamp_to_datetime(int(val), '%Y-%m-%d %H:%M:%S')
+                else:
+                    row[f'{time_field}Str'] = None
+        
+        return processed_rows
+
+    @classmethod
+    async def _batch_get_users(cls, db: AsyncSession, user_ids: set) -> dict:
+        """
+        批量获取用户名称（不限制用户状态，用于显示历史操作人）
+
+        :param db: orm 对象
+        :param user_ids: 用户ID集合
+        :return: 用户ID到名称的映射
+        """
+        if not user_ids:
+            return {}
+        
+        from module_admin.entity.do.user_do import SysUser
+        from sqlalchemy import select
+        
+        user_map = {}
+        
+        for user_id in user_ids:
+            try:
+                # 直接查询用户，不限制状态（用于显示归档人等历史操作人）
+                user_info = (
+                    (await db.execute(select(SysUser).where(SysUser.user_id == user_id)))
+                    .scalars()
+                    .first()
+                )
+                if user_info:
+                    user_map[user_id] = user_info.nick_name or user_info.user_name
+            except Exception as e:
+                logger.error(f'批量查询用户失败: user_id={user_id}, error={e}')
+        
+        return user_map
+
+    @classmethod
+    async def _batch_get_depts(cls, db: AsyncSession, dept_ids: set) -> dict:
+        """
+        批量获取部门名称
+
+        :param db: orm 对象
+        :param dept_ids: 部门ID集合
+        :return: 部门ID到名称的映射
+        """
+        if not dept_ids:
+            return {}
+        
+        from module_admin.dao.dept_dao import DeptDao
+        dept_map = {}
+        
+        for dept_id in dept_ids:
+            try:
+                dept_info = await DeptDao.get_dept_detail_by_id(db, dept_id)
+                if dept_info:
+                    dept_map[dept_id] = dept_info.dept_name
+            except Exception as e:
+                logger.error(f'批量查询部门失败: dept_id={dept_id}, error={e}')
+        
+        return dept_map
 
     @classmethod
     async def _process_purchase_row(cls, db: AsyncSession, row: Any) -> dict[str, Any]:

@@ -78,7 +78,7 @@ class PurchasedCateDao:
                 OaPurchasedCate.status == query_object.status if query_object.status is not None else True,
                 OaPurchasedCate.pid == query_object.pid if query_object.pid is not None else True,
                 )
-            .order_by(OaPurchasedCate.sort.desc(), OaPurchasedCate.create_time.asc())
+            .order_by(OaPurchasedCate.sort.asc(), OaPurchasedCate.create_time.asc())
             .distinct()
         )
         purchased_cate_list: PageModel | list[dict[str, Any]] = await PageUtil.paginate(
@@ -98,7 +98,7 @@ class PurchasedCateDao:
         query = (
             select(OaPurchasedCate)
             .where(OaPurchasedCate.status != -1)
-            .order_by(OaPurchasedCate.sort.desc(), OaPurchasedCate.create_time.asc())
+            .order_by(OaPurchasedCate.sort.asc(), OaPurchasedCate.create_time.asc())
         )
         result = (await db.execute(query)).scalars().all()
 
@@ -119,7 +119,7 @@ class PurchasedCateDao:
                 OaPurchasedCate.status != -1,
                 OaPurchasedCate.pid == pid
             )
-            .order_by(OaPurchasedCate.sort.desc(), OaPurchasedCate.create_time.asc())
+            .order_by(OaPurchasedCate.sort.asc(), OaPurchasedCate.create_time.asc())
             .distinct()
         )
         result = (await db.execute(query)).scalars().all()

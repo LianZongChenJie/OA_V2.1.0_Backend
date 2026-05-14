@@ -83,7 +83,7 @@ class NoteCateService:
             page_object.title = page_object.title.strip()
         
         if not await cls.check_note_cate_title_unique_services(query_db, page_object):
-            raise ServiceException(message=f'新增公告分类{page_object.title}失败，公告分类名称已存在')
+            raise ServiceException(message=f'新增公告分类{page_object.title}失败，{page_object.title}已存在')
 
         try:
             current_time = int(datetime.now().timestamp())
@@ -123,7 +123,7 @@ class NoteCateService:
 
         if note_cate_info.id:
             if not await cls.check_note_cate_title_unique_services(query_db, page_object):
-                raise ServiceException(message=f'修改公告分类{page_object.title}失败，公告分类名称已存在')
+                raise ServiceException(message=f'修改公告分类{page_object.title}失败，{page_object.title}已存在')
 
             try:
                 edit_note_cate['update_time'] = int(datetime.now().timestamp())

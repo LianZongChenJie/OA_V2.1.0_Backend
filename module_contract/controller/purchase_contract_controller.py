@@ -336,8 +336,8 @@ async def get_purchase_contract_detail(
 @Log(title='合同归档管理', business_type=BusinessType.UPDATE)
 async def archive_contract_unified(
         request: Request,
-        contract_type: Annotated[str, Query(description='合同类型：purchase=采购合同, sale=销售合同')],
-        contract_id: Annotated[int, Query(description='需要归档的合同 ID')],
+        contract_type: Annotated[str, Query(description='合同类型：purchase=采购合同, sale=销售合同', alias='contractType')],
+        contract_id: Annotated[int, Query(description='需要归档的合同 ID', alias='contractId')],
         query_db: Annotated[AsyncSession, DBSessionDependency()],
         current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
 ) -> Response:
@@ -398,4 +398,3 @@ async def archive_purchase_contract(
     logger.info(archive_result.message)
 
     return ResponseUtil.success(msg=archive_result.message)
-
