@@ -26,6 +26,8 @@ class SysLogininfor(Base):
     idx_sys_logininfor_s = Index('idx_sys_logininfor_s', status)
     idx_sys_logininfor_lt = Index('idx_sys_logininfor_lt', login_time)
 
+    def to_dict(self):
+        return {c.name: getattr(self, c.name) for c in self.__table__.columns}
 
 class SysOperLog(Base):
     """
@@ -59,6 +61,8 @@ class SysOperLog(Base):
     idx_sys_oper_log_s = Index('idx_sys_oper_log_s', status)
     idx_sys_oper_log_ot = Index('idx_sys_oper_log_ot', oper_time)
 
+    def to_dict(self):
+        return {c.name: getattr(self, c.name) for c in self.__table__.columns}
 
 class OaAdminLogCount(Base):
     """
