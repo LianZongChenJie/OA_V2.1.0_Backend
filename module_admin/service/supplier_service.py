@@ -165,7 +165,8 @@ class SupplierService:
         :param page_object: 编辑供应商对象
         :return: 编辑供应商校验结果
         """
-        edit_supplier = page_object.model_dump(exclude_unset=True)
+        # 排除 status 字段，编辑时不允许修改状态
+        edit_supplier = page_object.model_dump(exclude_unset=True, exclude={'status'})
         supplier_info = await cls.supplier_detail_services(query_db, page_object.id)
 
         if supplier_info.id:

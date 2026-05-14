@@ -106,7 +106,8 @@ class ServicesService:
         :param page_object: 编辑服务对象
         :return: 编辑服务校验结果
         """
-        edit_services = page_object.model_dump(exclude_unset=True)
+        # 排除 status 字段，编辑时不允许修改状态
+        edit_services = page_object.model_dump(exclude_unset=True, exclude={'status'})
         services_info = await cls.services_detail_services(query_db, page_object.id)
 
         if services_info.id:

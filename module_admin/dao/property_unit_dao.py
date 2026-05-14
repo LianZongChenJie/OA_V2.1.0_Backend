@@ -76,7 +76,7 @@ class PropertyUnitDao:
                 SysPropertyUnit.title.like(f'%{query_object.title}%') if query_object.title else True,
                 SysPropertyUnit.status == query_object.status if query_object.status is not None else True,
                 )
-            .order_by(SysPropertyUnit.sort.desc(), SysPropertyUnit.create_time.asc())
+            .order_by(SysPropertyUnit.sort.asc(), SysPropertyUnit.create_time.asc())
             .distinct()
         )
         property_unit_list: PageModel | list[dict] = await PageUtil.paginate(

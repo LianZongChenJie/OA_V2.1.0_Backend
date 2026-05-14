@@ -87,7 +87,7 @@ class ProductCateDao:
         query = (
             select(OaProductCate)
             .where(*conditions)
-            .order_by(OaProductCate.sort.desc(), OaProductCate.create_time.asc())
+            .order_by(OaProductCate.sort.asc(), OaProductCate.create_time.asc())
             .distinct()
         )
         product_cate_list: PageModel | list[dict[str, Any]] = await PageUtil.paginate(
@@ -213,15 +213,18 @@ class ProductCateDao:
     @classmethod
     async def count_child_product_cate_dao(cls, db: AsyncSession, pid: int) -> int | None:
         """
-        根据父分类 ID 统计子分类数量
+        根据父分类 ID 统计子分类数量（排除已删除的分类）
 
         :param db: orm 对象
         :param pid: 父分类 ID
         :return: 子分类数量
         """
         child_count = (
-            await db.execute(select(func.count('*')).select_from(OaProductCate).where(OaProductCate.pid == pid))
+            await db.execute(
+                select(func.count('*'))
+                .select_from(OaProductCate)
+                .where(OaProductCate.pid == pid, OaProductCate.status != -1)
+            )
         ).scalar()
 
         return child_count
-
