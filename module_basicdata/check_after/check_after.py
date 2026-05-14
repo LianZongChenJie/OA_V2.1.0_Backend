@@ -5,7 +5,7 @@ from module_finance.dao.invoice_dao import InvoiceDao
 from module_finance.dao.loan_dao import LoanDao
 from datetime import datetime
 #
-# from module_finance.dao.ticket_dao import TicketDao
+from module_finance.dao.ticket_dao import TicketDao
 from module_personnel.dao.department_change_dao import DepartmentChangeDao
 from utils.log_util import logger
 
@@ -27,8 +27,8 @@ class CheckAfter:
             await cls.update_expense(db, id)
         elif check_table == "invoice":
             await cls.update_invoice(db, id)
-        # elif check_table == "ticket":
-        #     await cls.update_ticket(db, id)
+        elif check_table == "ticket":
+            await cls.update_ticket(db, id)
         elif check_table == "department_change":
             await cls.update_department_change(db, id)
         else:
@@ -80,22 +80,22 @@ class CheckAfter:
             await InvoiceDao.update_by_entity(db, invoice)
         return
 
-    # @classmethod
-    # async def update_ticket(cls,db:AsyncSession, id:int):
-    #    """
-    #    更新收票状态
-    #    :param db:
-    #    :param id:
-    #    :return:
-    #    """
-    #    ticket = await TicketDao.get_info_by_id(db, id)
-    #    ticket = ticket['OaTicket']
-    #    ticket.open_status = 1
-    #    ticket.open_time = int(datetime.now().timestamp())
-    #    ticket.pay_status = 2
-    #    ticket.pay_time = int(datetime.now().timestamp())
-    #    await TicketDao.update_by_entity(db, ticket)
-    #    return
+    @classmethod
+    async def update_ticket(cls,db:AsyncSession, id:int):
+       """
+       更新收票状态
+       :param db:
+       :param id:
+       :return:
+       """
+       ticket = await TicketDao.get_info_by_id(db, id)
+       ticket = ticket['OaTicket']
+       ticket.open_status = 1
+       ticket.open_time = int(datetime.now().timestamp())
+       ticket.pay_status = 0
+       ticket.pay_time = int(datetime.now().timestamp())
+       await TicketDao.update_by_entity(db, ticket)
+       return
 
     @classmethod
     async def update_department_change(cls, db:AsyncSession, id:int):

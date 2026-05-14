@@ -11,6 +11,8 @@ from typing import Any
 from datetime import datetime
 
 from module_administrative.entity.vo.msg_vo import OaMsgQueryPageModel
+from module_basicdata.dao.public.template_dao import OaTemplateDao
+from module_basicdata.entity.do.public.template_do import OaTemplate
 from utils.camel_converter import ModelConverter
 
 
@@ -337,3 +339,120 @@ class MessageService:
             return CrudResponseModel(is_success=True, message='设置成功')
         except Exception as e:
             raise ServiceException('阅读失败:' + str(e))
+
+
+    @classmethod
+    async def send_template_message(cls, query_db: AsyncSession, template_id: int, data: dict[str, Any], template_params: dict[str, Any]):
+        """
+        发送模板消息
+        :param query_db:
+        :param template_id:
+        :param data: {'copy_uids':[1,2,3],'check_uids':[1,2,3],'user_id':'1','is_end':true,'check_status':2,'file_ids':'123','action_id':'1'} 消息接收人，审核状态等信息
+        :param template_params: 模板字典{'title':'测试公告','from_user':'超级管理员', 'create_time':'2025-01-15 11:25:59', 'date':'2025-01-15 11:25:59'}
+        :return:
+        """
+        message_list = []
+        template = await OaTemplateDao.get_template_by_Id(query_db, template_id)
+        if not template:
+            raise ServiceException('发送模板消息失败，模板不存在！')
+
+        if data.get('file_ids') is None:
+            data['file_ids'] = ''
+        if data.get('action_id') is None:
+            data['action_id'] = 0
+
+        if data.get('copy_uids') is not None:
+            title,content = await cls.get_template_title_and_content(template, template_params['from_user'], template_params['create_time'], is_copy=True)
+            result_list = await cls.send_template_add_list(data['copy_uids'], data['file_ids'],
+                                             data['action_id'],title, content,template_id)
+            message_list.extend(result_list)
+
+        if data.get('check_uids') is not None:
+            title, content = await cls.get_template_title_and_content(template, template_params['from_user'],
+                                                                      template_params['create_time'], is_check=True)
+            result_list = await cls.send_template_add_list(data['check_uids'], data['file_ids'],
+                                                           data['action_id'], title, content, template_id)
+            message_list.extend(result_list)
+
+        if data.get('user_id'):
+            is_end = False
+            is_pass = False
+            if data.get('is_end') is not None:
+                is_end = data['is_end']
+                if data.get('check_status'):
+                    if data['check_status'] == 2:
+                        is_pass = True
+            title, content = await cls.get_template_title_and_content(template, template_params['from_user'],
+                                                                      template_params['create_time'], is_user=True, is_end=is_end, is_pass=is_pass)
+            result_list = await cls.send_template_add_list([data['user_id']], data['file_ids'],
+                                                           data['action_id'], title, content, template_id)
+            message_list.extend(result_list)
+
+        try:
+            await MsgDao.add_list(query_db, message_list)
+        except Exception as e:
+            raise ServiceException('发送失败:' + str(e))
+
+    @classmethod
+    async def send_template_add_list(cls, user_ids: list[int], file_ids: str, action_id: int, title:str, content:str, template_id:int):
+        if user_ids is None:
+            return []
+        message_list = []
+        try:
+            for user_id in user_ids:
+                msg = OaMsg()
+                msg.title = title
+                msg.template = template_id
+                msg.content = content
+                msg.file_ids = file_ids
+                msg.from_uid = 0
+                msg.to_uid = user_id
+                msg.message_id = 0
+                msg.msg_id = 0
+                msg.is_star = 0
+                msg.read_time = 0
+                msg.create_time = int(datetime.now().timestamp())
+                msg.action_id = action_id
+                message_list.append(msg)
+            return message_list
+        except Exception as e:
+            raise ServiceException('添加失败:' + str(e))
+
+    @classmethod
+    async def get_template_title_and_content(cls,template: OaTemplate, from_user:str, create_time:str, is_copy=False, is_check=False, is_user=False, is_end=False, is_pass=False):
+        """
+        通过模板生成通知title和content
+        :param is_copy: 抄送人
+        :param template: 模板
+        :param is_check: 审核人
+        :param is_user: 申请人
+        :param is_end: 结束True，未结束False
+        :param is_pass: 审核通过True，审核不通过False
+        :param from_user: 申请人
+        :param create_time: 申请时间
+        :return:
+        """
+        if not template:
+            raise ServiceException('模板不能为空')
+        if is_copy:
+            title = template.msg_title_3.replace('{from_user}', from_user)
+            content = template.msg_content_3.replace('{create_time}', create_time).replace('{from_user}', from_user)
+            return title, content
+        if is_check:
+            title = template.msg_title_0.replace('{from_user}', from_user)
+            content = template.msg_content_0.replace('{create_time}', create_time).replace('{from_user}', from_user)
+            return title, content
+        if is_user:
+            if is_end:
+                if is_pass:
+                    title = template.msg_title_1.replace('{from_user}', from_user)
+                    content = template.msg_content_1.replace('{create_time}', create_time).replace('{from_user}', from_user)
+                    return title, content
+                else:
+                    title = template.msg_title_2.replace('{from_user}', from_user)
+                    content = template.msg_content_2.replace('{create_time}', create_time).replace('{from_user}', from_user)
+                    return title, content
+        return None, None
+
+
+
