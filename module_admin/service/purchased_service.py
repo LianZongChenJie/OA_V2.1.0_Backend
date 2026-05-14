@@ -76,20 +76,31 @@ class PurchasedService:
 
     @classmethod
     async def check_purchased_title_unique_services(
-            cls, query_db: AsyncSession, page_object: PurchasedModel
+            cls, query_db: AsyncSession, title: str, exclude_id: int = None
     ) -> bool:
         """
         校验采购品名称是否唯一 service
 
         :param query_db: orm 对象
-        :param page_object: 采购品对象
-        :return: 校验结果
+        :param title: 采购品名称
+        :param exclude_id: 排除的 ID（用于编辑时排除自身）
+        :return: 是否唯一
         """
-        purchased_id = -1 if page_object.id is None else page_object.id
-        purchased = await PurchasedDao.get_purchased_detail_by_info(query_db, page_object)
-        if purchased and purchased.id != purchased_id:
-            return CommonConstant.NOT_UNIQUE
-        return CommonConstant.UNIQUE
+        return await PurchasedDao.check_purchased_unique_by_title(query_db, title, exclude_id)
+
+    @classmethod
+    async def check_purchased_code_unique_services(
+            cls, query_db: AsyncSession, code: str, exclude_id: int = None
+    ) -> bool:
+        """
+        校验产品编码是否唯一 service
+
+        :param query_db: orm 对象
+        :param code: 产品编码
+        :param exclude_id: 排除的 ID（用于编辑时排除自身）
+        :return: 是否唯一
+        """
+        return await PurchasedDao.check_purchased_unique_by_code(query_db, code, exclude_id)
 
     @classmethod
     async def add_purchased_services(
@@ -104,8 +115,15 @@ class PurchasedService:
         :param current_user_id: 当前登录用户 ID
         :return: 新增采购品校验结果
         """
-        if not await cls.check_purchased_title_unique_services(query_db, page_object):
-            raise ServiceException(message=f'新增采购品{page_object.title}失败，采购品名称已存在')
+        # 校验采购品名称是否唯一
+        if page_object.title:
+            if not await cls.check_purchased_title_unique_services(query_db, page_object.title):
+                raise ServiceException(message=f'新增采购品{page_object.title}失败，采购品名称已存在')
+        
+        # 校验产品编码是否唯一
+        if page_object.code:
+            if not await cls.check_purchased_code_unique_services(query_db, page_object.code):
+                raise ServiceException(message=f'新增采购品{page_object.title}失败，产品编码{page_object.code}已存在')
 
         try:
             current_time = int(datetime.now().timestamp())
@@ -156,8 +174,15 @@ class PurchasedService:
         purchased_info = await cls.purchased_detail_services(query_db, page_object.id)
 
         if purchased_info.id:
-            if not await cls.check_purchased_title_unique_services(query_db, page_object):
-                raise ServiceException(message=f'修改采购品{page_object.title}失败，采购品名称已存在')
+            # 校验采购品名称是否唯一（排除自身）
+            if page_object.title:
+                if not await cls.check_purchased_title_unique_services(query_db, page_object.title, page_object.id):
+                    raise ServiceException(message=f'修改采购品{page_object.title}失败，采购品名称已存在')
+            
+            # 校验产品编码是否唯一（排除自身）
+            if page_object.code:
+                if not await cls.check_purchased_code_unique_services(query_db, page_object.code, page_object.id):
+                    raise ServiceException(message=f'修改采购品{page_object.title}失败，产品编码{page_object.code}已存在')
 
             try:
                 edit_purchased['update_time'] = int(datetime.now().timestamp())

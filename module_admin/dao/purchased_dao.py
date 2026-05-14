@@ -34,28 +34,36 @@ class PurchasedDao:
         return purchased_info
 
     @classmethod
-    async def get_purchased_detail_by_info(cls, db: AsyncSession, purchased: PurchasedModel) -> OaPurchased | None:
+    async def check_purchased_unique_by_title(cls, db: AsyncSession, title: str, exclude_id: int = None) -> bool:
         """
-        根据采购品参数获取采购品信息
+        检查采购品名称是否唯一
 
         :param db: orm 对象
-        :param purchased: 采购品参数对象
-        :return: 采购品信息对象
+        :param title: 采购品名称
+        :param exclude_id: 排除的 ID（用于编辑时排除自身）
+        :return: 是否唯一
         """
-        query_conditions = []
-        if purchased.title:
-            query_conditions.append(OaPurchased.title == purchased.title)
+        query = select(OaPurchased).where(OaPurchased.title == title)
+        if exclude_id:
+            query = query.where(OaPurchased.id != exclude_id)
+        purchased_info = (await db.execute(query)).scalars().first()
+        return purchased_info is None
 
-        if query_conditions:
-            purchased_info = (
-                (await db.execute(select(OaPurchased).where(and_(*query_conditions))))
-                .scalars()
-                .first()
-            )
-        else:
-            purchased_info = None
+    @classmethod
+    async def check_purchased_unique_by_code(cls, db: AsyncSession, code: str, exclude_id: int = None) -> bool:
+        """
+        检查产品编码是否唯一
 
-        return purchased_info
+        :param db: orm 对象
+        :param code: 产品编码
+        :param exclude_id: 排除的 ID（用于编辑时排除自身）
+        :return: 是否唯一
+        """
+        query = select(OaPurchased).where(OaPurchased.code == code)
+        if exclude_id:
+            query = query.where(OaPurchased.id != exclude_id)
+        purchased_info = (await db.execute(query)).scalars().first()
+        return purchased_info is None
 
     @classmethod
     async def get_purchased_list(
@@ -99,7 +107,13 @@ class PurchasedDao:
         :param purchased: 采购品对象
         :return:
         """
-        purchased_dict = purchased.model_dump(by_alias=False)
+        # 获取 OaPurchased 表的有效字段列表
+        valid_fields = {c.name for c in OaPurchased.__table__.columns}
+        # 过滤掉不属于数据库表的字段（如 cate_name）
+        purchased_dict = {
+            k: v for k, v in purchased.model_dump(by_alias=False).items()
+            if k in valid_fields
+        }
         db_purchased = OaPurchased(**purchased_dict)
         db.add(db_purchased)
         await db.flush()
