@@ -39,7 +39,7 @@ class WorkCateService:
             return CrudResponseModel(is_success=True, message='新增成功')
         except Exception as e:
             await query_db.rollback()
-            raise e
+            raise ServiceException(message='新增失败')
         pass
 
     @classmethod
@@ -49,20 +49,20 @@ class WorkCateService:
         try:
             model.update_time = int(datetime.now().timestamp())
             await WorkCateDao.update(query_db, model)
-            return CrudResponseModel(is_success=True, message='修改成功')
+            return CrudResponseModel(is_success=True, message='编辑成功')
         except Exception as e:
             await query_db.rollback()
-            raise e
+            raise ServiceException(message='编辑失败')
         pass
 
     @classmethod
     async def change_status_service(cls, query_db: AsyncSession, model: OaWorkCateBaseModel):
         try:
             await WorkCateDao.change_status(query_db, model)
-            return CrudResponseModel(is_success=True, message='更新成功')
+            return CrudResponseModel(is_success=True, message='编辑成功')
         except Exception as e:
             await query_db.rollback()
-            raise e
+            raise ServiceException(message='编辑失败')
         pass
 
     @classmethod
@@ -75,7 +75,7 @@ class WorkCateService:
             return industry_info
         except Exception as e:
             await query_db.rollback()
-            raise e
+            raise ServiceException(message='未找到该数据')
         pass
 
     @classmethod

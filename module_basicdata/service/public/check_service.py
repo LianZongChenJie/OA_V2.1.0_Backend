@@ -6,6 +6,7 @@ from exceptions.exception import ServiceException
 from module_admin.dao.dept_dao import DeptDao
 from module_admin.dao.post_dao import PostDao
 from module_admin.dao.user_dao import UserDao
+from module_administrative.service.message_service import MessageService
 from module_basicdata.dao.public.check_dao import CheckDao
 from module_basicdata.dao.public.flow_cate_dao import FlowCateDao
 from module_basicdata.dao.public.flow_dao import OaFlowDao
@@ -63,9 +64,9 @@ class CheckService:
         flow = await OaFlowDao.get_flow_detail(db, query_model.flow_id)
         flow_cate = await FlowCateDao.get_flow_cate_info(db, flow.cate_id)
         subject = flow_cate.title
+        template_id = flow_cate.template_id
         action_id = query_model.action_id
         check_table = flow_cate.check_table
-        check_step_sort = 0
         check_uids = None
         step = 0
         check_status = 0
@@ -73,6 +74,8 @@ class CheckService:
         # 审核内容详情
         sql = 'select * from %s where id = :id' % ('oa_'+ check_table)
         detail = await CheckDao.execute_row_sql(db, sql, {'id':action_id})
+        check_step_sort = int(detail['check_step_sort'])
+        old_check_step_sort = check_step_sort
         if not detail:
             return CrudResponseModel(is_success=False, message='审核内容详情为空')
 
@@ -172,7 +175,39 @@ class CheckService:
                 # todo
 
                 # 发送系统消息
-                # todo
+                if old_check_step_sort != check_step_sort:
+
+                    check_uids = [int(uid) for uid in check_uids.split(',')] if check_uids else []
+                    data = {'check_uids': check_uids, 'file_ids': record.check_files,
+                            'action_id': query_model.action_id}
+
+                    template_params = {}
+                    template_params['from_user'] = ','.join(await UserDao.get_nick_name_by_user_id(db, [user_id]))
+
+                    if check_status == 1:
+                        template_params['create_time'] = ''
+
+                    if check_status == 2:
+                        data.pop('check_uids')
+                        data['user_id'] = detail['admin_id']
+                        data['copy_uids'] = [int(uid) for uid in detail['check_copy_uids'].split(',')] if detail['check_copy_uids'] else []
+                        data['is_end'] = True
+                        data['check_status'] = 2
+                        template_params = {}
+                        template_params['from_user'] = ','.join(await UserDao.get_nick_name_by_user_id(db, [user_id]))
+                        template_params['create_time'] = format_timestamp(detail['create_time'])
+
+                    if check_status == 3:
+                        data.pop('check_uids')
+                        data['user_id'] = detail['admin_id']
+                        data['is_end'] = True
+                        data['check_status'] = 3
+                        template_params = {}
+                        template_params['from_user'] = ','.join(await UserDao.get_nick_name_by_user_id(db, [user_id]))
+                        template_params['create_time'] = format_timestamp(detail['create_time'])
+
+                    await MessageService.send_template_message(db, template_id, data, template_params)
+
                 return CrudResponseModel(is_success=True, data={'subject':subject, 'step':step}, message='审核成功')
             else:
                 return CrudResponseModel(is_success=False, message='审核失败')
@@ -224,7 +259,37 @@ class CheckService:
                 #
                 #     pass
                 # 发送消息
-                # todo
+                check_uids = [int(uid) for uid in check_uids.split(',')] if check_uids else []
+                data = {'check_uids': check_uids, 'file_ids': record.check_files,
+                        'action_id': query_model.action_id}
+
+                template_params = {}
+                template_params['from_user'] = ','.join(await UserDao.get_nick_name_by_user_id(db, [user_id]))
+
+                if check_status == 1:
+                    template_params['create_time'] = ''
+
+                if check_status == 2:
+                    data.pop('check_uids')
+                    data['user_id'] = detail['admin_id']
+                    data['copy_uids'] = [int(uid) for uid in detail['check_copy_uids'].split(',')] if detail['check_copy_uids'] else []
+                    data['is_end'] = True
+                    data['check_status'] = 2
+                    template_params = {}
+                    template_params['from_user'] = ','.join(await UserDao.get_nick_name_by_user_id(db, [user_id]))
+                    template_params['create_time'] = format_timestamp(detail['create_time'])
+
+                if check_status == 3:
+                    data.pop('check_uids')
+                    data['user_id'] = detail['admin_id']
+                    data['copy_uids'] = [int(uid) for uid in detail['check_copy_uids'].split(',')] if detail['check_copy_uids'] else []
+                    data['is_end'] = True
+                    data['check_status'] = 3
+                    template_params = {}
+                    template_params['from_user'] = ','.join(await UserDao.get_nick_name_by_user_id(db, [user_id]))
+                    template_params['create_time'] = format_timestamp(detail['create_time'])
+
+                await MessageService.send_template_message(db, template_id, data, template_params)
                 # 记录操作日志
                 # todo
                 return CrudResponseModel(is_success=True, message='操作成功！')
@@ -442,10 +507,16 @@ class CheckService:
                 await CheckDao.execute_update_sql(db, sql, update_dict)
 
                 #发送消息通知
-                # todo
-                return CrudResponseModel(is_success=True, message='操作成功')
+                check_uids = [int(uid) for uid in step[0].check_uids.split(',')]
+                data = {'check_uids': check_uids, 'file_ids':record.check_files, 'action_id':query_model.action_id}
+                template_params = {}
+                template_params['from_user'] = ','.join(await UserDao.get_nick_name_by_user_id(db, [user_id]))
+                template_params['create_time'] = ''
+                await MessageService.send_template_message(db, flow_cate['template_id'], data, template_params)
+
+                return CrudResponseModel(is_success=True, message='提交审核成功')
             else:
-                return CrudResponseModel(is_success=False, message='操作失败')
+                raise ServiceException(message="提交审核失败")
         # 自由审批
         if query_model.check_uids is not None:
             step = {
@@ -472,9 +543,9 @@ class CheckService:
                 await CheckDao.execute_update_sql(db, sql, update_dict)
                 # 发送消息通知
                 # todo
-            return CrudResponseModel(is_success=True, message='操作成功')
+            return CrudResponseModel(is_success=True, message='提交审核成功')
         else:
-            return CrudResponseModel(is_success=False, message='操作失败')
+            raise ServiceException(message='操作失败')
 
     @classmethod
     async def get_flow_nodes(cls, db: AsyncSession, action_id : int, flow_id: int, dept_id : int, user_id: int) -> list[dict]:
@@ -720,10 +791,38 @@ class CheckService:
             # todo
 
             # 发送系统消息
-            # todo
-            return CrudResponseModel(is_success=True, data={'subject': subject, 'step': step}, message='审核成功')
+            check_uids = [int(uid) for uid in check_uids.split(',')]
+            data = {'check_uids': check_uids, 'file_ids': record.check_files,
+                    'action_id': query_model.action_id}
+
+            template_params = {}
+            template_params['from_user'] = ','.join(await UserDao.get_nick_name_by_user_id(db, [user_id]))
+
+            if check_status == 1:
+                template_params['create_time'] = ''
+
+            if check_status == 2:
+                data.pop('check_uids')
+                data['user_id'] = detail['admin_id']
+                data['copy_uids'] = [int(uid) for uid in detail['copy_uids'].split(',')] if detail['copy_uids'] else []
+                data['is_end'] = True
+                data['check_status'] = 2
+                template_params = {}
+                template_params['from_user'] = ','.join(await UserDao.get_nick_name_by_user_id(db, [user_id]))
+                template_params['create_time'] = detail['create_time']
+
+            if check_status == 3:
+                data['user_id'] = detail['admin_id']
+                data['is_end'] = True
+                data['check_status'] = 3
+                template_params = {}
+                template_params['from_user'] = ','.join(await UserDao.get_nick_name_by_user_id(db, [user_id]))
+                template_params['create_time'] = detail['create_time']
+
+            await MessageService.send_template_message(db, flow_cate['template_id'], data, template_params)
+            return CrudResponseModel(is_success=True, data={'subject': subject, 'step': step}, message='条部审批成功！')
         else:
-            return CrudResponseModel(is_success=False, message='审核失败')
+            return CrudResponseModel(is_success=False, message='跳审批失败')
 
 
 

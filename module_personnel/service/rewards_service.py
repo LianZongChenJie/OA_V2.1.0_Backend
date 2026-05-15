@@ -55,7 +55,7 @@ class RewardsService:
             return CrudResponseModel(is_success=True, message='新增成功')
         except Exception as e:
             await query_db.rollback()
-            raise e
+            raise ServiceException(message=f"新增失败")
         pass
 
     @classmethod
@@ -64,10 +64,10 @@ class RewardsService:
             model.update_time = int(datetime.now().timestamp())
             change = await RewardsDao.update(query_db, model)
             await query_db.commit()
-            return CrudResponseModel(is_success=True, message='修改成功')
+            return CrudResponseModel(is_success=True, message='编辑成功')
         except Exception as e:
             await query_db.rollback()
-            raise e
+            raise ServiceException(message=f"编辑失败")
         pass
 
 
@@ -92,7 +92,7 @@ class RewardsService:
             return ModelConverter.convert_to_camel_case(info)
         except Exception as e:
             await query_db.rollback()
-            raise e
+            raise ServiceException(message=f"获取失败")
         pass
 
     @classmethod
@@ -117,8 +117,7 @@ class RewardsService:
             return CrudResponseModel(is_success=True, message='删除成功')
         except Exception as e:
             await db.rollback()
-            raise e
-
+            raise ServiceException(message=f"删除失败")
     @classmethod
     async def change_status_service(cls, query_db: AsyncSession, model: OaRewardsBaseModel) -> CrudResponseModel:
         try:
@@ -131,4 +130,4 @@ class RewardsService:
             return CrudResponseModel(is_success=True, message='状态修改成功')
         except Exception as e:
             await query_db.rollback()
-            raise e
+            raise ServiceException(message=f"状态修改失败")

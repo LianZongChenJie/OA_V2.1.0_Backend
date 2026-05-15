@@ -140,8 +140,8 @@ class OAFlowModuleDao:
             (
                 await db.execute(
                     select(FlowModule)
-                    .where(FlowModule.id == flow_module_id,
-                           FlowModule.status == '1').order_by(desc(FlowModule.create_time))
+                    .where(FlowModule.id == flow_module_id)
+                    .order_by(desc(FlowModule.create_time))
                     .distinct()
                 )
             )

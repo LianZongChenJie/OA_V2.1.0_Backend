@@ -41,10 +41,10 @@ class ProfileService:
                     profile.admin_id = model.user.user_id
                     profile.create_time = int(datetime.now().timestamp())
                 await AdminProfileDao.add_profile(db, profiles)
-            return ResponseUtil.success(msg="修改成功")
+            return ResponseUtil.success(msg="编辑成功")
         except Exception as e:
             print(e)
-            return ResponseUtil.error(msg="修改失败")
+            return ResponseUtil.error(msg="编辑失败")
 
     @staticmethod
     async def get_profile(db: AsyncSession, admin_id: int) -> dict[str, Any]:

@@ -1,9 +1,8 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update, desc, func
+from sqlalchemy import select, update, desc, asc
 from sqlalchemy.sql import ColumnElement
 from typing import Any
 from common.vo import PageModel
-from module_admin.entity.do.dept_do import SysDept
 from module_basicdata.entity.do.public.flow_cate_do import OaFlowCate
 from module_basicdata.entity.do.public.flow_module_do import FlowModule
 from module_basicdata.entity.vo.public.flow_cate_vo import FlowCatePageQueryModel, OaFlowCateModel
@@ -13,17 +12,19 @@ from utils.page_util import PageUtil
 class FlowCateDao:
     @classmethod
     async def get_flow_cate_list(cls, db: AsyncSession, query_object: FlowCatePageQueryModel, data_scope_sql: ColumnElement, is_page: bool = False) -> PageModel | list[list[dict[str, Any]]]:
-        query = (select(OaFlowCate,
-                        FlowModule.title.label('module_name'))
-                 .join(FlowModule, FlowModule.id == OaFlowCate.module_id)
-                 .where(
-                    OaFlowCate.status != "-1"
-                 if query_object
-                 else True,
-                 OaFlowCate.titel.like(f'%{query_object.title}%') if query_object.title
-                 else True,
-                 data_scope_sql,
-                 ).order_by(OaFlowCate.id.asc()))
+        query = select(OaFlowCate,FlowModule.title.label('module_name')) .join(FlowModule, FlowModule.id == OaFlowCate.module_id)
+
+        conditions = []
+        if query_object.is_able == 1:
+            conditions.append(OaFlowCate.status == 1)
+        else:
+            conditions.append(OaFlowCate.status != -1)
+        if query_object.title:
+            conditions.append(OaFlowCate.title.like(f'%{query_object.title}%'))
+        conditions.append(data_scope_sql)
+        if conditions:
+            query = query.where(*conditions)
+        query = query.order_by(asc(OaFlowCate.id))
         flow_cate_list: PageModel | list[list[dict[str, Any]]] = await PageUtil.paginate_dict(
             db, query, query_object.page_num, query_object.page_size, is_page
         )

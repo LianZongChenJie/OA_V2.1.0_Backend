@@ -28,6 +28,9 @@ class NoteDao:
         conditions = []
         conditions.append(OaNote.delete_time == 0)
         conditions.append(OaNote.title.like(f'%{query_object.keyword}%')) if query_object.keyword else None
+        conditions.append(OaNote.cate_id == query_object.cate_id) if query_object.cate_id else None
+        conditions.append(OaNote.cate_id == query_object.seal_cate_id) if query_object.seal_cate_id else None
+        conditions.append(OaNote.status == query_object.status) if query_object.status else None
 
         # 添加数据权限条件
         if data_scope_sql is not None:

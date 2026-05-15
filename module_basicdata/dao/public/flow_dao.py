@@ -16,16 +16,18 @@ from utils.page_util import PageUtil
 class OaFlowDao:
     @classmethod
     async def get_flow_list(cls, db: AsyncSession, query_object: OaFlowPageQueryModel, data_scope_sql: ColumnElement, is_page: bool = False) -> PageModel | list[list[dict[str, Any]]]:
-        query = (select(OaFlow,OaFlowCate, FlowModule)
-                 .join(OaFlowCate, OaFlow.cate_id == OaFlowCate.id, isouter=True)
-                 .join(FlowModule, OaFlowCate.module_id == FlowModule.id, isouter=True)
-                 .where(
-            OaFlow.status != "-1"
-            if query_object
-            else True,
-            OaFlow.title.like(f'%{query_object.title}%') if query_object.title else True,
-            data_scope_sql,
-        ).order_by(asc(OaFlow.id)))
+        query = select(OaFlow,OaFlowCate, FlowModule).join(OaFlowCate, OaFlow.cate_id == OaFlowCate.id, isouter=True).join(FlowModule, OaFlowCate.module_id == FlowModule.id, isouter=True)
+
+        conditions = []
+        if query_object.is_able == 1:
+            conditions.append(OaFlow.status == 1)
+        else:
+            conditions.append(OaFlow.status != -1)
+        if query_object.title:
+            conditions.append(OaFlow.title.like(f'%{query_object.title}%'))
+        if conditions:
+            query = query.where(*conditions)
+        query = query.order_by(asc(OaFlow.id))
         flow_cate_list: PageModel | list[list[dict[str, Any]]] = await PageUtil.paginate(
             db, query, query_object.page_num, query_object.page_size, is_page
         )

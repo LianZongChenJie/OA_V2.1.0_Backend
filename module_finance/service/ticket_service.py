@@ -55,7 +55,7 @@ class TicketService:
                 if model.purchase_id == '':
                     model.purchase_id = 0
                 await TicketDao.update(query_db, model)
-                return CrudResponseModel(is_success=True, message='修改成功')
+                return CrudResponseModel(is_success=True, message='编辑成功')
             else:
                 model.create_time = int(datetime.now().timestamp())
                 model.open_time = int_time(model.open_time)
@@ -66,8 +66,7 @@ class TicketService:
                 return CrudResponseModel(is_success=True, message='新增成功')
         except Exception as e:
             await query_db.rollback()
-            raise e
-            return CrudResponseModel(is_success=False, message='操作失败')
+            raise ServiceException(message=f"操作失败")
 
 
     @classmethod

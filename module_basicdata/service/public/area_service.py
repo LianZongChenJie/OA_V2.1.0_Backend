@@ -21,9 +21,9 @@ class AreaService:
             raise ServiceException(message=f'新增{area.name}失败，名称已存在')
         result = await AreaDao.add(db, area)
         if result:
-            return CrudResponseModel(is_success=True, message="操作成功")
+            return CrudResponseModel(is_success=True, message="新增成功")
         else:
-            return CrudResponseModel(is_success=False, message="操作失败")
+            raise ServiceException(message="新增失败")
 
     @classmethod
     async def delete(cls, db: AsyncSession, id: int) -> CrudResponseModel:

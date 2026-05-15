@@ -55,7 +55,7 @@ class FlowCatePageQueryModel(OaFlowCateModel):
     """
     用户管理分页查询模型
     """
-
+    is_able: int | None = Field(None, description='是否仅展示启用的流程,默认1不展示，0展示')
     page_num: int = Field(default=1, description='当前页码')
     page_size: int = Field(default=10, description='每页记录数')
 

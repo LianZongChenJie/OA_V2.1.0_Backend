@@ -55,13 +55,12 @@ class SealService:
             if model.is_borrow == 0:
                 model.start_time = 0
                 model.end_time = 0
-            change = await SealDao.add(query_db, model)
-            # await cls.add_record(query_db, change, model)
+            await SealDao.add(query_db, model)
             await query_db.commit()
             return CrudResponseModel(is_success=True, message='新增成功')
         except Exception as e:
             await query_db.rollback()
-            raise e
+            raise ServiceException(message="新增失败")
         pass
 
     @classmethod
@@ -77,13 +76,12 @@ class SealService:
             if model.is_borrow == 0:
                 model.start_time = 0
                 model.end_time = 0
-            change = await SealDao.update(query_db, model)
-            # await cls.add_record(query_db, change, model)
+            await SealDao.update(query_db, model)
             await query_db.commit()
-            return CrudResponseModel(is_success=True, message='修改成功')
+            return CrudResponseModel(is_success=True, message='编辑成功')
         except Exception as e:
             await query_db.rollback()
-            raise e
+            raise ServiceException(message="编辑失败")
         pass
 
 
@@ -101,7 +99,7 @@ class SealService:
             return detail
         except Exception as e:
             await query_db.rollback()
-            raise e
+            raise ServiceException(message="获取失败")
         pass
 
     @classmethod
@@ -115,61 +113,4 @@ class SealService:
             return CrudResponseModel(is_success=True, message='删除成功')
         except Exception as e:
             await db.rollback()
-            raise e
-
-    @classmethod
-    async def pass_seal(cls, db: AsyncSession, data: OaSealBaseModel, userId: int):
-        try:
-            data.check_time = int(datetime.now().timestamp())
-            await SealDao.pass_change(db, data)
-            seal = await SealDao.get_info_by_id(db, data.id)
-            await cls.add_record(db, seal, data, userId)
-            await db.commit()
-            return CrudResponseModel(is_success=True, message='审核通过成功')
-        except Exception as e:
-            await db.rollback()
-            raise e
-
-    @classmethod
-    async def reject_seal(cls, db: AsyncSession, data: OaSealBaseModel, userId: int):
-        try:
-            data.check_time = int(datetime.now().timestamp())
-            await SealDao.reject_change(db, data)
-            seal = await SealDao.get_info_by_id(db, data.id)
-            await cls.add_record(db, seal, data, userId)
-            await db.commit()
-            return CrudResponseModel(is_success=True, message='审核拒绝成功')
-        except Exception as e:
-            await db.rollback()
-            raise e
-
-    @classmethod
-    async def cancel_seal(cls, db: AsyncSession, data: OaSealBaseModel, userId: int):
-        try:
-            await SealDao.cancel_change(db, data)
-            seal = await SealDao.get_info_by_id(db, data.id)
-            await cls.add_record(db, seal, data, userId)
-            await db.commit()
-            return CrudResponseModel(is_success=True, message='撤销申请成功')
-        except Exception as e:
-            await db.rollback()
-            raise e
-    @classmethod
-    async def add_record(cls, db: AsyncSession, change: OaFlowRecordBaseModel, model: OaSealBaseModel, userId: int):
-        try:
-            flow_cate = await FlowCateDao.get_flow_cate_info(db, change.check_flow_id)
-            step = await OaFlowStepDao.get_info_by_flow_id(db, change.check_flow_id)
-            record = OaFlowRecordBaseModel()
-            record.action_id = change.id
-            record.check_table = flow_cate.check_table
-            record.flow_id = change.check_flow_id
-            record.check_files = model.file_ids
-            record.check_uid = userId
-            record.check_status = model.check_status
-            record.step_id = step.id if step is not None else 0
-            record.content = model.content
-            record.check_time = int(datetime.now().timestamp())
-            await FlowRecordDao.add(db, record)
-        except Exception as e:
-            await db.rollback()
-            raise e
+            raise ServiceException(message="删除失败")

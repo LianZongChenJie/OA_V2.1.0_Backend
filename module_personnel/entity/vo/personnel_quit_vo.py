@@ -21,7 +21,7 @@ class OaPersonalQuitBaseModel(BaseModel):
     connect_uids_list: Optional[List[int]] = Field(None, description='参与交接人列表')
     file_ids: str = Field(default=None, description='档案附件')
     file_ids_list: Optional[List[str]] = Field(None, description='档案附件列表')
-    quit_time: int | None  = Field(default=None, description='离职时间')
+    quit_time: int | str |None  = Field(default=None, description='离职时间')
     status: int | None  = Field(default=None, description='状态')
     status_name:  str | None  = Field(None, description='状态名称')
     remark:  str | None  = Field(None, description='备注信息')
@@ -80,6 +80,9 @@ class OaPersonalQuitBaseModel(BaseModel):
 class OaPersonnelQuitQueryModel(OaPersonalQuitBaseModel):
     begin_time: str | None = Field(default=None, description='开始时间')
     end_time: str | None = Field(default=None, description='结束时间')
+    tab: int | None = Field(default=0, description='标签页：0 全部，1 我创建的，2 待我审批，3 我已审批，4 我抄送的')
+    dept_ids: str | None = Field(default=None, description='部门IDs')
+
 
 class OaPersonnelQuitPageQueryModel(OaPersonnelQuitQueryModel):
     """离职分页申请查询VO"""

@@ -72,8 +72,7 @@ class DepartmentChangeService:
             return CrudResponseModel(is_success=True, message='新增成功')
         except Exception as e:
             await query_db.rollback()
-            raise e
-        pass
+            raise ServiceException(message=f"新增失败")
 
     @classmethod
     async def update_service(cls, query_db: AsyncSession, model: OaDepartmentChangeBassModel) -> CrudResponseModel:
@@ -84,11 +83,10 @@ class DepartmentChangeService:
             change = await DepartmentChangeDao.update(query_db, model)
             # await cls.add_record(query_db, change, model)
             await query_db.commit()
-            return CrudResponseModel(is_success=True, message='修改成功')
+            return CrudResponseModel(is_success=True, message='编辑成功')
         except Exception as e:
             await query_db.rollback()
-            raise e
-        pass
+            raise ServiceException(message=f"编辑失败")
 
 
     @classmethod
@@ -133,37 +131,20 @@ class DepartmentChangeService:
             return CrudResponseModel(is_success=True, message='删除成功')
         except Exception as e:
             await db.rollback()
-            return CrudResponseModel(is_success=False, message='删除失败')
-
-
-    @classmethod
-    async def review(cls, db: AsyncSession, data: OaDepartmentChangeBassModel):
-        try:
-            data.check_time = int(datetime.now().timestamp())
-            change = await DepartmentChangeDao.review(db, data)
-            await cls.add_record(db, change, data)
-            await db.commit()
-            return CrudResponseModel(is_success=True, message='操作成功！')
-        except Exception as e:
-            await db.rollback()
-            # raise e
-            return CrudResponseModel(is_success=False, message='操作失败！')
+            raise ServiceException(message='删除失败')
 
     @classmethod
-    async def add_record(cls, db: AsyncSession, change: OaFlowRecordBaseModel, model: OaDepartmentChangeBassModel):
+    async def change(cls, db: AsyncSession, id: int):
+        change = await DepartmentChangeDao.get_info_by_id(db, id)
+
+        if change is None:
+            return CrudResponseModel(is_success=False, message='数据不存在')
+        if change['check_status'] != 2:
+            raise ServiceException(message='该数据还未通过审核，请先通过审核才能变动部门')
         try:
-            flow_cate = await FlowCateDao.get_flow_cate_info(db, change.check_flow_id)
-            step = await OaFlowStepDao.get_info_by_flow_id(db, change.check_flow_id)
-            record = OaFlowRecordBaseModel()
-            record.action_id = change.uid
-            record.check_table = flow_cate.name
-            record.flow_id = change.check_flow_id
-            record.check_uid = model.check_uids
-            record.check_status = model.check_status
-            record.step_id = step.id if step is not None else 0
-            record.content = model.remark
-            record.check_time = int(datetime.now().timestamp())
-            await FlowRecordDao.add(db, record)
+            await DepartmentChangeDao.change(db, id)
+            await DepartmentChangeDao.change_user_dept(db, change['uid'], change['to_did'])
+            return CrudResponseModel(is_success=True, message='调动成功')
         except Exception as e:
             await db.rollback()
-            raise e
+            raise ServiceException(message='调动失败')

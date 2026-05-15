@@ -47,7 +47,7 @@ async def list_page(
     dependencies=[UserInterfaceAuthDependency('basicdata:customer:basic:add')],
 )
 @Log(title="新增常规数据", business_type=BusinessType.INSERT)
-async def add_industry(
+async def add_black(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
     model: OaBasicCustomerBaseModel,
@@ -81,7 +81,7 @@ async def change_status(
     dependencies=[UserInterfaceAuthDependency('basicdata:customer:basic:edit')],
 )
 @Log(title="修改常规数据", business_type=BusinessType.UPDATE)
-async def update_industry(
+async def update_black(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
     model: OaBasicCustomerBaseModel,
@@ -97,7 +97,7 @@ async def update_industry(
     response_model=OaBasicCustomerBaseModel,
     dependencies=[UserInterfaceAuthDependency('basicdata:customer:basic:detail')],
 )
-async def get_industry_info(
+async def get_black_info(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
     id: Annotated[int, Path()],

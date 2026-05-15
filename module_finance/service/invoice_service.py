@@ -55,7 +55,7 @@ class InvoiceService:
                 if model.contract_id == '':
                     model.contract_id = 0
                 await InvoiceDao.update(query_db, model)
-                return CrudResponseModel(is_success=True, message='修改成功')
+                return CrudResponseModel(is_success=True, message='编辑成功')
             else:
                 model.create_time = int(datetime.now().timestamp())
                 await InvoiceDao.add(query_db, model)

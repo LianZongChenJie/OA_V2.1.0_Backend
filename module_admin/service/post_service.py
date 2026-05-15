@@ -6,6 +6,7 @@ from common.constant import CommonConstant
 from common.vo import CrudResponseModel, PageModel
 from exceptions.exception import ServiceException
 from module_admin.dao.post_dao import PostDao
+from module_admin.dao.user_dao import UserDao
 from module_admin.entity.vo.post_vo import DeletePostModel, PostModel, PostPageQueryModel
 from utils.common_util import CamelCaseUtil
 from utils.excel_util import ExcelUtil
@@ -99,6 +100,8 @@ class PostService:
                 raise ServiceException(message=f'修改岗位{page_object.post_name}失败，岗位名称已存在')
             if not await cls.check_post_code_unique_services(query_db, page_object):
                 raise ServiceException(message=f'修改岗位{page_object.post_name}失败，岗位编码已存在')
+            if (page_object.status == 1) and len(await UserDao.get_user_id_by_post_id(query_db, page_object.post_id)):
+                raise ServiceException(message=f'{post_info.post_name}已分配员工，不能停用')
             try:
                 await PostDao.edit_post_dao(query_db, edit_post)
                 await query_db.commit()

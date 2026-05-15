@@ -93,7 +93,7 @@ class OaTemplateDao:
         return query_template_info
 
     @classmethod
-    async def get_template_by_Id(cls, db: AsyncSession, templateId: Integer) -> TemplateBaseModel | None:
+    async def get_template_by_Id(cls, db: AsyncSession, templateId: int) -> TemplateBaseModel | None:
         """
         根据用户参数获取用户信息
 

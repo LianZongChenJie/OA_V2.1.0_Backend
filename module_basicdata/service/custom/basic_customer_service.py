@@ -40,8 +40,7 @@ class BasicCustomerService:
             return CrudResponseModel(is_success=True, message='新增成功')
         except Exception as e:
             await query_db.rollback()
-            raise e
-        pass
+            raise ServiceException(message="新增失败")
 
     @classmethod
     async def update_service(cls, query_db: AsyncSession, model: OaBasicCustomerBaseModel):
@@ -50,20 +49,19 @@ class BasicCustomerService:
         try:
             model.update_time = int(datetime.now().timestamp())
             await BasicCustomerDao.update(query_db, model)
-            return CrudResponseModel(is_success=True, message='修改成功')
+            return CrudResponseModel(is_success=True, message='编辑成功')
         except Exception as e:
             await query_db.rollback()
-            raise e
-        pass
+            raise ServiceException(message="编辑失败")
 
     @classmethod
     async def change_status_service(cls, query_db: AsyncSession, model: OaBasicCustomerBaseModel):
         try:
             await BasicCustomerDao.change_status(query_db, model)
-            return CrudResponseModel(is_success=True, message='更新成功')
+            return CrudResponseModel(is_success=True, message='编辑成功')
         except Exception as e:
             await query_db.rollback()
-            raise e
+            raise ServiceException(message="修改失败")
         pass
 
     @classmethod
@@ -76,8 +74,7 @@ class BasicCustomerService:
             return industry_info
         except Exception as e:
             await query_db.rollback()
-            raise e
-        pass
+            raise ServiceException(message="获取失败")
 
     @classmethod
     async def check_name_unique_services(cls, query_db: AsyncSession, page_object: OaBasicCustomerBaseModel) -> bool:

@@ -325,7 +325,8 @@ class UserDao:
                 and_(SysUser.dept_id == SysDept.dept_id, SysDept.status == '0', SysDept.del_flag == '0'),
                 isouter=True,
             )
-            .group_by(SysDept.dept_id)
+            .group_by(SysUser.user_id)  #SysDept.dept_id
+            .order_by(SysUser.dept_id)
             .order_by(SysUser.user_id)
             .distinct()
         )

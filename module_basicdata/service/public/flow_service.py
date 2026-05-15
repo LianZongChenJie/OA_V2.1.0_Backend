@@ -47,33 +47,23 @@ class FlowService:
         try:
             model.create_time = int(datetime.now().timestamp())
             result = await OaFlowDao.add_flow(query_db, model)
-            # step = OaFlowStep(
-            #
-            #     flow_id = result.id,
-            #     check_role = model.check_role,
-            #     check_position_id = model.check_position_id,
-            #     check_uids = model.check_uids,
-            #     check_types = model.check_types,
-            #     create_time = int(datetime.now().timestamp()),
-            # )
-            # await OaFlowStepDao.add(query_db, step)
             if result:
                 return CrudResponseModel(is_success=True, message='新增成功')
-            return CrudResponseModel(is_success=False, message='新增失败')
+            raise ServiceException(message='新增失败')
         except Exception as e:
             await query_db.rollback()
-            raise e
+            raise ServiceException(message='新增失败')
 
     @classmethod
     async def change_status_flow(cls,query_db: AsyncSession, model: OaFlowBaseModel) -> CrudResponseModel:
         try:
             result = await OaFlowDao.change_status_flow(query_db, model)
             if result:
-                return CrudResponseModel(is_success=True, message='更新成功')
-            return CrudResponseModel(is_success=False, message='更新失败', data=False)
+                return CrudResponseModel(is_success=True, message='编辑成功')
+            raise ServiceException(message='编辑失败')
         except Exception as e:
             await query_db.rollback()
-            raise e
+            raise ServiceException(message='编辑失败')
 
     @classmethod
     async def get_flow_list(cls,query_db: AsyncSession, model: OaFlowPageQueryModel, data_scope_sql: ColumnElement, is_page: bool) -> PageModel[OaFlowBaseModel]:

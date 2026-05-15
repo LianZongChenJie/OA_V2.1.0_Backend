@@ -46,8 +46,7 @@ class TalentService:
             return CrudResponseModel(is_success=True, message='新增成功')
         except Exception as e:
             await query_db.rollback()
-            raise e
-        pass
+            raise ServiceException(message=f"新增失败")
 
     @classmethod
     async def update_service(cls, query_db: AsyncSession, model: OaTalentBaseModel) -> CrudResponseModel:
@@ -56,11 +55,10 @@ class TalentService:
             change = await TalentDao.update(query_db, model)
             await cls.add_record(query_db, change, model)
             await query_db.commit()
-            return CrudResponseModel(is_success=True, message='修改成功')
+            return CrudResponseModel(is_success=True, message='编辑成功')
         except Exception as e:
             await query_db.rollback()
-            raise e
-        pass
+            raise ServiceException(message=f"编辑失败")
 
 
     @classmethod
@@ -78,8 +76,7 @@ class TalentService:
             return ModelConverter.convert_to_camel_case(detail)
         except Exception as e:
             await query_db.rollback()
-            raise e
-        pass
+            raise ServiceException(message=f"查询失败")
 
     @classmethod
     async def check_unique_services(cls, query_db: AsyncSession, page_object: OaTalentBaseModel) -> bool:
@@ -106,36 +103,4 @@ class TalentService:
             return CrudResponseModel(is_success=True, message='删除成功')
         except Exception as e:
             await db.rollback()
-            raise e
-
-    # @classmethod
-    # async def review(cls, db: AsyncSession, data: OaTalentBaseModel):
-    #     try:
-    #         data.check_time = int(datetime.now().timestamp())
-    #         change = await TalentDao.review(db, data)
-    #         await cls.add_record(db, change, data)
-    #         await db.commit()
-    #         return CrudResponseModel(is_success=True, message='审核成功')
-    #     except Exception as e:
-    #         await db.rollback()
-    #         raise e
-
-    # @classmethod
-    # async def add_record(cls, db: AsyncSession, change: OaFlowRecordBaseModel, model: OaTalentBaseModel):
-    #     try:
-    #         flow_cate = await FlowCateDao.get_flow_cate_info(db, change.check_flow_id)
-    #         step = await OaFlowStepDao.get_info_by_flow_id(db, change.check_flow_id)
-    #         record = OaFlowRecordBaseModel()
-    #         record.action_id = change.id
-    #         record.check_table = flow_cate.name
-    #         record.flow_id = change.check_flow_id
-    #         record.check_files = model.file_ids
-    #         record.check_uid = change.check_last_uid
-    #         record.check_status = model.check_status
-    #         record.step_id = step.id if step is not None else 0
-    #         record.content = model.remark
-    #         record.check_time = int(datetime.now().timestamp())
-    #         await FlowRecordDao.add(db, record)
-    #     except Exception as e:
-    #         await db.rollback()
-    #         raise e
+            raise ServiceException(message=f"删除失败")
