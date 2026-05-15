@@ -34,8 +34,10 @@ async def get_page_list(
     query_db: Annotated[AsyncSession, DBSessionDependency()],
     query_object: Annotated[OaPersonnelQuitPageQueryModel, Query()],
     data_scope_sql: Annotated[ColumnElement, DataScopeDependency(OaPersonalQuit)],
+    current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
 ) -> Response:
-    result =  await PersonnelQuitService.get_page_list_service(query_db,query_object,data_scope_sql,True)
+    user_id = current_user.user.user_id
+    result =  await PersonnelQuitService.get_page_list_service(query_db,query_object,data_scope_sql,user_id, True)
     return ResponseUtil.success(model_content=result)
 
 @personnel_quit_controller.post(
@@ -84,7 +86,7 @@ async def get_quit(
     id: int,
 ) -> Response:
     result = await PersonnelQuitService.get_info_service(query_db, id)
-    return ResponseUtil.success(model_content=result)
+    return ResponseUtil.success(data=result)
 
 @personnel_quit_controller.delete(
     "/delete/{id}",
@@ -95,6 +97,7 @@ async def get_quit(
 )
 @Log(title='离职申请-删除', business_type=BusinessType.DELETE)
 async def delete_quit(
+    request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
     id: int,
 ) -> Response:
