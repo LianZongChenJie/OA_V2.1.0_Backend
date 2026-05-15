@@ -91,6 +91,15 @@ class PropertyRepairService:
             # 如果未传入维修时间，使用当前时间
             if 'repair_time' not in repair_data or repair_data['repair_time'] is None:
                 repair_data['repair_time'] = current_time
+            else:
+                # 将日期字符串转换为时间戳
+                repair_time_value = repair_data['repair_time']
+                if isinstance(repair_time_value, str):
+                    try:
+                        repair_data['repair_time'] = int(datetime.fromisoformat(repair_time_value).timestamp())
+                    except ValueError:
+                        # 如果日期格式不正确，使用当前时间
+                        repair_data['repair_time'] = current_time
 
             # 處理金額字段，確保轉換為 float
             if 'cost' in repair_data and repair_data['cost'] is not None:
