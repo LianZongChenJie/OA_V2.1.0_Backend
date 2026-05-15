@@ -199,7 +199,7 @@ class SealCateService:
             page_object.title = page_object.title.strip()
         
         if not await cls.check_seal_cate_title_unique_services(query_db, page_object):
-            raise ServiceException(message=f'新增印章类别失败，{page_object.title}已存在')
+            raise ServiceException(message=f'新增印章名称失败，{page_object.title}已存在')
 
         try:
             current_time = int(datetime.now().timestamp())
@@ -252,7 +252,7 @@ class SealCateService:
 
         if seal_cate_info.get('id'):
             if not await cls.check_seal_cate_title_unique_services(query_db, page_object):
-                raise ServiceException(message=f'修改印章类别失败，{page_object.title}已存在')
+                raise ServiceException(message=f'修改印章名称失败，{page_object.title}已存在')
 
             try:
                 edit_seal_cate['update_time'] = int(datetime.now().timestamp())

@@ -71,7 +71,7 @@ class BasicAdmService:
                 basic_adm_model.title = basic_adm_model.title.strip()
             
             if not await cls.check_basic_adm_title_unique_services(query_db, basic_adm_model):
-                raise ServiceException(message=f'新增行政模块常规数据失败，{basic_adm_model.title}已存在')
+                raise ServiceException(message=f'新增行政数据名称失败，{basic_adm_model.title}已存在')
 
             current_time = int(datetime.now().timestamp())
             basic_adm_model.create_time = current_time
@@ -91,7 +91,7 @@ class BasicAdmService:
                 basic_adm_model.title = basic_adm_model.title.strip()
             
             if not await cls.check_basic_adm_title_unique_services(query_db, basic_adm_model):
-                raise ServiceException(message=f'修改行政模块常规数据失败，{basic_adm_model.title}已存在')
+                raise ServiceException(message=f'修改行政数据名称失败，{basic_adm_model.title}已存在')
 
             basic_adm_model.update_time = int(datetime.now().timestamp())
             await BasicAdmDao.update_basic_adm(query_db, basic_adm_model)

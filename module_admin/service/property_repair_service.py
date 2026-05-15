@@ -132,6 +132,16 @@ class PropertyRepairService:
             try:
                 repair_data['update_time'] = int(datetime.now().timestamp())
 
+                # 處理維修時間字段，將日期字符串轉換為時間戳
+                if 'repair_time' in repair_data and repair_data['repair_time'] is not None:
+                    repair_time_value = repair_data['repair_time']
+                    if isinstance(repair_time_value, str):
+                        try:
+                            repair_data['repair_time'] = int(datetime.fromisoformat(repair_time_value).timestamp())
+                        except ValueError:
+                            # 如果日期格式不正確，保持原值
+                            pass
+
                 # 處理金額字段
                 if 'cost' in repair_data and repair_data['cost'] is not None:
                     if isinstance(repair_data['cost'], Decimal):

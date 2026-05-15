@@ -204,6 +204,10 @@ class PurchasedCateService:
         :param page_object: 编辑采购品分类对象
         :return: 编辑采购品分类校验结果
         """
+        # 校验分类名称唯一性（复用新增的验重逻辑）
+        if not await cls.check_purchased_cate_title_unique_services(query_db, page_object):
+            raise ServiceException(message=f'修改分类{page_object.title}失败，分类名称已存在')
+
         edit_purchased_cate = page_object.model_dump(exclude_unset=True)
         purchased_cate_info = await cls.purchased_cate_detail_services(query_db, page_object.id)
 
@@ -213,9 +217,6 @@ class PurchasedCateService:
                 child_ids = await cls.get_child_purchased_cate_ids(query_db, page_object.id)
                 if page_object.pid in child_ids:
                     raise ServiceException(message='父级分类不能是该分类本身或其子分类')
-
-            if not await cls.check_purchased_cate_title_unique_services(query_db, page_object):
-                raise ServiceException(message=f'修改分类{page_object.title}失败，分类名称已存在')
 
             try:
                 edit_purchased_cate['update_time'] = int(datetime.now().timestamp())
