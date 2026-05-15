@@ -431,6 +431,9 @@ class CheckService:
         record.content = query_model.content
         await FlowRecordDao.add(db, record)
 
+        check_table = str(flow_cate['check_table'])
+        detail = await cls.get_check_table_detail(db, check_table, query_model.action_id)
+
         # 修改各个表中的审核信息，添加审核步骤信息
         # 固定审批
         if query_model.check_uids is None:
@@ -443,13 +446,19 @@ class CheckService:
             for flow_step in flow_steps:
                 check_uids = []
                 if flow_step['check_role'] == '1':
-                    check_uid = await DeptDao.get_dept_manages(db, user_id,False)
+                    if detail.get('uid'):
+                        check_uid = await DeptDao.get_dept_manages(db, detail['uid'],False)
+                    else:
+                        check_uid = await DeptDao.get_dept_manages(db, user_id,False)
                     if check_uid:
                         check_uids.extend(check_uid.split(','))
                     flow_name = '当前部门负责人'
                     check_position_id = 0
                 if flow_step['check_role'] == '2':
-                    check_uid = await DeptDao.get_dept_manages(db, user_id, True)
+                    if detail.get('uid'):
+                        check_uid = await DeptDao.get_dept_manages(db, detail['uid'],False)
+                    else:
+                        check_uid = await DeptDao.get_dept_manages(db, user_id, True)
                     if check_uid:
                         check_uids.extend(check_uid.split(','))
                     flow_name = '上级部门负责人'
