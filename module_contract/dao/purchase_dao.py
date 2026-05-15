@@ -226,7 +226,7 @@ class PurchaseDao:
                 else:
                     row[f'{time_field}Str'] = None
             
-            for time_field in ['createTime', 'updateTime', 'archiveTime']:
+            for time_field in ['createTime', 'updateTime', 'archiveTime', 'stopTime', 'voidTime']:
                 val = row.get(time_field)
                 if val and int(val) > 0:
                     row[f'{time_field}Str'] = timestamp_to_datetime(int(val), '%Y-%m-%d %H:%M:%S')
