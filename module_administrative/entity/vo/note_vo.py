@@ -48,3 +48,4 @@ class OaNoteQueryPageModel(OaNoteBaseModel):
     keyword: str | None = Field(None, description='关键字')
     page_num: Optional[int] = Field(None, description='页码')
     page_size: Optional[int] = Field(None, description='每页条数')
+    seal_cate_id:int | None = Field(None, description='重复的公告类型id')
