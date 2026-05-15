@@ -139,6 +139,8 @@ class CheckService:
                                 check_uids = ','.join(str(uid) for uid in uids)
                             else:
                                 check_uids = next_step.check_uids
+                            check_uids = [x for x in check_uids.split(',') if x != '0']
+                            check_uids = ','.join(check_uids)
                             check_step_sort = detail['check_step_sort'] + 1
                             check_status = 1
                         else:
@@ -391,6 +393,7 @@ class CheckService:
                         if flow_step['check_uids']:
                             flow_step['check_uids'] = ','.join(str(uid) for uid in flow_step['check_uids'])
                     flow_step['check_user_names'] = await UserDao.get_user_name_by_user_id(db, flow_step['check_uids'].split(','))
+                    flow_step['check_uids'] = ','.join([x for x in flow_step['check_uids'].split(',') if x != '0'])
                     flow_list.append(flow_step)
         else:
             return []
@@ -452,6 +455,7 @@ class CheckService:
                         check_uid = await DeptDao.get_dept_manages(db, user_id,False)
                     if check_uid:
                         check_uids.extend(check_uid.split(','))
+                    check_uids = [x for x in check_uids if x != '0']
                     flow_name = '当前部门负责人'
                     check_position_id = 0
                 if flow_step['check_role'] == '2':
@@ -461,6 +465,7 @@ class CheckService:
                         check_uid = await DeptDao.get_dept_manages(db, user_id, True)
                     if check_uid:
                         check_uids.extend(check_uid.split(','))
+                    check_uids = [x for x in check_uids if x != '0']
                     flow_name = '上级部门负责人'
                     check_position_id = 0
                 if flow_step['check_role'] == '3':
@@ -763,6 +768,8 @@ class CheckService:
                         check_uids = ','.join(str(uid) for uid in uids)
                     else:
                         check_uids = next_step.check_uids
+                    check_uids = ','.join([x for x in check_uids.split(',') if x != '0'])
+                    check_uids = ','.join(check_uids)
                     check_step_sort = detail['check_step_sort'] + 1
                     check_status = 1
                 else:
