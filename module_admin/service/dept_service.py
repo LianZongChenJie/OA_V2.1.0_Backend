@@ -144,6 +144,10 @@ class DeptService:
             and (await DeptDao.count_normal_children_dept_dao(query_db, page_object.dept_id)) > 0
         ):
             raise ServiceException(message=f'修改部门{page_object.dept_name}失败，该部门包含未停用的子部门')
+        if (page_object.status == CommonConstant.DEPT_DISABLE
+            and len(await UserDao.get_user_id_by_dept_id(query_db, page_object.dept_id)) > 0):
+            raise ServiceException(message=f'修改部门{page_object.dept_name}失败，该部门包含用户,请先移除用户再停用')
+
         new_parent_dept = await DeptDao.get_dept_by_id(query_db, page_object.parent_id)
         old_dept = await DeptDao.get_dept_by_id(query_db, page_object.dept_id)
         try:
@@ -182,6 +186,8 @@ class DeptService:
                     if (await DeptDao.count_children_dept_dao(query_db, int(dept_id))) > 0:
                         raise ServiceWarning(message='存在下级部门,不允许删除')
                     if (await DeptDao.count_dept_user_dao(query_db, int(dept_id))) > 0:
+                        raise ServiceWarning(message='部门存在用户,不允许删除')
+                    if len(await UserDao.get_user_id_by_dept_id(query_db, int(dept_id))) > 0:
                         raise ServiceWarning(message='部门存在用户,不允许删除')
 
                     await DeptDao.delete_dept_dao(query_db, DeptModel(deptId=dept_id))
