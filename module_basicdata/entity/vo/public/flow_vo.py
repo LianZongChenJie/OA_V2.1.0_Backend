@@ -41,6 +41,7 @@ class OaFlowPageQueryModel(OaFlowBaseModel):
     """审批分页查询模型"""
     by_dept: int | None = Field(None, description='是否按部门权限进行数据过滤,默认0不过滤，1过滤')
     dept_id: int | None = Field(None, description='部门ID')
+    is_able: int | None = Field(None, description='是否仅展示启用的流程,默认1不展示，0展示')
     page_num: Optional[int] = Field(1, description='当前页码')
     page_size: Optional[int] = Field(10, description='每页数量')
 
