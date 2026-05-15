@@ -167,3 +167,18 @@ class DepartmentChangeService:
         except Exception as e:
             await db.rollback()
             raise e
+    @classmethod
+    async def change(cls, db: AsyncSession, id: int):
+        change = await DepartmentChangeDao.get_info_by_id(db, id)
+
+        if change is None:
+            return CrudResponseModel(is_success=False, message='数据不存在')
+        if change['check_status'] != 2:
+            raise ServiceException(message='该数据还未通过审核，请先通过审核才能变动部门')
+        try:
+            await DepartmentChangeDao.change(db, id)
+            await DepartmentChangeDao.change_user_dept(db, change['uid'], change['to_did'])
+            return CrudResponseModel(is_success=True, message='调动成功')
+        except Exception as e:
+            await db.rollback()
+            raise ServiceException(message='调动失败')

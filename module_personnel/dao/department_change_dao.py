@@ -299,3 +299,27 @@ class DepartmentChangeDao:
         except Exception as e:
             await db.rollback()
             raise e
+    @classmethod
+    async def change(cls, db: AsyncSession, id: int):
+        """
+        获取部门变动列表
+        :param db:
+        :param id: 调动id
+        :return:
+        """
+        query = update(OaDepartmentChange).where(OaDepartmentChange.id == id).values(status=2,move_time=int(datetime.now().timestamp()))
+        await db.execute(query)
+        await db.commit()
+
+    @classmethod
+    async def change_user_dept(cls, db: AsyncSession, user_id: int, dept_id: int):
+        """
+        调度员工部门信息
+        :param db:
+        :param user_id:用户id
+        :param dept_id:部门id
+        :return:
+        """
+        query = update(SysUser).where(SysUser.user_id == user_id).values(dept_id=dept_id)
+        await db.execute(query)
+        await db.commit()

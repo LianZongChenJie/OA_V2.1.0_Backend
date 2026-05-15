@@ -103,3 +103,18 @@ async def delete_change(
 ) -> Response:
     result =  await DepartmentChangeService.del_by_id(query_db, id)
     return ResponseUtil.success(msg=result.message)
+@dept_change_controller.put(
+    "/change",
+    summary='交接人事调动',
+    description='用于交接人事调动',
+    response_model=None,
+    dependencies=[UserInterfaceAuthDependency('personnel:deptChange:change')],
+)
+@Log(title='人事管理-人事调动-调动',business_type=BusinessType.UPDATE)
+async def change_change(
+    request: Request,
+    query_db: Annotated[AsyncSession, DBSessionDependency()],
+    change_model: Annotated[OaDepartmentChangeBassModel, Body()],
+)->Response:
+    result =  await DepartmentChangeService.change(query_db, change_model.id)
+    return ResponseUtil.success(msg=result.message)
