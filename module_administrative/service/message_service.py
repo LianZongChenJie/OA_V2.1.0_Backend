@@ -48,9 +48,9 @@ class MessageService:
             result = await MessageDao.add(query_db, create_model)
             if result.is_draft == 1:
                 await cls.send(query_db, result.id)
-            return CrudResponseModel(is_success=True, message='添加成功')
+            return CrudResponseModel(is_success=True, message='新增成功')
         except Exception as e:
-            raise ServiceException('添加失败:' + str(e))
+            raise ServiceException('新增失败:' + str(e))
 
     @classmethod
     async def update(cls, query_db: AsyncSession, update_model: OaMessageBaseModel,):
@@ -59,9 +59,9 @@ class MessageService:
                 raise ServiceException('message_id不能为空')
             update_model.update_time = int(datetime.now().timestamp())
             await MessageDao.update(query_db, update_model)
-            return CrudResponseModel(is_success=True, message='更新成功')
+            return CrudResponseModel(is_success=True, message='编辑成功')
         except Exception as e:
-            raise ServiceException('更新失败:' + str(e))
+            raise ServiceException('编辑失败:' + str(e))
 
     @classmethod
     async def delete(cls, query_db: AsyncSession, message_ids: list[int], table: str):
@@ -316,11 +316,7 @@ class MessageService:
             if not message_id:
                 raise ServiceException('message_id不能为空')
             await MsgDao.set_read(query_db, [message_id])
-            result = await MsgDao.get_msg_by_id(query_db, message_id)
-            result = dict(result)
-            result.update(result['OaMsg'].to_dict())
-            result.pop('OaMsg')
-            return ModelConverter.convert_to_camel_case(result)
+            return CrudResponseModel(is_success=True, message='设置成功')
         except Exception as e:
             raise ServiceException('阅读失败:' + str(e))
 

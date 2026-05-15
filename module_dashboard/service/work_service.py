@@ -190,13 +190,13 @@ class WorkService:
                     await WorkDao.update_send_time(query_db, work_record.id, now_timestamp)
             
             await query_db.commit()
-            return CrudResponseModel(is_success=True, message='发送成功' if model.is_send else '保存成功')
+            return CrudResponseModel(is_success=True, message='发送成功' if model.is_send else '新增成功')
         except ServiceException:
             raise
         except Exception as e:
             await query_db.rollback()
             logger.error(f"新增工作汇报失败: {str(e)}", exc_info=True)
-            raise ServiceException(message=f"保存失败：{str(e)}")
+            raise ServiceException(message=f"新增成功：{str(e)}")
 
     @classmethod
     async def update_service(cls, query_db: AsyncSession, model: OaWorkQueryModel, current_user_id: int) -> CrudResponseModel:
@@ -246,10 +246,10 @@ class WorkService:
                     await WorkDao.update_send_time(query_db, model.id, update_model.update_time)
             
             await query_db.commit()
-            return CrudResponseModel(is_success=True, message='修改成功')
+            return CrudResponseModel(is_success=True, message='编辑成功')
         except Exception as e:
             await query_db.rollback()
-            raise e
+            raise ServiceException(message='编辑失败')
 
     @classmethod
     async def get_info_service(cls, query_db: AsyncSession, id: int, current_user_id: int) -> dict[str, Any]:

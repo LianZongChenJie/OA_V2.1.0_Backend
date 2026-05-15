@@ -514,9 +514,9 @@ class CheckService:
                 template_params['create_time'] = ''
                 await MessageService.send_template_message(db, flow_cate['template_id'], data, template_params)
 
-                return CrudResponseModel(is_success=True, message='操作成功')
+                return CrudResponseModel(is_success=True, message='提交审核成功')
             else:
-                return CrudResponseModel(is_success=False, message='操作失败')
+                raise ServiceException(message="提交审核失败")
         # 自由审批
         if query_model.check_uids is not None:
             step = {
@@ -543,9 +543,9 @@ class CheckService:
                 await CheckDao.execute_update_sql(db, sql, update_dict)
                 # 发送消息通知
                 # todo
-            return CrudResponseModel(is_success=True, message='操作成功')
+            return CrudResponseModel(is_success=True, message='提交审核成功')
         else:
-            return CrudResponseModel(is_success=False, message='操作失败')
+            raise ServiceException(message='操作失败')
 
     @classmethod
     async def get_flow_nodes(cls, db: AsyncSession, action_id : int, flow_id: int, dept_id : int, user_id: int) -> list[dict]:
@@ -820,9 +820,9 @@ class CheckService:
                 template_params['create_time'] = detail['create_time']
 
             await MessageService.send_template_message(db, flow_cate['template_id'], data, template_params)
-            return CrudResponseModel(is_success=True, data={'subject': subject, 'step': step}, message='审核成功')
+            return CrudResponseModel(is_success=True, data={'subject': subject, 'step': step}, message='条部审批成功！')
         else:
-            return CrudResponseModel(is_success=False, message='审核失败')
+            return CrudResponseModel(is_success=False, message='跳审批失败')
 
 
 

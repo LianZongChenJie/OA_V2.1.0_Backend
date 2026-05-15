@@ -47,7 +47,7 @@ async def list_page(
     dependencies=[UserInterfaceAuthDependency('basicdata:project:step:add')],
 )
 @Log(title="新增项目阶段", business_type=BusinessType.INSERT)
-async def add_industry(
+async def add_step(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
     model: OaStepBaseModel,
@@ -81,7 +81,7 @@ async def change_status(
     dependencies=[UserInterfaceAuthDependency('basicdata:project:step:edit')],
 )
 @Log(title="修改项目阶段", business_type=BusinessType.UPDATE)
-async def update_industry(
+async def update_step(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
     model: OaStepBaseModel,

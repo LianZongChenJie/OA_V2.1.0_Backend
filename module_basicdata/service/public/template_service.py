@@ -71,7 +71,7 @@ class TemplateService:
             return CrudResponseModel(is_success=True, message='新增成功')
         except Exception as e:
             await query_db.rollback()
-            raise e
+            raise ServiceException(message='新增失败')
 
     @classmethod
     async def check_template_name_unique_services(cls, query_db: AsyncSession, update_model: TemplateBaseModel) -> bool:
@@ -108,10 +108,10 @@ class TemplateService:
         try:
             await OaTemplateDao.update_template_dao(query_db, update_template)
             await query_db.commit()
-            return CrudResponseModel(is_success=True, message='修改成功')
+            return CrudResponseModel(is_success=True, message='编辑成功')
         except Exception as e:
             await query_db.rollback()
-            raise e
+            raise ServiceException(message='编辑失败')
 
     @classmethod
     async def detail_template_services(cls, query_db: AsyncSession, templateId: Integer) -> TemplateBaseModel | None:

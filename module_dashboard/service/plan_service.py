@@ -61,7 +61,7 @@ class PlanService:
             return CrudResponseModel(is_success=True, message='新增成功')
         except Exception as e:
             await query_db.rollback()
-            raise e
+            raise ServiceException(message='新增失败')
 
     @classmethod
     async def update_service(cls, query_db: AsyncSession, model: OaPlanBaseModel) -> CrudResponseModel:
@@ -75,10 +75,10 @@ class PlanService:
             model.end_time = int_time(model.end_time)
             await PlanDao.update(query_db, model)
             await query_db.commit()
-            return CrudResponseModel(is_success=True, message='修改成功')
+            return CrudResponseModel(is_success=True, message='编辑成功')
         except Exception as e:
             await query_db.rollback()
-            raise e
+            raise ServiceException(message='编辑失败')
 
 
     @classmethod
@@ -126,7 +126,7 @@ class PlanService:
             return CrudResponseModel(is_success=True, message='删除成功')
         except Exception as e:
             await db.rollback()
-            raise e
+            raise ServiceException(message='删除失败')
 
     @classmethod
     async def get_calendar_list_service(cls, query_db: AsyncSession, query_object: OaPlanQueryModel,

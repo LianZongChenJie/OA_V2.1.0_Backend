@@ -33,7 +33,7 @@ class EnterpriseService:
             return CrudResponseModel(is_success=True, message='新增成功')
         except Exception as e:
             await query_db.rollback()
-            raise e
+            raise ServiceException(message=f'新增失败')
         pass
 
     @classmethod
@@ -47,10 +47,10 @@ class EnterpriseService:
                 enterprise_model.bank_sn = ''
             enterprise_model.update_time = int(datetime.now().timestamp() * 1000)
             await EnterpriseDao.update_enterprise(query_db, enterprise_model)
-            return CrudResponseModel(is_success=True, message='更新成功')
+            return CrudResponseModel(is_success=True, message='编辑成功')
         except Exception as e:
             await query_db.rollback()
-            raise e
+            raise ServiceException(message=f'编辑失败')
         pass
     @classmethod
     async def delete_enterprise_service(cls, query_db: AsyncSession, id: int):
@@ -59,7 +59,7 @@ class EnterpriseService:
             return CrudResponseModel(is_success=True, message='删除成功')
         except Exception as e:
             await query_db.rollback()
-            raise e
+            raise ServiceException(message=f'删除失败')
         pass
 
     @classmethod
@@ -72,17 +72,17 @@ class EnterpriseService:
             return enterprise_info
         except Exception as e:
             await query_db.rollback()
-            raise e
+            raise ServiceException(message=f'查询失败')
         pass
 
     @classmethod
     async def change_status_enterprise_service(cls, query_db: AsyncSession, model: OaEnterpriseBaseModel):
         try:
             await EnterpriseDao.change_status_enterprise(query_db, model)
-            return CrudResponseModel(is_success=True, message='状态变更成功')
+            return CrudResponseModel(is_success=True, message='编辑成功')
         except Exception as e:
             await query_db.rollback()
-            raise e
+            raise ServiceException(message=f'编辑失败')
         pass
 
 

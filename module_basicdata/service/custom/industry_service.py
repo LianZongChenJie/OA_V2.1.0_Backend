@@ -39,8 +39,7 @@ class IndustryService:
             return CrudResponseModel(is_success=True, message='新增成功')
         except Exception as e:
             await query_db.rollback()
-            raise e
-        pass
+            raise ServiceException(message='新增失败')
 
     @classmethod
     async def update_industry_service(cls, query_db: AsyncSession, model: OaIndustryBaseModel):
@@ -49,21 +48,19 @@ class IndustryService:
                 raise ServiceException(message='行业类型已存在')
             model.update_time = int(datetime.now().timestamp())
             await IndustryDao.update_industry(query_db, model)
-            return CrudResponseModel(is_success=True, message='更新成功')
+            return CrudResponseModel(is_success=True, message='编辑成功')
         except Exception as e:
             await query_db.rollback()
-            raise e
-        pass
+            raise ServiceException(message='编辑失败')
 
     @classmethod
     async def change_status_industry_service(cls, query_db: AsyncSession, model: OaIndustryBaseModel):
         try:
             await IndustryDao.change_status_industry(query_db, model)
-            return CrudResponseModel(is_success=True, message='操作成功')
+            return CrudResponseModel(is_success=True, message='编辑成功')
         except Exception as e:
             await query_db.rollback()
-            raise e
-        pass
+            raise ServiceException(message='编辑失败')
 
     @classmethod
     async def get_industry_info_service(cls, query_db: \
@@ -75,8 +72,7 @@ class IndustryService:
             return industry_info
         except Exception as e:
             await query_db.rollback()
-            raise e
-        pass
+            raise ServiceException(message='未找到该数据')
 
     @classmethod
     async def check_name_unique_services(cls, query_db: AsyncSession, page_object: OaIndustryBaseModel) -> bool:

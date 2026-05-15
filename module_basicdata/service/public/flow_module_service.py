@@ -53,7 +53,7 @@ class FlowModuleService:
             return CrudResponseModel(is_success=True, message='新增成功')
         except Exception as e:
             await query_db.rollback()
-            raise e
+            raise ServiceException(message='新增失败')
 
 
     @classmethod
@@ -75,10 +75,10 @@ class FlowModuleService:
             update_flow_module.update_time = int(datetime.now().timestamp())
             await OAFlowModuleDao.update_flow_module_dao(query_db, update_flow_module)
             await query_db.commit()
-            return CrudResponseModel(is_success=True, message='修改成功')
+            return CrudResponseModel(is_success=True, message='编辑成功')
         except Exception as e:
             await query_db.rollback()
-            raise e
+            raise ServiceException(message='编辑失败')
 
     @classmethod
     async def delete_flow_module_service(cls, query_db: AsyncSession, flow_module_id: int) -> CrudResponseModel:
@@ -88,16 +88,14 @@ class FlowModuleService:
             return CrudResponseModel(is_success=True, message='删除成功')
         except Exception as e:
             await query_db.rollback()
-            raise e
-
-        pass
+            raise ServiceException(message='删除失败')
 
     @classmethod
     async def change_status_flow_module_service(cls, query_db: AsyncSession, flow_module_model: FlowModuleModel) -> CrudResponseModel:
         try:
             await OAFlowModuleDao.change_status_flow_module_dao(query_db, flow_module_model)
             await query_db.commit()
-            return CrudResponseModel(is_success=True, message='状态变更成功')
+            return CrudResponseModel(is_success=True, message='编辑成功')
         except Exception as e:
             await query_db.rollback()
-            raise e
+            raise ServiceException(message='编辑失败')

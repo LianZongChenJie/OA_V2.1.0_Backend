@@ -61,7 +61,7 @@ class PersonnelQuitService:
             return CrudResponseModel(is_success=True, message='新增成功')
         except Exception as e:
             await query_db.rollback()
-            raise e
+            raise ServiceException(message=f"新增失败")
         pass
 
     @classmethod
@@ -71,10 +71,10 @@ class PersonnelQuitService:
             model.quit_time = int_time(model.quit_time)
             await PersonnelQuitDao.update(query_db, model)
             await query_db.commit()
-            return CrudResponseModel(is_success=True, message='修改成功')
+            return CrudResponseModel(is_success=True, message='编辑成功')
         except Exception as e:
             await query_db.rollback()
-            raise e
+            raise ServiceException(message=f"编辑失败")
         pass
 
 
@@ -107,7 +107,7 @@ class PersonnelQuitService:
             return ModelConverter.convert_to_camel_case(detail)
         except Exception as e:
             await query_db.rollback()
-            raise e
+            raise ServiceException(message=f"详情失败")
         pass
 
     @classmethod
@@ -135,4 +135,4 @@ class PersonnelQuitService:
             return CrudResponseModel(is_success=True, message='删除成功')
         except Exception as e:
             await db.rollback()
-            raise e
+            raise ServiceException(message=f"删除失败")
