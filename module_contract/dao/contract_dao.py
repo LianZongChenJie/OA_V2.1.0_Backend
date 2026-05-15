@@ -309,8 +309,8 @@ class ContractDao:
             if did and int(did) > 0:
                 dept_ids.add(int(did))
             
-            # 收集签约主体ID
-            subject_id = row_dict.get('subject_id')
+            # 收集签约主体ID - 优先检查驼峰格式（PageUtil.paginate 返回驼峰格式）
+            subject_id = row_dict.get('subjectId') or row_dict.get('subject_id')
             if subject_id:
                 try:
                     subject_id_int = int(subject_id)

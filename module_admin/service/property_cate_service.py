@@ -345,6 +345,11 @@ class PropertyCateService:
                 if child_count > 0:
                     raise ServiceException(message='该分类下还有子分类，无法删除')
 
+                # 检查该分类是否被资产使用
+                property_count = await PropertyCateDao.count_property_by_cate_dao(query_db, page_object.id)
+                if property_count > 0:
+                    raise ServiceException(message='该分类已被资产使用，无法删除')
+
                 property_cate = await cls.property_cate_detail_services(query_db, page_object.id)
                 if not property_cate.id:
                     raise ServiceException(message='分类不存在')

@@ -219,3 +219,26 @@ class PropertyCateDao:
         ).scalar()
 
         return child_count
+
+    @classmethod
+    async def count_property_by_cate_dao(cls, db: AsyncSession, cate_id: int) -> int | None:
+        """
+        根据分类 ID 统计使用该分类的资产数量（排除已删除的资产）
+
+        :param db: orm 对象
+        :param cate_id: 分类 ID
+        :return: 使用该分类的资产数量
+        """
+        from sqlalchemy import func
+        from module_admin.entity.do.property_do import OaProperty
+
+        property_count = (
+            await db.execute(
+                select(func.count('*'))
+                .select_from(OaProperty)
+                .where(OaProperty.cate_id == cate_id)
+                .where(OaProperty.status != -1)  # 排除已删除的资产
+            )
+        ).scalar()
+
+        return property_count

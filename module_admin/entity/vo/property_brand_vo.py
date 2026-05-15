@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Literal, Union
 
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
@@ -16,7 +16,7 @@ class PropertyBrandModel(BaseModel):
     title: str | None = Field(default=None, description='品牌名称')
     sort: int | None = Field(default=None, description='排序：越大越靠前')
     desc: str | None = Field(default=None, description='描述')
-    status: Literal[-1, 0, 1] | None = Field(default=None, description='状态：-1 删除 0 禁用 1 启用')
+    status: Union[Literal[-1, 0, 1], Literal['-1', '0', '1']] | None = Field(default=None, description='状态：-1 删除 0 禁用 1 启用')
     create_time: int | None = Field(default=None, description='创建时间')
     update_time: int | None = Field(default=None, description='更新时间')
 

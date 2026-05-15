@@ -251,6 +251,32 @@ class MeetingOrderService:
     """
 
     @classmethod
+    async def _get_user_names_by_uids(cls, db: AsyncSession, uids_str: str) -> str:
+        """
+        根据用户ID字符串（逗号分隔）获取用户名字符串
+        """
+        if not uids_str:
+            return ''
+        
+        try:
+            uids = [int(uid.strip()) for uid in uids_str.split(',') if uid.strip()]
+        except ValueError:
+            return ''
+        
+        if not uids:
+            return ''
+        
+        from module_admin.entity.do.user_do import SysUser
+        from sqlalchemy import select
+        
+        query = select(SysUser.user_id, SysUser.nick_name).where(SysUser.user_id.in_(uids))
+        result = await db.execute(query)
+        
+        user_map = {row[0]: row[1] for row in result}
+        names = [user_map.get(uid, '') for uid in uids]
+        return ','.join(filter(None, names))
+
+    @classmethod
     async def get_meeting_order_list_services(
             cls, query_db: AsyncSession, query_object: MeetingOrderPageQueryModel, is_page: bool = False
     ) -> PageModel | list[dict[str, Any]]:
@@ -328,6 +354,13 @@ class MeetingOrderService:
                             order_dict['adminName'] = extra_fields[1] if extra_fields[1] is not None else ''
                         if len(extra_fields) > 2:
                             order_dict['deptName'] = extra_fields[2] if extra_fields[2] is not None else ''
+                        
+                        # 添加当前审批人名称
+                        check_uids = order_dict.get('checkUids', '')
+                        if check_uids:
+                            order_dict['checkName'] = await cls._get_user_names_by_uids(query_db, check_uids)
+                        else:
+                            order_dict['checkName'] = ''
                     
                     formatted_rows.append(order_dict)
             
