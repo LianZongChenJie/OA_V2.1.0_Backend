@@ -226,6 +226,10 @@ class InvoiceService:
             else:
                 invoice.enter_status = 2
             invoice.update_time = int(datetime.now().timestamp())
+            if invoice.project_id is None:
+                invoice.project_id = 0
+            if invoice.contract_id is None:
+                invoice.contract_id = 0
             await InvoiceDao.update(db, invoice)
             return CrudResponseModel(is_success=True, message='操作成功')
         except Exception as e:

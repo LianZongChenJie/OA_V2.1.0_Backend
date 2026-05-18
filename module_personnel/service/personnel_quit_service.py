@@ -36,6 +36,9 @@ class PersonnelQuitService:
                 if row['rec_ji_names'] is not None:
                     row['rec_ji_names'] = row['rec_ji_names'].strip(',')
                     row['rec_ji_names'] = row['rec_ji_names'].replace(',,', ',')
+                if row['check_names'] is not None:
+                    row['check_names'] = row['check_names'].strip(',')
+                    row['check_names'] = row['check_names'].replace(',,', ',')
                 row_list.append(ModelConverter.convert_to_camel_case(row))
             query_list.rows = row_list
             return query_list

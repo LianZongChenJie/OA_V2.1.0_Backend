@@ -507,6 +507,8 @@ class UserService:
                         )
                     await UserDao.add_user_dao(query_db, add_user)
             await query_db.commit()
+            if len(add_error_result) == 0:
+                add_error_result.append("导入成功!")
             return CrudResponseModel(is_success=True, message='\n'.join(add_error_result))
         except Exception as e:
             await query_db.rollback()

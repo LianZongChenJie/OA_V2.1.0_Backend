@@ -131,9 +131,15 @@ class CheckService:
                         if next_step:
                             # 存在下一步审核
                             if next_step.check_role == 1:
-                                check_uids = await DeptDao.get_dept_manages(db, detail['admin_id'])
+                                if detail.get('uid'):
+                                    check_uids = await PostDao.get_post_manage(db, detail['uid'])
+                                else:
+                                    check_uids = await DeptDao.get_dept_manages(db, detail['admin_id'])
                             elif next_step.check_role == 2:
-                                check_uids = await DeptDao.get_dept_manages(db, detail['admin_id'], True)
+                                if detail.get('uid'):
+                                    check_uids = await PostDao.get_post_manage(db, detail['uid'], True)
+                                else:
+                                    check_uids = await DeptDao.get_dept_manages(db, detail['admin_id'], True)
                             elif next_step.check_role == 3:
                                 uids = await UserDao.get_user_by_post_id(db,next_step.check_position_id)
                                 check_uids = ','.join(str(uid) for uid in uids)
@@ -452,7 +458,7 @@ class CheckService:
                     if detail.get('uid'):
                         check_uid = await DeptDao.get_dept_manages(db, detail['uid'],False)
                     else:
-                        check_uid = await DeptDao.get_dept_manages(db, user_id,False)
+                        check_uid = await DeptDao.get_dept_manages(db, detail['admin_id'],False)
                     if check_uid:
                         check_uids.extend(check_uid.split(','))
                     check_uids = [x for x in check_uids if x != '0']
@@ -462,7 +468,7 @@ class CheckService:
                     if detail.get('uid'):
                         check_uid = await DeptDao.get_dept_manages(db, detail['uid'],False)
                     else:
-                        check_uid = await DeptDao.get_dept_manages(db, user_id, True)
+                        check_uid = await DeptDao.get_dept_manages(db, detail['admin_id'], True)
                     if check_uid:
                         check_uids.extend(check_uid.split(','))
                     check_uids = [x for x in check_uids if x != '0']

@@ -332,7 +332,7 @@ class DeptDao:
 
         return dept_names
     @classmethod
-    async def get_dept_manages(cls, db: AsyncSession, user_id: int, is_parent=False) -> list[str]:
+    async def get_dept_manages(cls, db: AsyncSession, user_id: int, is_parent=False):
         """
 
         :param db:
@@ -344,10 +344,14 @@ class DeptDao:
         if not is_parent:
             query = select(SysDept.leader_id).join(SysUser, SysUser.dept_id == SysDept.dept_id, isouter=True).where(SysUser.user_id == user_id)
         else:
-            user = aliased(SysUser, name='user')
-            dept = aliased(SysDept, name='dept')
-            parent = aliased(SysDept, name='parent')
-            query = select(dept.leader_id).join(user, user.dept_id == dept.dept_id, isouter=True).join(parent,parent.dept_id == dept.parent_id,isouter=True).where(SysUser.user_id == user_id)
+            # 上级部门管理者：用户 -> 部门 -> 父部门
+            # 为父部门创建别名
+            ParentDept = aliased(SysDept)
+            query = select(ParentDept.leader_id) \
+                .select_from(SysUser) \
+                .join(SysDept, SysUser.dept_id == SysDept.dept_id, isouter=True) \
+                .join(ParentDept, ParentDept.dept_id == SysDept.parent_id, isouter=True) \
+                .where(SysUser.user_id == user_id)
         result = await db.execute(query)
         return result.scalars().first()
     @classmethod
