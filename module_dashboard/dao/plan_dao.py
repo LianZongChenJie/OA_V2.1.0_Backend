@@ -1,5 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update, desc, and_
+from sqlalchemy import select, update, desc, and_, or_
 from sqlalchemy.sql import ColumnElement
 from common.vo import PageModel
 from module_admin.entity.do.user_do import SysUser
@@ -36,7 +36,12 @@ class PlanDao:
         if query_object.begin_time and query_object.end_time:
             start_timestamp = int(datetime.strptime(query_object.begin_time, "%Y-%m-%d").timestamp())
             end_timestamp = int(datetime.strptime(query_object.end_time + ' 23:59:59', "%Y-%m-%d %H:%M:%S").timestamp())
-            conditions.append(OaPlan.start_time.between(start_timestamp, end_timestamp))
+            conditions.append(
+                and_(
+                    OaPlan.start_time <= end_timestamp,
+                    OaPlan.end_time >= start_timestamp
+                )
+            )
 
         if data_scope_sql is not None:
             conditions.append(data_scope_sql)
@@ -66,10 +71,12 @@ class PlanDao:
         if query_object.begin_time and query_object.end_time:
             start_timestamp = int(datetime.strptime(query_object.begin_time, "%Y-%m-%d").timestamp())
             end_timestamp = int(datetime.strptime(query_object.end_time + ' 23:59:59', "%Y-%m-%d %H:%M:%S").timestamp())
-            conditions.append(and_(
-                OaPlan.start_time <= end_timestamp,
-                OaPlan.start_time >= start_timestamp
-            ))
+            conditions.append(
+                and_(
+                    OaPlan.start_time <= end_timestamp,
+                    OaPlan.end_time >= start_timestamp
+                )
+            )
 
         if data_scope_sql is not None:
             conditions.append(data_scope_sql)
