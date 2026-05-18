@@ -35,21 +35,17 @@ class PurchasedCateDao:
     @classmethod
     async def get_purchased_cate_detail_by_info(cls, db: AsyncSession, cate: PurchasedCateModel) -> OaPurchasedCate | None:
         """
-        根据分类参数获取分类信息
+        根据分类参数获取分类信息（用于名称唯一性校验，只按标题查询）
 
         :param db: orm 对象
         :param cate: 分类参数对象
         :return: 分类信息对象
         """
-        query_conditions = []
-        if cate.id is not None:
-            query_conditions.append(OaPurchasedCate.id == cate.id)
+        # 只根据 title 查询，用于名称唯一性校验
+        # 不使用 id 作为查询条件，确保编辑时能正确检测同名分类
         if cate.title:
-            query_conditions.append(OaPurchasedCate.title == cate.title)
-
-        if query_conditions:
             cate_info = (
-                (await db.execute(select(OaPurchasedCate).where(and_(*query_conditions))))
+                (await db.execute(select(OaPurchasedCate).where(OaPurchasedCate.title == cate.title)))
                 .scalars()
                 .first()
             )
