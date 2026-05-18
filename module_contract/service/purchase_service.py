@@ -128,17 +128,84 @@ class PurchaseService:
 
                 current_time = int(datetime.now().timestamp())
                 
+                # 从原始请求体中获取所有字段（包括 Pydantic 未识别的字段）
+                try:
+                    raw_body = await request.json()
+                except Exception:
+                    raw_body = {}
+                
+                # 获取模型数据（包含前端传入的字段，使用 by_alias=True 获取驼峰格式）
+                model_data = page_object.model_dump(exclude_unset=True, by_alias=True)
+                
+                # 合并原始请求体中的字段（优先使用原始请求体中的值）
+                for key, value in raw_body.items():
+                    if key not in model_data:
+                        model_data[key] = value
+                
+                logger.info(f'采购合同编辑 - ID: {page_object.id}')
+                logger.info(f'采购合同编辑 - 原始数据（驼峰）: {model_data}')
+                
+                # 字段映射：前端驼峰字段 -> 数据库字段
+                field_mapping = {
+                    'customerId': 'supplier_id',
+                    'customer': 'supplier',
+                    'cateId': 'cate_id',
+                    'subjectId': 'subject_id',
+                    'contactName': 'contact_name',
+                    'contactMobile': 'contact_mobile',
+                    'contactAddress': 'contact_address',
+                    'preparedUid': 'prepared_uid',
+                    'signUid': 'sign_uid',
+                    'keeperUid': 'keeper_uid',
+                    'shareIds': 'share_ids',
+                    'checkStatus': 'check_status',
+                }
+                
+                # 处理映射字段
+                for front_field, db_field in field_mapping.items():
+                    if front_field in model_data:
+                        value = model_data.pop(front_field)
+                        model_data[db_field] = value
+                        logger.info(f'字段映射: {front_field}={value} -> {db_field}')
+                
+                # 处理 contractTime 字段（前端传入的时间范围数组，驼峰格式）
+                if 'contractTime' in model_data and isinstance(model_data['contractTime'], list) and len(model_data['contractTime']) >= 2:
+                    try:
+                        start_dt = datetime.strptime(model_data['contractTime'][0], '%Y-%m-%d')
+                        end_dt = datetime.strptime(model_data['contractTime'][1], '%Y-%m-%d')
+                        model_data['start_time'] = int(start_dt.timestamp())
+                        model_data['end_time'] = int(end_dt.timestamp())
+                    except ValueError:
+                        pass
+                    del model_data['contractTime']
+                
+                # 处理字符串格式的时间字段转换为时间戳（驼峰格式）
+                camel_time_fields = {'startTime': 'start_time', 'endTime': 'end_time', 'signTime': 'sign_time'}
+                for camel_field, db_field in camel_time_fields.items():
+                    if camel_field in model_data:
+                        value = model_data[camel_field]
+                        if isinstance(value, str):
+                            try:
+                                dt = datetime.strptime(value, '%Y-%m-%d')
+                                model_data[db_field] = int(dt.timestamp())
+                            except ValueError:
+                                pass
+                        else:
+                            model_data[db_field] = value
+                        del model_data[camel_field]
+                
                 valid_fields = {c.name for c in OaPurchase.__table__.columns}
                 exclude_fields = {'id', 'create_time', 'delete_time', 'admin_id'}
                 
                 purchase_data = {
-                    k: v for k, v in page_object.model_dump(exclude_unset=True, by_alias=False).items()
+                    k: v for k, v in model_data.items()
                     if k in valid_fields and k not in exclude_fields
                 }
                 
-                logger.info(f'采购合同编辑 - ID: {page_object.id}')
-                logger.info(f'采购合同编辑 - 原始数据: {page_object.model_dump(exclude_unset=True, by_alias=False)}')
+                logger.info(f'采购合同编辑 - 有效字段列表: {valid_fields}')
                 logger.info(f'采购合同编辑 - 过滤后数据: {purchase_data}')
+                logger.info(f'采购合同编辑 - supplier_id 是否在数据中: {"supplier_id" in purchase_data}')
+                logger.info(f'采购合同编辑 - supplier 是否在数据中: {"supplier" in purchase_data}')
                 
                 if not purchase_data:
                     raise ServiceException(message='没有可更新的字段')
@@ -273,6 +340,10 @@ class PurchaseService:
             if dept_info:
                 purchase_data['deptName'] = dept_info.dept_name
         
+        # 添加客户字段别名（与列表保持一致）
+        purchase_data['customerId'] = purchase_data.get('supplier_id')
+        purchase_data['customer'] = purchase_data.get('supplier')
+        
         result = PurchaseModel(**purchase_data)
         return result
 
@@ -321,4 +392,3 @@ class PurchaseService:
             await query_db.rollback()
             logger.error(f'采购合同归档失败: {str(e)}', exc_info=True)
             raise e
-

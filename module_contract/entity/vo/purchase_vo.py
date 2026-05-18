@@ -184,6 +184,8 @@ class PurchaseModel(PurchaseBaseModel):
     deptName: str | None = Field(default=None, description='部门名称')
     signName: str | None = Field(default=None, description='签订人姓名')
     keeperName: str | None = Field(default=None, description='保管人姓名')
+    customerId: int | None = Field(default=None, description='关联供应商 ID')
+    customer: str | None = Field(default=None, description='供应商名称')
 
     startTimeStr: str | None = Field(default=None, description='开始时间字符串')
     endTimeStr: str | None = Field(default=None, description='结束时间字符串')

@@ -218,6 +218,10 @@ class PurchaseDao:
             did = row.get('did')
             row['deptName'] = dept_map.get(int(did)) if did else None
             
+            # 添加客户字段别名（与普通合同保持一致）
+            row['customerId'] = row.get('supplierId')
+            row['customer'] = row.get('supplier')
+            
             # 格式化时间字段
             for time_field in ['startTime', 'endTime', 'signTime']:
                 val = row.get(time_field)
