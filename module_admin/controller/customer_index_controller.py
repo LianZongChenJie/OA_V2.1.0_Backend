@@ -60,9 +60,11 @@ async def rush_customer_list(
         # 随机排序
         query = query.order_by(func.rand())
         
-        # 分页
-        offset = (page_num - 1) * page_size
-        query = query.limit(page_size).offset(offset)
+        # 分页（兼容驼峰命名参数）
+        final_page_num = pageNum if pageNum is not None else page_num
+        final_page_size = pageSize if pageSize is not None else page_size
+        offset = (final_page_num - 1) * final_page_size
+        query = query.limit(final_page_size).offset(offset)
         
         result = await query_db.execute(query)
         customer_list = result.scalars().all()
@@ -152,13 +154,22 @@ async def sea_customer_list(
     query_db: Annotated[AsyncSession, DBSessionDependency()],
     current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
     keywords: Annotated[str | None, Query(description='搜索关键词')] = None,
+    name: Annotated[str | None, Query(description='客户名称')] = None,
     industry_id: Annotated[int | None, Query(description='行业 ID')] = None,
     source_id: Annotated[int | None, Query(description='来源 ID')] = None,
     grade_id: Annotated[int | None, Query(description='等级 ID')] = None,
+    customer_status: Annotated[int | None, Query(description='客户状态')] = None,
+    intent_status: Annotated[int | None, Query(description='意向状态')] = None,
     follow_time_start: Annotated[int | None, Query(description='跟进时间开始')] = None,
     follow_time_end: Annotated[int | None, Query(description='跟进时间结束')] = None,
     page_num: Annotated[int, Query(description='页码')] = 1,
     page_size: Annotated[int, Query(description='每页数量')] = 10,
+    # 兼容驼峰命名参数
+    pageNum: Annotated[int | None, Query(description='页码（兼容）')] = None,
+    pageSize: Annotated[int | None, Query(description='每页数量（兼容）')] = None,
+    gradeId: Annotated[int | None, Query(description='等级 ID（兼容）')] = None,
+    customerStatus: Annotated[int | None, Query(description='客户状态（兼容）')] = None,
+    intentStatus: Annotated[int | None, Query(description='意向状态（兼容）')] = None,
 ) -> Response:
     """公海客户列表"""
     try:
@@ -180,12 +191,13 @@ async def sea_customer_list(
             OaCustomer.belong_uid == 0
         ]
         
-        # 关键词搜索
-        if keywords:
+        # 关键词搜索（优先使用 name，兼容 keywords）
+        search_keywords = name if name else keywords
+        if search_keywords:
             conditions.append(
                 or_(
-                    OaCustomer.id.like(f'%{keywords}%'),
-                    OaCustomer.name.like(f'%{keywords}%')
+                    OaCustomer.id.like(f'%{search_keywords}%'),
+                    OaCustomer.name.like(f'%{search_keywords}%')
                 )
             )
         
@@ -197,9 +209,20 @@ async def sea_customer_list(
         if source_id is not None:
             conditions.append(OaCustomer.source_id == source_id)
         
-        # 等级过滤
-        if grade_id is not None:
-            conditions.append(OaCustomer.grade_id == grade_id)
+        # 等级过滤（兼容驼峰命名参数）
+        final_grade_id = gradeId if gradeId is not None else grade_id
+        if final_grade_id is not None:
+            conditions.append(OaCustomer.grade_id == final_grade_id)
+        
+        # 客户状态过滤（兼容驼峰命名参数）
+        final_customer_status = customerStatus if customerStatus is not None else customer_status
+        if final_customer_status is not None:
+            conditions.append(OaCustomer.customer_status == final_customer_status)
+        
+        # 意向状态过滤（兼容驼峰命名参数）
+        final_intent_status = intentStatus if intentStatus is not None else intent_status
+        if final_intent_status is not None:
+            conditions.append(OaCustomer.intent_status == final_intent_status)
         
         # 跟进时间范围过滤
         if follow_time_start is not None and follow_time_end is not None:
@@ -218,9 +241,11 @@ async def sea_customer_list(
         count_result = await query_db.execute(count_query)
         total = count_result.scalar() or 0
         
-        # 分页
-        offset = (page_num - 1) * page_size
-        query = query.limit(page_size).offset(offset)
+        # 分页（兼容驼峰命名参数）
+        final_page_num = pageNum if pageNum is not None else page_num
+        final_page_size = pageSize if pageSize is not None else page_size
+        offset = (final_page_num - 1) * final_page_size
+        query = query.limit(final_page_size).offset(offset)
         
         result = await query_db.execute(query)
         customer_list = result.scalars().all()
@@ -346,13 +371,13 @@ async def sea_customer_list(
             customers.append(customer_dict)
         
         # 计算是否有下一页
-        has_next = (page_num * page_size) < total
+        has_next = (final_page_num * final_page_size) < total
         
         return ResponseUtil.success(
             rows=customers,
             dict_content={
-                'pageNum': page_num,
-                'pageSize': page_size,
+                'pageNum': final_page_num,
+                'pageSize': final_page_size,
                 'total': total,
                 'hasNext': has_next
             }
