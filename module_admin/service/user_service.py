@@ -77,11 +77,12 @@ class UserService:
                 user_list_result = [{**row[0], 'dept': row[1]} for row in query_result]
 
         # 设置部门领导
-        for row in user_list_result.rows:
-            if row.dept and row.dept.leader_id and (str(row.user_id) in row.dept.leader_id.split(',')):
-                row.is_leader = True
-            else:
-                row.is_leader = False
+        if hasattr(user_list_result, 'rows'):
+            for row in user_list_result.rows:
+                if row.dept and row.dept.leader_id and (str(row.user_id) in row.dept.leader_id.split(',')):
+                    row.is_leader = True
+                else:
+                    row.is_leader = False
         return user_list_result
 
     @classmethod
@@ -453,7 +454,7 @@ class UserService:
                 cls._set_row_sex_value(row)
                 cls._set_row_status_value(row)
                 add_user = UserModel(
-                    deptId=row['dept_id'],
+                    # deptId=row['dept_id'] if row['dept_id'] else None,
                     userName=row['user_name'],
                     password=PwdUtil.get_password_hash(
                         await ConfigService.query_config_list_from_cache_services(
@@ -506,6 +507,8 @@ class UserService:
                         )
                     await UserDao.add_user_dao(query_db, add_user)
             await query_db.commit()
+            if len(add_error_result) == 0:
+                add_error_result.append("导入成功!")
             return CrudResponseModel(is_success=True, message='\n'.join(add_error_result))
         except Exception as e:
             await query_db.rollback()
@@ -518,7 +521,7 @@ class UserService:
 
         :return: 用户导入模板excel的二进制数据
         """
-        header_list = ['部门编号', '登录名称', '用户名称', '用户邮箱', '手机号码', '用户性别', '帐号状态']
+        header_list = ['登录名称', '用户名称', '用户邮箱', '手机号码', '用户性别', '帐号状态'] # 部门编码
         selector_header_list = ['用户性别', '帐号状态']
         option_list = [{'用户性别': ['男', '女', '未知']}, {'帐号状态': ['正常', '停用']}]
         binary_data = ExcelUtil.get_excel_template(
@@ -540,7 +543,7 @@ class UserService:
             'userId': '用户编号',
             'userName': '用户名称',
             'nickName': '用户昵称',
-            'deptName': '部门',
+            # 'deptName': '部门',
             'email': '邮箱地址',
             'phonenumber': '手机号码',
             'sex': '性别',
@@ -553,17 +556,23 @@ class UserService:
         }
 
         for item in user_list:
-            item['deptName'] = item.get('dept').get('deptName')
-            if item.get('status') == '0':
-                item['status'] = '正常'
-            else:
-                item['status'] = '停用'
-            if item.get('sex') == '0':
-                item['sex'] = '男'
-            elif item.get('sex') == '1':
-                item['sex'] = '女'
-            else:
-                item['sex'] = '未知'
+            if item.get('dept'):
+                if item.get('dept').get('deptName'):
+                    # item['deptName'] = item.get('dept').get('deptName')
+                    if item.get('status') == '0':
+                        item['status'] = '正常'
+                    else:
+                        item['status'] = '停用'
+                    if item.get('sex') == '0':
+                        item['sex'] = '男'
+                    elif item.get('sex') == '1':
+                        item['sex'] = '女'
+                    else:
+                        item['sex'] = '未知'
+                else:
+                    # item['deptName'] = ''
+                    item['status'] = '正常'
+                    item['sex'] = '未知'
         binary_data = ExcelUtil.export_list2excel(user_list, mapping_dict)
 
         return binary_data

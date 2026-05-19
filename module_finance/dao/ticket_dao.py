@@ -86,16 +86,11 @@ class TicketDao:
         else:
             # 没有特定条件时，使用 OR 组合
             or_conditions = []
-            if query_object.admin_id:
+            if query_object.tab == 0:
                 or_conditions.append(OaTicket.admin_id == query_object.admin_id)
-            if query_object.check_uids:
                 or_conditions.append(func.find_in_set(query_object.check_uids, OaTicket.check_uids) > 0)
-            if query_object.check_copy_uids:
-                or_conditions.append(
-                    func.find_in_set(query_object.check_copy_uids, OaTicket.check_copy_uids) > 0)
-            if query_object.check_history_uids:
-                or_conditions.append(
-                    func.find_in_set(query_object.check_history_uids, OaTicket.check_history_uids) > 0)
+                or_conditions.append(func.find_in_set(query_object.check_copy_uids, OaTicket.check_copy_uids) > 0)
+                or_conditions.append(func.find_in_set(query_object.check_history_uids, OaTicket.check_history_uids) > 0)
 
             if or_conditions:
                 conditions.append(or_(*or_conditions))

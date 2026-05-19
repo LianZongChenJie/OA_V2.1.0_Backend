@@ -316,7 +316,13 @@ class MessageService:
             if not message_id:
                 raise ServiceException('message_id不能为空')
             await MsgDao.set_read(query_db, [message_id])
-            return CrudResponseModel(is_success=True, message='设置成功')
+            result = await MsgDao.get_msg_by_id(query_db, message_id)
+            result = dict(result)
+            result.update(result['OaMsg'].to_dict())
+            result.pop('OaMsg')
+            if result['from_name'] is None:
+                result['from_name'] = '系统消息'
+            return ModelConverter.convert_to_camel_case(result)
         except Exception as e:
             raise ServiceException('阅读失败:' + str(e))
 

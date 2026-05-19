@@ -61,16 +61,6 @@ class InvoiceDao:
         # 构建条件列表
         conditions = []
         conditions.append(OaInvoice.delete_time == 0)
-        if query_object.tab == 1:
-            conditions.append(OaInvoice.admin_id == user_id)
-        if query_object.tab == 2:
-            conditions.append(func.find_in_set(user_id, OaInvoice.check_uids) > 0)
-        if query_object.tab == 3:
-            conditions.append(func.find_in_set(user_id, OaInvoice.check_history_uids) > 0)
-        if query_object.tab == 4:
-            conditions.append(func.find_in_set(user_id, OaInvoice.check_copy_uids) > 0)
-        if query_object.tab == 5:
-            conditions.append(OaInvoice.enter_status == 2)
         # 通用条件：审核状态
         if query_object.check_status is not None:
             conditions.append(OaInvoice.check_status == query_object.check_status)
@@ -100,6 +90,17 @@ class InvoiceDao:
         if query_object.admin_id:
             conditions.append(OaInvoice.admin_id == query_object.admin_id)
 
+        if query_object.tab == 1:
+            conditions.append(OaInvoice.admin_id == user_id)
+        if query_object.tab == 2:
+            conditions.append(func.find_in_set(user_id, OaInvoice.check_uids) > 0)
+        if query_object.tab == 3:
+            conditions.append(func.find_in_set(user_id, OaInvoice.check_history_uids) > 0)
+        if query_object.tab == 4:
+            conditions.append(func.find_in_set(user_id, OaInvoice.check_copy_uids) > 0)
+        if query_object.tab == 5:
+            conditions.append(OaInvoice.enter_status == 2)
+
         elif query_object.check_uids:
             conditions.append(func.find_in_set(query_object.check_uids, OaInvoice.check_uids) > 0)
 
@@ -110,23 +111,14 @@ class InvoiceDao:
         elif query_object.check_copy_uids:
             conditions.append(func.find_in_set(query_object.check_copy_uids, OaInvoice.check_copy_uids) > 0)
 
-        elif query_object.invoice_type:
-            conditions.append(OaInvoice.invoice_type == query_object.invoice_type)
-
         else:
             # 没有特定条件时，使用 OR 组合
             or_conditions = []
-            if query_object.admin_id:
-                or_conditions.append(OaInvoice.admin_id == query_object.admin_id)
-            if query_object.check_uids:
-                or_conditions.append(func.find_in_set(query_object.check_uids, OaInvoice.check_uids) > 0)
-            if query_object.check_copy_uids:
-                or_conditions.append(
-                    func.find_in_set(query_object.check_copy_uids, OaInvoice.check_copy_uids) > 0)
-            if query_object.check_history_uids:
-                or_conditions.append(
-                    func.find_in_set(query_object.check_history_uids, OaInvoice.check_history_uids) > 0)
-
+            if query_object.tab == 0:
+                or_conditions.append(OaInvoice.admin_id == user_id)
+                or_conditions.append(func.find_in_set(user_id, OaInvoice.check_uids) > 0)
+                or_conditions.append(func.find_in_set(user_id, OaInvoice.check_copy_uids) > 0)
+                or_conditions.append(func.find_in_set(user_id, OaInvoice.check_history_uids) > 0)
             if or_conditions:
                 conditions.append(or_(*or_conditions))
         if query_object.is_code is not None:

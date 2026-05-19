@@ -149,11 +149,13 @@ class TicketService:
                 data.pay_time = pay_time
                 data.admin_id =userId
                 data.create_time = create_time
-            await TicketDao.payment_add(db, data_list)
+            amount += old_amount
+            if amount > ticket_dict['amount']:
+                raise ServiceException(message='付款金额不能大于发票金额')
+
             ticket_dict['pay_amount'] = amount
             ticket_dict['pay_time'] = pay_time
-            if amount > ticket_dict['amount']:
-                return CrudResponseModel(is_success=False, message='付款金额不能大于发票金额')
+
             if amount < ticket_dict['pay_amount']:
                 ticket_dict['pay_status'] = 1
             else:
@@ -161,6 +163,7 @@ class TicketService:
             update_model = OaTicket(**ticket_dict)
             update_model.update_time = int(datetime.now().timestamp())
             update_model.delete_time = 0
+            await TicketDao.payment_add(db, data_list)
             await TicketDao.update_by_entity(db, update_model)
             await db.commit()
             return CrudResponseModel(is_success=True, message='操作成功')
