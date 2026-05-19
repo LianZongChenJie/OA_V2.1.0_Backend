@@ -39,15 +39,15 @@ class PersonnelQuitDao:
             .subquery("conn_agg")
         )
 
-        leader_subq = (
-            select(
-                SysDept.dept_id,
-                func.group_concat(SysUser.nick_name, ',').label('leader_names')
-            )
-            .join(SysUser, func.find_in_set(SysUser.user_id, SysDept.leader_id) > 0)
-            .group_by(SysDept.dept_id)
-            .subquery("leader_agg")
-        )
+        # leader_subq = (
+        #     select(
+        #         SysDept.dept_id,
+        #         func.group_concat(SysUser.nick_name, ',').label('leader_names')
+        #     )
+        #     .join(SysUser, func.find_in_set(SysUser.user_id, SysDept.leader_id) > 0)
+        #     .group_by(SysDept.dept_id)
+        #     .subquery("leader_agg")
+        # )
         check_subq = (
             select(
                 OaPersonalQuit.id.label("quit_id"),
@@ -74,17 +74,18 @@ class PersonnelQuitDao:
                 admin_user.nick_name.label('admin_name'),
                 dept_tbl.dept_name.label('dept_name'),
                 post_subq.c.post_names.label('post_name'),  # 已聚合好的岗位
-                leader_subq.c.leader_names.label('lead_name'),  # 已聚合好的部门负责人
+                # leader_subq.c.leader_names.label('lead_name'),  # 已聚合好的部门负责人
+                lead_user.nick_name.label('lead_name'),
                 connect_ji_subq.c.rec_ji_names.label('rec_ji_names'),  # 已聚合好的交接人
                 check_subq.c.check_names.label('check_names'),  # 已聚合好的检查人
             )
+            .join(lead_user,lead_user.user_id == OaPersonalQuit.lead_admin_id)
             .outerjoin(quit_user, quit_user.user_id == OaPersonalQuit.uid)
             .outerjoin(rec_user, rec_user.user_id == OaPersonalQuit.connect_id)
             .outerjoin(admin_user, admin_user.user_id == OaPersonalQuit.admin_id)
-            .outerjoin(lead_user, lead_user.user_id == OaPersonalQuit.lead_admin_id)  # 如果 lead_admin_id 是单个用户ID
+            # .outerjoin(lead_user, lead_user.user_id == OaPersonalQuit.lead_admin_id)  # 如果 lead_admin_id 是单个用户ID
             .outerjoin(dept_tbl, quit_user.dept_id == dept_tbl.dept_id)
             .outerjoin(post_subq, quit_user.user_id == post_subq.c.user_id)
-            .outerjoin(leader_subq, dept_tbl.dept_id == leader_subq.c.dept_id)
             .outerjoin(connect_ji_subq, OaPersonalQuit.id == connect_ji_subq.c.quit_id)
             .outerjoin(check_subq, OaPersonalQuit.id == check_subq.c.quit_id)
         )
