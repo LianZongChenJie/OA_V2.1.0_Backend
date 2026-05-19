@@ -556,23 +556,24 @@ class UserService:
         }
 
         for item in user_list:
-            if item.get('dept'):
-                if item.get('dept').get('deptName'):
-                    # item['deptName'] = item.get('dept').get('deptName')
-                    if item.get('status') == '0':
-                        item['status'] = '正常'
-                    else:
-                        item['status'] = '停用'
-                    if item.get('sex') == '0':
-                        item['sex'] = '男'
-                    elif item.get('sex') == '1':
-                        item['sex'] = '女'
-                    else:
-                        item['sex'] = '未知'
-                else:
-                    # item['deptName'] = ''
-                    item['status'] = '正常'
-                    item['sex'] = '未知'
+            if item.get('status') == '0':
+                item['status'] = '正常'
+            else:
+                item['status'] = '停用'
+            if item.get('sex') == '0':
+                item['sex'] = '男'
+            elif item.get('sex') == '1':
+                item['sex'] = '女'
+            else:
+                item['sex'] = '未知'
+            # if item.get('dept'):
+            #     if item.get('dept').get('deptName'):
+            #         # item['deptName'] = item.get('dept').get('deptName')
+
+            # else:
+            #     # item['deptName'] = ''
+            #     item['status'] = '正常'
+            #     item['sex'] = '未知'
         binary_data = ExcelUtil.export_list2excel(user_list, mapping_dict)
 
         return binary_data
