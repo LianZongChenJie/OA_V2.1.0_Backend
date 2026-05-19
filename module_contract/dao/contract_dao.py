@@ -218,29 +218,8 @@ class ContractDao:
         elif query_object.tab == 2:
             conditions.append(func.find_in_set(str(user_id), OaContract.check_history_uids))
 
-        if query_object.tab == 0 and not is_admin:
-            permission_conditions = [
-                OaContract.admin_id == user_id,
-                OaContract.prepared_uid == user_id,
-                OaContract.sign_uid == user_id,
-                OaContract.keeper_uid == user_id,
-                func.find_in_set(str(user_id), OaContract.share_ids),
-                func.find_in_set(str(user_id), OaContract.check_uids),
-                func.find_in_set(str(user_id), OaContract.check_history_uids),
-            ]
-
-            if auth_dids or son_dids:
-                dept_ids = set()
-                if auth_dids:
-                    dept_ids.update([int(d.strip()) for d in auth_dids.split(',') if d.strip()])
-                if son_dids:
-                    dept_ids.update([int(d.strip()) for d in son_dids.split(',') if d.strip()])
-
-                if dept_ids:
-                    permission_conditions.append(OaContract.did.in_(dept_ids))
-
-            if permission_conditions:
-                conditions.append(or_(*permission_conditions))
+        # 不进行权限过滤，权限控制由菜单是否显示来处理
+        # 只按查询参数（如 tab）进行过滤
 
         # 关联查询分类名称，避免 N+1 查询
         from module_admin.entity.do.contract_cate_do import OaContractCate
