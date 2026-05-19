@@ -343,7 +343,7 @@ class TenderService:
                 'deposit_bank': '保证金开户行',
                 'deposit_account_no': '保证金账号',
                 'is_deposit_refunded': '是否退回保证金(是/否)',
-                'bid_result': '中标结果',
+                'bid_result': '中标结果(待开标/中标/未中标/流标/未投标)',
                 'bid_service_fee': '中标服务费(数字，元)',
                 'sort': '排序(数字)'
             }
@@ -374,7 +374,7 @@ class TenderService:
                     'deposit_bank': '中国建设银行北京海淀支行',
                     'deposit_account_no': '6222081100001234567',
                     'is_deposit_refunded': '否',
-                    'bid_result': '待公示',
+                    'bid_result': '中标',
                     'bid_service_fee': '0',
                     'sort': '1'
                 }
@@ -400,6 +400,22 @@ class TenderService:
                 for col in worksheet.columns:
                     max_length = max(len(str(cell.value)) for cell in col)
                     worksheet.column_dimensions[col[0].column_letter].width = min(max_length + 2, 50)
+
+                # 设置日期列的单元格格式为文本格式，防止Excel自动转换日期格式
+                date_columns = ['month', 'purchase_date', 'bid_opening_date']
+                for col_name in date_columns:
+                    if col_name in field_mapping:
+                        col_index = headers.index(col_name)
+                        col_letter = worksheet.cell(row=1, column=col_index + 1).column_letter
+                        # 设置整列（包括空行）格式为文本
+                        # 先填充100行空数据来确保列格式生效
+                        for row_num in range(3, 502):  # 填充第2行到第101行
+                            cell = worksheet.cell(row=row_num, column=col_index + 1)
+                            cell.number_format = '@'  # 文本格式
+                            if row_num == 3:  # 保留第一行样例数据
+                                cell.value = sample_data[0][col_name]
+                            else:
+                                cell.value = ''
 
             output.seek(0)
             return output

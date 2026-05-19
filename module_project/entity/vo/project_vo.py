@@ -99,6 +99,7 @@ class ProjectModel(BaseModel):
     tasks_pensent: str | None = Field(default=None, description='任务完成百分比')
     step_director: str | None = Field(default=None, description='当前阶段负责人姓名')
     step: str | None = Field(default=None, description='当前阶段信息')
+    customer_names: str | None = Field(default=None, description='项目成员姓名列表')
 
     # 项目阶段列表
     stages: list[ProjectStepModel] | None = Field(default=None, description='项目阶段列表')
