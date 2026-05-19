@@ -28,31 +28,6 @@ class ProjectService:
     """
 
     @classmethod
-    def _parse_customer_id(cls, customer_id: int | str | None) -> int:
-        """
-        解析客户ID，支持单个ID或逗号分隔的多个ID
-        
-        :param customer_id: 客户ID（可以是整数或逗号分隔的字符串）
-        :return: 返回第一个客户ID或0
-        """
-        if customer_id is None:
-            return 0
-        
-        if isinstance(customer_id, int):
-            return customer_id
-        
-        if isinstance(customer_id, str):
-            # 如果是逗号分隔的字符串，取第一个ID
-            id_list = [id_str.strip() for id_str in customer_id.split(',') if id_str.strip()]
-            if id_list:
-                try:
-                    return int(id_list[0])
-                except (ValueError, TypeError):
-                    return 0
-        
-        return 0
-
-    @classmethod
     async def get_project_list_services(
             cls, query_db: AsyncSession, query_object: ProjectPageQueryModel,
             current_user_id: int, auth_dids: str = '', son_dids: str = '',
@@ -114,10 +89,10 @@ class ProjectService:
         :return: 格式化后的字典
         """
         formatted = data.copy()
-        
+
         # 需要格式化的时间字段列表
         time_fields = ['start_time', 'end_time', 'create_time', 'update_time', 'delete_time']
-        
+
         for field in time_fields:
             if field in formatted:
                 value = formatted[field]
@@ -127,7 +102,7 @@ class ProjectService:
                 else:
                     # 格式化时间戳为日期时间字符串
                     formatted[field] = timestamp_to_datetime(value, '%Y-%m-%d %H:%M:%S')
-        
+
         return formatted
 
     @classmethod
@@ -146,7 +121,7 @@ class ProjectService:
                     cleaned[key] = 0  # 时间字段默认为 0，序列化器会转换为空字符串
                 elif key in ['tasks_total', 'tasks_finish', 'tasks_unfinish', 'delay']:
                     cleaned[key] = 0  # 数字字段默认为 0
-                elif key in ['status_name', 'admin_name', 'director_name', 'department', 'dept_name', 
+                elif key in ['status_name', 'admin_name', 'director_name', 'department', 'dept_name',
                             'cate', 'cate_title', 'range_time', 'step_director', 'step', 'tasks_pensent']:
                     cleaned[key] = ''  # 字符串字段默认为空字符串
                 else:
@@ -193,14 +168,14 @@ class ProjectService:
 
             start_time = page_object.start_time if page_object.start_time is not None else 0
             end_time = page_object.end_time if page_object.end_time is not None else 0
-            
+
             if isinstance(start_time, str):
                 from datetime import datetime as dt
                 try:
                     start_time = int(dt.strptime(start_time, '%Y-%m-%d %H:%M:%S').timestamp())
                 except (ValueError, TypeError):
                     start_time = 0
-            
+
             if isinstance(end_time, str):
                 from datetime import datetime as dt
                 try:
@@ -208,12 +183,20 @@ class ProjectService:
                 except (ValueError, TypeError):
                     end_time = 0
 
+            # 处理 customer_id：支持整数或逗号分隔的字符串（用于项目成员）
+            customer_id_value = ''
+            if page_object.customer_id is not None:
+                if isinstance(page_object.customer_id, int):
+                    customer_id_value = str(page_object.customer_id)
+                elif isinstance(page_object.customer_id, str):
+                    customer_id_value = page_object.customer_id
+
             project_data = {
                 'name': page_object.name if page_object.name is not None else '',
                 'code': page_object.code if page_object.code is not None else '',
                 'amount': page_object.amount if page_object.amount is not None else 0.00,
                 'cate_id': page_object.cate_id if page_object.cate_id is not None else 0,
-                'customer_id': cls._parse_customer_id(page_object.customer_id),
+                'customer_id': 0,  # 项目表的 customer_id 固定为 0，成员信息存储在 oa_project_user 表
                 'contract_id': page_object.contract_id if page_object.contract_id is not None else 0,
                 'admin_id': page_object.admin_id,
                 'director_uid': page_object.director_uid if page_object.director_uid is not None else 0,
@@ -232,6 +215,10 @@ class ProjectService:
             # 处理项目阶段
             if hasattr(page_object, 'stages') and page_object.stages:
                 await cls._save_project_stages(query_db, project.id, page_object.stages, current_time)
+
+            # 处理项目成员（从 customer_id 字段获取成员ID列表）
+            if hasattr(page_object, 'customer_id') and page_object.customer_id:
+                await cls._save_project_users(query_db, project.id, page_object.customer_id, page_object.admin_id, current_time)
 
             await query_db.commit()
             return CrudResponseModel(is_success=True, message='新增成功')
@@ -257,36 +244,24 @@ class ProjectService:
 
             try:
                 valid_fields = {c.name for c in OaProject.__table__.columns}
-                exclude_fields = {'id', 'create_time', 'delete_time', 'admin_id'}
+                exclude_fields = {'id', 'create_time', 'delete_time', 'admin_id', 'customer_id'}
 
                 edit_project = {
                     k: v for k, v in page_object.model_dump(exclude_unset=True).items()
                     if k in valid_fields and k not in exclude_fields
                 }
 
-                if 'contract_id' in edit_project and edit_project['contract_id'] is None:
-                    edit_project['contract_id'] = 0
+                # 处理时间字段：将字符串日期转换为时间戳
+                from datetime import datetime as dt
+                for field in ['start_time', 'end_time']:
+                    if field in edit_project and isinstance(edit_project[field], str):
+                        try:
+                            edit_project[field] = int(dt.strptime(edit_project[field], '%Y-%m-%d %H:%M:%S').timestamp())
+                        except (ValueError, TypeError):
+                            edit_project[field] = 0
 
-                if 'customer_id' in edit_project:
-                    edit_project['customer_id'] = cls._parse_customer_id(edit_project['customer_id'])
-
-                if 'start_time' in edit_project and isinstance(edit_project['start_time'], str):
-                    from datetime import datetime as dt
-                    try:
-                        edit_project['start_time'] = int(dt.strptime(edit_project['start_time'], '%Y-%m-%d %H:%M:%S').timestamp())
-                    except (ValueError, TypeError):
-                        edit_project['start_time'] = 0
-                
-                if 'end_time' in edit_project and isinstance(edit_project['end_time'], str):
-                    from datetime import datetime as dt
-                    try:
-                        edit_project['end_time'] = int(dt.strptime(edit_project['end_time'], '%Y-%m-%d %H:%M:%S').timestamp())
-                    except (ValueError, TypeError):
-                        edit_project['end_time'] = 0
-
-                project_info = await cls.project_detail_services(query_db, page_object.id)
-
-                if project_info and project_info.id:
+                project_info = await ProjectDao.get_project_detail_by_id(query_db, page_object.id)
+                if project_info and project_info.get('project_info'):
                     edit_project['update_time'] = int(datetime.now().timestamp())
                     await ProjectDao.edit_project_dao(query_db, page_object.id, edit_project)
 
@@ -294,15 +269,19 @@ class ProjectService:
                         current_time = int(datetime.now().timestamp())
                         await cls._update_project_stages(query_db, page_object.id, page_object.stages, current_time)
 
+                    # 处理项目成员（从 customer_id 字段获取成员ID列表）
+                    if hasattr(page_object, 'customer_id') and page_object.customer_id is not None:
+                        current_time = int(datetime.now().timestamp())
+                        await cls._update_project_users(query_db, page_object.id, page_object.customer_id, page_object.admin_id, current_time)
+
                     await query_db.commit()
                     return CrudResponseModel(is_success=True, message='更新成功')
                 else:
                     raise ServiceException(message='项目不存在')
+
             except Exception as e:
                 await query_db.rollback()
                 raise e
-        else:
-            raise ServiceException(message='项目不存在')
 
     @classmethod
     async def delete_project_services(
@@ -316,28 +295,18 @@ class ProjectService:
         :param page_object: 删除项目对象
         :return: 删除项目校验结果
         """
-        if page_object.id:
-            try:
-                project_info = await cls.project_detail_services(query_db, page_object.id)
-                if not project_info or not project_info.id:
-                    raise ServiceException(message='项目不存在')
-
-                update_time = int(datetime.now().timestamp())
-                await ProjectDao.delete_project_dao(
-                    query_db,
-                    ProjectModel(id=page_object.id, update_time=update_time)
-                )
-
-                # 删除项目阶段
-                await ProjectStepDao.delete_steps_by_project_id(query_db, page_object.id)
-
+        try:
+            project_info = await ProjectDao.get_project_detail_by_id(query_db, page_object.id)
+            if project_info and project_info.get('project_info'):
+                await ProjectDao.delete_project_dao(query_db, page_object.id)
                 await query_db.commit()
                 return CrudResponseModel(is_success=True, message='删除成功')
-            except Exception as e:
-                await query_db.rollback()
-                raise e
-        else:
-            raise ServiceException(message='传入项目 id 为空')
+            else:
+                raise ServiceException(message='项目不存在')
+
+        except Exception as e:
+            await query_db.rollback()
+            raise e
 
     @classmethod
     async def project_detail_services(cls, query_db: AsyncSession, project_id: int) -> ProjectModel:
@@ -355,299 +324,194 @@ class ProjectService:
 
         # 合并项目信息和扩展字段
         project_info = project_dict['project_info']
-        result_dict = {**project_info.__dict__, **project_dict}
-        result_dict.pop('_sa_instance_state', None)
+        
+        # 将下划线格式的字段名转换为驼峰格式
+        project_info_dict = {}
+        for key, value in project_info.__dict__.items():
+            if key != '_sa_instance_state':
+                # 下划线转驼峰
+                parts = key.split('_')
+                camel_key = parts[0] + ''.join(part.capitalize() for part in parts[1:])
+                project_info_dict[camel_key] = value
+        
+        # 添加扩展字段
+        for key in ['cate_title', 'customer_name', 'contract_name', 'admin_name', 'director_name', 'dept_name', 'status_name']:
+            if key in project_dict:
+                # 下划线转驼峰
+                parts = key.split('_')
+                camel_key = parts[0] + ''.join(part.capitalize() for part in parts[1:])
+                project_info_dict[camel_key] = project_dict[key]
+        
+        result_dict = project_info_dict
 
         # 获取项目阶段
         stages = await ProjectStepDao.get_steps_by_project_id(query_db, project_id)
         if stages:
             stage_list = []
-            for step in stages:
-                step_dict = step.__dict__.copy()
-                step_dict.pop('_sa_instance_state', None)
+            for stage in stages:
+                stage_dict = stage.__dict__.copy()
+                stage_dict.pop('_sa_instance_state', None)
                 
-                # 获取阶段负责人姓名
-                if step_dict.get('director_uid') and step_dict['director_uid'] > 0:
+                # 查询阶段负责人姓名
+                if stage.director_uid and stage.director_uid > 0:
                     from module_admin.dao.user_dao import UserDao
-                    director_result = await UserDao.get_user_by_id(query_db, step_dict['director_uid'])
+                    director_result = await UserDao.get_user_by_id(query_db, stage.director_uid)
                     if director_result and director_result.get('user_basic_info'):
-                        step_dict['director_name'] = director_result['user_basic_info'].nick_name
+                        director_info = director_result['user_basic_info']
+                        stage_dict['director_name'] = director_info.nick_name or director_info.user_name
                 
-                # 获取阶段成员姓名
-                if step_dict.get('uids'):
-                    uid_list = [int(uid.strip()) for uid in step_dict['uids'].split(',') if uid.strip()]
-                    if uid_list:
-                        from module_admin.dao.user_dao import UserDao
-                        member_names = []
-                        for uid in uid_list:
-                            user_result = await UserDao.get_user_by_id(query_db, uid)
-                            if user_result and user_result.get('user_basic_info'):
-                                member_names.append(user_result['user_basic_info'].nick_name)
-                        step_dict['member_names'] = member_names
+                # 查询阶段成员姓名列表
+                if stage.uids:
+                    from module_admin.dao.user_dao import UserDao
+                    uid_list = [int(uid.strip()) for uid in stage.uids.split(',') if uid.strip() and uid.strip().isdigit()]
+                    member_names = []
+                    for uid in uid_list:
+                        member_result = await UserDao.get_user_by_id(query_db, uid)
+                        if member_result and member_result.get('user_basic_info'):
+                            member_info = member_result['user_basic_info']
+                            member_names.append(member_info.nick_name or member_info.user_name)
+                    stage_dict['member_names'] = member_names
                 
-                stage_list.append(ProjectStepModel(**CamelCaseUtil.transform_result(step_dict)))
-            
+                stage_list.append(ProjectStepModel(**stage_dict))
             result_dict['stages'] = stage_list
 
-        return ProjectModel(**CamelCaseUtil.transform_result(result_dict))
+        # 获取项目成员列表
+        from module_contract.dao.project_user_dao import ProjectUserDao
+        project_users = await ProjectUserDao.get_users_by_project_id(query_db, project_id)
+        if project_users:
+            from module_admin.dao.user_dao import UserDao
+            member_ids = [user.uid for user in project_users]
+            member_names = []
+            for uid in member_ids:
+                member_result = await UserDao.get_user_by_id(query_db, uid)
+                if member_result and member_result.get('user_basic_info'):
+                    member_info = member_result['user_basic_info']
+                    member_names.append(member_info.nick_name or member_info.user_name)
+            
+            # 将成员ID和名称都保存到结果中
+            result_dict['customerId'] = ','.join([str(uid) for uid in member_ids])
+            result_dict['customerNames'] = ','.join(member_names)
+
+        result = ProjectModel(**result_dict)
+
+        return result
 
     @classmethod
-    async def _save_project_stages(cls, query_db: AsyncSession, project_id: int, stages: list, current_time: int):
+    async def _save_project_stages(
+            cls, query_db: AsyncSession, project_id: int, stages: list[ProjectStepModel], current_time: int
+    ) -> None:
         """
         保存项目阶段
 
         :param query_db: orm 对象
-        :param project_id: 项目ID
-        :param stages: 阶段列表
+        :param project_id: 项目 ID
+        :param stages: 项目阶段列表
         :param current_time: 当前时间戳
-        :return:
+        :return: None
         """
-        for index, stage_data in enumerate(stages):
-            if isinstance(stage_data, dict):
-                start_time = stage_data.get('startTime', 0)
-                end_time = stage_data.get('endTime', 0)
-                
-                if isinstance(start_time, str):
-                    from datetime import datetime as dt
-                    try:
-                        start_time = int(dt.strptime(start_time, '%Y-%m-%d %H:%M:%S').timestamp())
-                    except (ValueError, TypeError):
-                        start_time = 0
-                
-                if isinstance(end_time, str):
-                    from datetime import datetime as dt
-                    try:
-                        end_time = int(dt.strptime(end_time, '%Y-%m-%d %H:%M:%S').timestamp())
-                    except (ValueError, TypeError):
-                        end_time = 0
-                
-                step_data = {
-                    'project_id': project_id,
-                    'title': stage_data.get('name') or stage_data.get('title', ''),
-                    'director_uid': stage_data.get('directorUid', 0),
-                    'uids': stage_data.get('memberUids') or stage_data.get('uids', ''),
-                    'sort': stage_data.get('sort', index + 1),
-                    'is_current': 1 if index == 0 else 0,
-                    'start_time': start_time,
-                    'end_time': end_time,
-                    'remark': stage_data.get('remark', ''),
-                    'create_time': current_time,
-                    'update_time': current_time,
-                    'delete_time': 0,
-                }
-            elif hasattr(stage_data, 'model_dump'):
-                data_dict = stage_data.model_dump(by_alias=False)
-                start_time = data_dict.get('start_time', 0)
-                end_time = data_dict.get('end_time', 0)
-                
-                if isinstance(start_time, str):
-                    from datetime import datetime as dt
-                    try:
-                        start_time = int(dt.strptime(start_time, '%Y-%m-%d %H:%M:%S').timestamp())
-                    except (ValueError, TypeError):
-                        start_time = 0
-                
-                if isinstance(end_time, str):
-                    from datetime import datetime as dt
-                    try:
-                        end_time = int(dt.strptime(end_time, '%Y-%m-%d %H:%M:%S').timestamp())
-                    except (ValueError, TypeError):
-                        end_time = 0
-                
-                step_data = {
-                    'project_id': project_id,
-                    'title': data_dict.get('title') or data_dict.get('name', ''),
-                    'director_uid': data_dict.get('director_uid', 0),
-                    'uids': data_dict.get('uids') or data_dict.get('member_uids', ''),
-                    'sort': data_dict.get('sort', index + 1),
-                    'is_current': 1 if index == 0 else 0,
-                    'start_time': start_time,
-                    'end_time': end_time,
-                    'remark': data_dict.get('remark', ''),
-                    'create_time': current_time,
-                    'update_time': current_time,
-                    'delete_time': 0,
-                }
-            else:
-                start_time = getattr(stage_data, 'start_time', 0) or getattr(stage_data, 'startTime', 0)
-                end_time = getattr(stage_data, 'end_time', 0) or getattr(stage_data, 'endTime', 0)
-                
-                if isinstance(start_time, str):
-                    from datetime import datetime as dt
-                    try:
-                        start_time = int(dt.strptime(start_time, '%Y-%m-%d %H:%M:%S').timestamp())
-                    except (ValueError, TypeError):
-                        start_time = 0
-                
-                if isinstance(end_time, str):
-                    from datetime import datetime as dt
-                    try:
-                        end_time = int(dt.strptime(end_time, '%Y-%m-%d %H:%M:%S').timestamp())
-                    except (ValueError, TypeError):
-                        end_time = 0
-                
-                step_data = {
-                    'project_id': project_id,
-                    'title': getattr(stage_data, 'title', '') or getattr(stage_data, 'name', ''),
-                    'director_uid': getattr(stage_data, 'director_uid', 0) or getattr(stage_data, 'directorUid', 0),
-                    'uids': getattr(stage_data, 'uids', '') or getattr(stage_data, 'memberUids', '') or getattr(stage_data, 'member_uids', ''),
-                    'sort': getattr(stage_data, 'sort', index + 1),
-                    'is_current': 1 if index == 0 else 0,
-                    'start_time': start_time,
-                    'end_time': end_time,
-                    'remark': getattr(stage_data, 'remark', ''),
-                    'create_time': current_time,
-                    'update_time': current_time,
-                    'delete_time': 0,
-                }
-
-            await ProjectStepDao.add_step(query_db, step_data)
+        for stage in stages:
+            stage_data = {
+                'project_id': project_id,
+                'title': stage.title,
+                'start_time': stage.start_time,
+                'end_time': stage.end_time,
+                'remark': stage.remark,
+                'create_time': current_time,
+                'update_time': current_time,
+                'delete_time': 0,
+            }
+            await ProjectStepDao.add_step(query_db, stage_data)
 
     @classmethod
-    async def _update_project_stages(cls, query_db: AsyncSession, project_id: int, stages: list, current_time: int):
+    async def _save_project_users(
+            cls, query_db: AsyncSession, project_id: int, customer_id: str, admin_id: int, current_time: int
+    ) -> None:
         """
-        更新项目阶段（先删除后添加）
+        保存项目成员
 
         :param query_db: orm 对象
-        :param project_id: 项目ID
-        :param stages: 阶段列表
+        :param project_id: 项目 ID
+        :param customer_id: 客户 ID（逗号分隔的成员ID字符串）
+        :param admin_id: 管理员 ID
         :param current_time: 当前时间戳
-        :return:
+        :return: None
         """
-        # 先删除该项目的所有阶段
-        await ProjectStepDao.delete_steps_by_project_id(query_db, project_id)
+        from module_contract.dao.project_user_dao import ProjectUserDao
+        
+        # 解析成员ID列表
+        if customer_id:
+            uid_list = [int(uid.strip()) for uid in customer_id.split(',') if uid.strip().isdigit()]
+            
+            # 批量新增成员
+            users_list = []
+            for uid in uid_list:
+                users_list.append({
+                    'uid': uid,
+                    'project_id': project_id,
+                    'admin_id': admin_id,
+                    'create_time': current_time,
+                    'delete_time': 0,
+                })
+            
+            if users_list:
+                await ProjectUserDao.batch_add_users(query_db, users_list)
 
-        # 重新添加所有阶段
-        for index, stage_data in enumerate(stages):
-            if isinstance(stage_data, dict):
-                start_time = stage_data.get('startTime', 0)
-                end_time = stage_data.get('endTime', 0)
-                
-                if isinstance(start_time, str):
-                    from datetime import datetime as dt
-                    try:
-                        start_time = int(dt.strptime(start_time, '%Y-%m-%d %H:%M:%S').timestamp())
-                    except (ValueError, TypeError):
-                        start_time = 0
-                
-                if isinstance(end_time, str):
-                    from datetime import datetime as dt
-                    try:
-                        end_time = int(dt.strptime(end_time, '%Y-%m-%d %H:%M:%S').timestamp())
-                    except (ValueError, TypeError):
-                        end_time = 0
-                
-                # 使用前端传来的 isCurrent 值，如果没有则默认为 0
-                is_current_value = stage_data.get('isCurrent', 0)
-                # 兼容布尔值和整数
-                if isinstance(is_current_value, bool):
-                    is_current_value = 1 if is_current_value else 0
-                elif not isinstance(is_current_value, int):
-                    try:
-                        is_current_value = int(is_current_value) if is_current_value else 0
-                    except (ValueError, TypeError):
-                        is_current_value = 0
-                
-                step_data_dict = {
-                    'project_id': project_id,
-                    'title': stage_data.get('name') or stage_data.get('title', ''),
-                    'director_uid': stage_data.get('directorUid', 0),
-                    'uids': stage_data.get('memberUids') or stage_data.get('uids', ''),
-                    'sort': stage_data.get('sort', index + 1),
-                    'is_current': is_current_value,
-                    'start_time': start_time,
-                    'end_time': end_time,
-                    'remark': stage_data.get('remark', ''),
-                    'create_time': current_time,
-                    'update_time': current_time,
-                    'delete_time': 0,
-                }
-            elif hasattr(stage_data, 'model_dump'):
-                data_dict = stage_data.model_dump(by_alias=False)
-                start_time = data_dict.get('start_time', 0)
-                end_time = data_dict.get('end_time', 0)
-                
-                if isinstance(start_time, str):
-                    from datetime import datetime as dt
-                    try:
-                        start_time = int(dt.strptime(start_time, '%Y-%m-%d %H:%M:%S').timestamp())
-                    except (ValueError, TypeError):
-                        start_time = 0
-                
-                if isinstance(end_time, str):
-                    from datetime import datetime as dt
-                    try:
-                        end_time = int(dt.strptime(end_time, '%Y-%m-%d %H:%M:%S').timestamp())
-                    except (ValueError, TypeError):
-                        end_time = 0
-                
-                # 使用前端传来的 isCurrent 值
-                is_current_value = data_dict.get('is_current', 0) or data_dict.get('isCurrent', 0)
-                if isinstance(is_current_value, bool):
-                    is_current_value = 1 if is_current_value else 0
-                elif not isinstance(is_current_value, int):
-                    try:
-                        is_current_value = int(is_current_value) if is_current_value else 0
-                    except (ValueError, TypeError):
-                        is_current_value = 0
-                
-                step_data_dict = {
-                    'project_id': project_id,
-                    'title': data_dict.get('title') or data_dict.get('name', ''),
-                    'director_uid': data_dict.get('director_uid', 0),
-                    'uids': data_dict.get('uids') or data_dict.get('member_uids', ''),
-                    'sort': data_dict.get('sort', index + 1),
-                    'is_current': is_current_value,
-                    'start_time': start_time,
-                    'end_time': end_time,
-                    'remark': data_dict.get('remark', ''),
-                    'create_time': current_time,
-                    'update_time': current_time,
-                    'delete_time': 0,
-                }
-            else:
-                start_time = getattr(stage_data, 'start_time', 0) or getattr(stage_data, 'startTime', 0)
-                end_time = getattr(stage_data, 'end_time', 0) or getattr(stage_data, 'endTime', 0)
-                
-                if isinstance(start_time, str):
-                    from datetime import datetime as dt
-                    try:
-                        start_time = int(dt.strptime(start_time, '%Y-%m-%d %H:%M:%S').timestamp())
-                    except (ValueError, TypeError):
-                        start_time = 0
-                
-                if isinstance(end_time, str):
-                    from datetime import datetime as dt
-                    try:
-                        end_time = int(dt.strptime(end_time, '%Y-%m-%d %H:%M:%S').timestamp())
-                    except (ValueError, TypeError):
-                        end_time = 0
-                
-                # 使用前端传来的 isCurrent 值
-                is_current_value = getattr(stage_data, 'is_current', None) or getattr(stage_data, 'isCurrent', 0)
-                if is_current_value is None:
-                    is_current_value = 0
-                if isinstance(is_current_value, bool):
-                    is_current_value = 1 if is_current_value else 0
-                elif not isinstance(is_current_value, int):
-                    try:
-                        is_current_value = int(is_current_value) if is_current_value else 0
-                    except (ValueError, TypeError):
-                        is_current_value = 0
-                
-                step_data_dict = {
-                    'project_id': project_id,
-                    'title': getattr(stage_data, 'title', '') or getattr(stage_data, 'name', ''),
-                    'director_uid': getattr(stage_data, 'director_uid', 0) or getattr(stage_data, 'directorUid', 0),
-                    'uids': getattr(stage_data, 'uids', '') or getattr(stage_data, 'memberUids', '') or getattr(stage_data, 'member_uids', ''),
-                    'sort': getattr(stage_data, 'sort', index + 1),
-                    'is_current': is_current_value,
-                    'start_time': start_time,
-                    'end_time': end_time,
-                    'remark': getattr(stage_data, 'remark', ''),
-                    'create_time': current_time,
-                    'update_time': current_time,
-                    'delete_time': 0,
-                }
+    @classmethod
+    async def _update_project_stages(
+            cls, query_db: AsyncSession, project_id: int, stages: list[ProjectStepModel], current_time: int
+    ) -> None:
+        """
+        更新项目阶段
 
-            await ProjectStepDao.add_step(query_db, step_data_dict)
+        :param query_db: orm 对象
+        :param project_id: 项目 ID
+        :param stages: 项目阶段列表
+        :param current_time: 当前时间戳
+        :return: None
+        """
+        for stage in stages:
+            stage_data = {
+                'title': stage.title,
+                'start_time': stage.start_time,
+                'end_time': stage.end_time,
+                'remark': stage.remark,
+                'update_time': current_time,
+            }
+            await ProjectStepDao.update_step(query_db, stage.id, stage_data)
+
+    @classmethod
+    async def _update_project_users(
+            cls, query_db: AsyncSession, project_id: int, customer_id: str, admin_id: int, current_time: int
+    ) -> None:
+        """
+        更新项目成员
+
+        :param query_db: orm 对象
+        :param project_id: 项目 ID
+        :param customer_id: 客户 ID（逗号分隔的成员ID字符串）
+        :param admin_id: 管理员 ID
+        :param current_time: 当前时间戳
+        :return: None
+        """
+        from module_contract.dao.project_user_dao import ProjectUserDao
+        
+        # 先逻辑删除所有现有成员
+        await ProjectUserDao.delete_users_by_project_id(query_db, project_id, current_time)
+        
+        # 解析新的成员ID列表
+        if customer_id:
+            uid_list = [int(uid.strip()) for uid in customer_id.split(',') if uid.strip().isdigit()]
+            
+            # 批量新增成员
+            users_list = []
+            for uid in uid_list:
+                users_list.append({
+                    'uid': uid,
+                    'project_id': project_id,
+                    'admin_id': admin_id,
+                    'create_time': current_time,
+                    'delete_time': 0,
+                })
+            
+            if users_list:
+                await ProjectUserDao.batch_add_users(query_db, users_list)

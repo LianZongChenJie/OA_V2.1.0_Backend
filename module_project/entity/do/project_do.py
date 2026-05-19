@@ -14,7 +14,7 @@ class OaProject(Base):
     code = Column(String(255), nullable=False, default='', comment='项目编号')
     amount = Column(DECIMAL(15, 2), nullable=False, default=0.00, comment='项目金额')
     cate_id = Column(Integer, nullable=False, default=0, comment='分类 ID')
-    customer_id = Column(Integer, nullable=False, default=0, comment='关联客户 ID')
+    customer_id = Column(String(500), nullable=False, default='', comment='关联客户 ID，多个用逗号分隔')
     contract_id = Column(Integer, nullable=False, default=0, comment='关联合同协议 ID')
     admin_id = Column(Integer, nullable=False, default=0, comment='创建人')
     director_uid = Column(Integer, nullable=False, default=0, comment='项目负责人')
