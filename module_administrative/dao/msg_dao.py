@@ -33,8 +33,11 @@ class MsgDao:
     async def add_by_entity(cls, db: AsyncSession, entity: OaMsg):
         db.add(entity)
         await db.commit()
-        await db.refresh(entity)
-        return entity.id
+
+    @classmethod
+    async def add_by_entities(cls, db: AsyncSession, entities: list[OaMsg]):
+        db.add_all(entities)
+        await db.commit()
 
     @classmethod
     async def set_read(cls, db: AsyncSession, msg_ids: list[int]):

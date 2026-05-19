@@ -58,6 +58,7 @@ class InvoiceService:
                 return CrudResponseModel(is_success=True, message='编辑成功')
             else:
                 model.create_time = int(datetime.now().timestamp())
+                model.open_status = 0
                 await InvoiceDao.add(query_db, model)
                 await query_db.commit()
                 return CrudResponseModel(is_success=True, message='新增成功')
