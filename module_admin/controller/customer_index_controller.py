@@ -672,7 +672,7 @@ async def revert_customer(
         
         current_time = int(datetime.now().timestamp())
 
-        # 批量更新（取消逻辑删除和废弃状态）
+        # 批量更新（取消逻辑删除和废弃状态，同时清空归属信息使其回到公海）
         for customer_id in id_array:
             await query_db.execute(
                 update(OaCustomer)
@@ -680,6 +680,9 @@ async def revert_customer(
                 .values(
                     delete_time=0,
                     discard_time=0,  # 同时取消废弃状态
+                    belong_uid=0,     # 清空归属人，使其回到公海
+                    belong_did=0,     # 清空归属部门
+                    belong_time=0,    # 清空归属时间
                     update_time=current_time
                 )
             )

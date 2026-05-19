@@ -178,6 +178,17 @@ class PurchaseModel(PurchaseBaseModel):
     采购合同返回模型
     """
 
+    # 重定义时间字段为 int | str 类型（支持整数时间戳和格式化字符串）
+    start_time: int | str = Field(default=0, description='合同开始时间')
+    end_time: int | str = Field(default=0, description='合同结束时间')
+    sign_time: int | str = Field(default=0, description='合同签订时间')
+    create_time: int | str = Field(default=0, description='添加时间')
+    update_time: int | str = Field(default=0, description='修改时间')
+    stop_time: int | str = Field(default=0, description='中止时间')
+    void_time: int | str = Field(default=0, description='作废时间')
+    archive_time: int | str = Field(default=0, description='归档时间')
+    check_time: int | str = Field(default=0, description='审核通过时间')
+
     cateName: str | None = Field(default=None, description='分类名称')
     adminName: str | None = Field(default=None, description='创建人姓名')
     preparedName: str | None = Field(default=None, description='制定人姓名')
@@ -186,9 +197,3 @@ class PurchaseModel(PurchaseBaseModel):
     keeperName: str | None = Field(default=None, description='保管人姓名')
     customerId: int | None = Field(default=None, description='关联供应商 ID')
     customer: str | None = Field(default=None, description='供应商名称')
-
-    startTimeStr: str | None = Field(default=None, description='开始时间字符串')
-    endTimeStr: str | None = Field(default=None, description='结束时间字符串')
-    signTimeStr: str | None = Field(default=None, description='签订时间字符串')
-    createTimeStr: str | None = Field(default=None, description='创建时间字符串')
-    updateTimeStr: str | None = Field(default=None, description='更新时间字符串')
