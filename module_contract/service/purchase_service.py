@@ -93,8 +93,96 @@ class PurchaseService:
             # 设置创建时间和更新时间
             current_time = int(datetime.now().timestamp())
             
-            # 转换为字典并添加必要字段
+            # 从原始请求体中获取所有字段（包括 Pydantic 未识别的字段）
+            try:
+                raw_body = await request.json()
+            except Exception:
+                raw_body = {}
+            
+            # 获取模型数据（不使用 by_alias，保持下划线格式）
             purchase_data = page_object.model_dump(exclude={"id", "create_time", "update_time"}, exclude_none=True)
+            
+            # 合并原始请求体中的字段（优先使用原始请求体中的值）
+            for key, value in raw_body.items():
+                if key not in purchase_data:
+                    purchase_data[key] = value
+            
+            # 字段映射：前端驼峰字段 -> 数据库字段
+            field_mapping = {
+                'customerId': 'supplier_id',
+                'customer': 'supplier',
+                'cateId': 'cate_id',
+                'subjectId': 'subject_id',
+                'contactName': 'contact_name',
+                'contactMobile': 'contact_mobile',
+                'contactAddress': 'contact_address',
+                'preparedUid': 'prepared_uid',
+                'signUid': 'sign_uid',
+                'keeperUid': 'keeper_uid',
+                'shareIds': 'share_ids',
+                'checkStatus': 'check_status',
+                'signTime': 'sign_time',
+                'startTime': 'start_time',
+                'endTime': 'end_time',
+            }
+            
+            # 处理映射字段
+            for front_field, db_field in field_mapping.items():
+                if front_field in purchase_data:
+                    value = purchase_data.pop(front_field)
+                    # 处理时间字段：将字符串日期转换为时间戳，强制格式化为 yyyy-mm-dd
+                    if db_field in ['sign_time', 'start_time', 'end_time'] and isinstance(value, str):
+                        try:
+                            # 尝试解析包含时分秒的格式
+                            dt = datetime.strptime(value, '%Y-%m-%d %H:%M:%S')
+                            # 强制格式化为 yyyy-mm-dd（取日期部分，时间设为00:00:00）
+                            dt = dt.replace(hour=0, minute=0, second=0, microsecond=0)
+                            value = int(dt.timestamp())
+                        except ValueError:
+                            try:
+                                # 尝试解析仅日期格式
+                                dt = datetime.strptime(value, '%Y-%m-%d')
+                                value = int(dt.timestamp())
+                            except (ValueError, TypeError):
+                                value = 0
+                    purchase_data[db_field] = value
+            
+            # 处理 contractTime 字段（前端传入的时间范围数组）
+            if 'contractTime' in purchase_data:
+                contract_time = purchase_data.pop('contractTime')
+                if isinstance(contract_time, list) and len(contract_time) >= 2:
+                    try:
+                        # 尝试解析包含时分秒的格式
+                        start_dt = datetime.strptime(contract_time[0], '%Y-%m-%d %H:%M:%S')
+                        # 强制格式化为 yyyy-mm-dd（取日期部分，时间设为00:00:00）
+                        start_dt = start_dt.replace(hour=0, minute=0, second=0, microsecond=0)
+                        purchase_data['start_time'] = int(start_dt.timestamp())
+                    except ValueError:
+                        try:
+                            # 尝试解析仅日期格式
+                            start_dt = datetime.strptime(contract_time[0], '%Y-%m-%d')
+                            purchase_data['start_time'] = int(start_dt.timestamp())
+                        except (ValueError, TypeError):
+                            pass
+                    try:
+                        # 尝试解析包含时分秒的格式
+                        end_dt = datetime.strptime(contract_time[1], '%Y-%m-%d %H:%M:%S')
+                        # 强制格式化为 yyyy-mm-dd（取日期部分，时间设为00:00:00）
+                        end_dt = end_dt.replace(hour=0, minute=0, second=0, microsecond=0)
+                        purchase_data['end_time'] = int(end_dt.timestamp())
+                    except ValueError:
+                        try:
+                            # 尝试解析仅日期格式
+                            end_dt = datetime.strptime(contract_time[1], '%Y-%m-%d')
+                            purchase_data['end_time'] = int(end_dt.timestamp())
+                        except (ValueError, TypeError):
+                            pass
+            
+            # 移除不需要传递给数据库的字段
+            extra_fields = ['contractTime', 'deptName', 'signUserName', 'preparedUserName', 'keeperUserName']
+            for field in extra_fields:
+                purchase_data.pop(field, None)
+            
             purchase_data['admin_id'] = current_user_id
             purchase_data['create_time'] = current_time
             purchase_data['update_time'] = current_time
@@ -169,21 +257,38 @@ class PurchaseService:
                         logger.info(f'字段映射: {front_field}={value} -> {db_field}')
                 
                 # 处理 contractTime 字段（前端传入的时间范围数组，驼峰格式）
-                # 支持字符串格式（如 '2026-04-16'）和整数格式（时间戳）
+                # 支持字符串格式（如 '2026-04-16 00:00:00'）和整数格式（时间戳）
+                # 强制格式化为 yyyy-mm-dd
                 if 'contractTime' in model_data and isinstance(model_data['contractTime'], list) and len(model_data['contractTime']) >= 2:
                     try:
                         start_value = model_data['contractTime'][0]
                         end_value = model_data['contractTime'][1]
                         
                         if isinstance(start_value, str):
-                            start_dt = datetime.strptime(start_value, '%Y-%m-%d')
-                            model_data['start_time'] = int(start_dt.timestamp())
+                            try:
+                                # 尝试解析包含时分秒的格式
+                                start_dt = datetime.strptime(start_value, '%Y-%m-%d %H:%M:%S')
+                                # 强制格式化为 yyyy-mm-dd（取日期部分，时间设为00:00:00）
+                                start_dt = start_dt.replace(hour=0, minute=0, second=0, microsecond=0)
+                                model_data['start_time'] = int(start_dt.timestamp())
+                            except ValueError:
+                                # 尝试解析仅日期格式
+                                start_dt = datetime.strptime(start_value, '%Y-%m-%d')
+                                model_data['start_time'] = int(start_dt.timestamp())
                         elif isinstance(start_value, int):
                             model_data['start_time'] = start_value
                         
                         if isinstance(end_value, str):
-                            end_dt = datetime.strptime(end_value, '%Y-%m-%d')
-                            model_data['end_time'] = int(end_dt.timestamp())
+                            try:
+                                # 尝试解析包含时分秒的格式
+                                end_dt = datetime.strptime(end_value, '%Y-%m-%d %H:%M:%S')
+                                # 强制格式化为 yyyy-mm-dd（取日期部分，时间设为00:00:00）
+                                end_dt = end_dt.replace(hour=0, minute=0, second=0, microsecond=0)
+                                model_data['end_time'] = int(end_dt.timestamp())
+                            except ValueError:
+                                # 尝试解析仅日期格式
+                                end_dt = datetime.strptime(end_value, '%Y-%m-%d')
+                                model_data['end_time'] = int(end_dt.timestamp())
                         elif isinstance(end_value, int):
                             model_data['end_time'] = end_value
                     except ValueError:
@@ -191,17 +296,26 @@ class PurchaseService:
                     del model_data['contractTime']
                 
                 # 处理时间字段转换为时间戳（驼峰格式）
-                # 支持字符串格式（如 '2026-04-16'）和整数格式（时间戳）
+                # 支持字符串格式（如 '2026-04-16 00:00:00'）和整数格式（时间戳）
+                # 强制格式化为 yyyy-mm-dd
                 camel_time_fields = {'startTime': 'start_time', 'endTime': 'end_time', 'signTime': 'sign_time'}
                 for camel_field, db_field in camel_time_fields.items():
                     if camel_field in model_data:
                         value = model_data[camel_field]
                         if isinstance(value, str):
                             try:
-                                dt = datetime.strptime(value, '%Y-%m-%d')
+                                # 尝试解析包含时分秒的格式
+                                dt = datetime.strptime(value, '%Y-%m-%d %H:%M:%S')
+                                # 强制格式化为 yyyy-mm-dd（取日期部分，时间设为00:00:00）
+                                dt = dt.replace(hour=0, minute=0, second=0, microsecond=0)
                                 model_data[db_field] = int(dt.timestamp())
                             except ValueError:
-                                pass
+                                try:
+                                    # 尝试解析仅日期格式
+                                    dt = datetime.strptime(value, '%Y-%m-%d')
+                                    model_data[db_field] = int(dt.timestamp())
+                                except ValueError:
+                                    pass
                         elif isinstance(value, int):
                             # 如果是整数，直接作为时间戳使用
                             model_data[db_field] = value

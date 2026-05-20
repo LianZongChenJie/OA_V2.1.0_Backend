@@ -85,10 +85,18 @@ class PurchaseBaseModel(BaseModel):
         if isinstance(value, str):
             from datetime import datetime
             try:
-                dt = datetime.strptime(value, '%Y-%m-%d')
+                # 尝试解析包含时分秒的格式
+                dt = datetime.strptime(value, '%Y-%m-%d %H:%M:%S')
+                # 强制格式化为 yyyy-mm-dd（取日期部分，时间设为00:00:00）
+                dt = dt.replace(hour=0, minute=0, second=0, microsecond=0)
                 return int(dt.timestamp())
             except (ValueError, TypeError):
-                return 0
+                try:
+                    # 尝试解析仅日期格式
+                    dt = datetime.strptime(value, '%Y-%m-%d')
+                    return int(dt.timestamp())
+                except (ValueError, TypeError):
+                    return 0
         
         return 0
 
