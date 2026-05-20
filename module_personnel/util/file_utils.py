@@ -3,6 +3,7 @@ from datetime import datetime
 from fastapi import UploadFile
 import uuid
 import hashlib
+import aiofiles
 # 创建目录
 def make_dir(file_path):
     return os.makedirs(file_path, exist_ok=True)
@@ -33,9 +34,9 @@ async def save_upload_file(file: UploadFile, file_path: str) -> int:
     :return: 文件大小（字节）
     """
     file_size = 0
-    with open(file_path, "wb") as f:
+    async with aiofiles.open(file_path, "wb") as f:
         while chunk := await file.read(1024 * 1024):  # 按1MB分块读取
-            f.write(chunk)
+            await f.write(chunk)
             file_size += len(chunk)
     return file_size
 

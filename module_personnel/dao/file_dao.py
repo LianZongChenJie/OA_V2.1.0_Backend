@@ -1,5 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update,delete
+from sqlalchemy import select, update,delete, desc
 
 from module_personnel.util.file_utils import delete_file
 from typing import Any
@@ -27,6 +27,20 @@ class FileDAO(AsyncSession):
         """
         result = await db.execute(select(OaFile).filter(OaFile.id == id))
         return result.scalars().first()
+
+    @classmethod
+    async def get_files(cls, db: AsyncSession, ids: list) -> list[OaFile]:
+        query = (select(
+            OaFile.name.label('name'),
+            OaFile.filename.label('file_name'),
+            OaFile.filepath.label('file_path'),
+            OaFile.filesize.label('file_size'),
+            OaFile.fileext.label('file_ext'),
+            OaFile.mimetype.label('file_mime'))
+                 .where(OaFile.id.in_(ids))
+                 .order_by(desc(OaFile.id)))
+        result = await db.execute(query)
+        return result.mappings().all()
 
     @classmethod
     async def get_file_by_ids(cls, ids: str, db: AsyncSession) -> Any:

@@ -3,13 +3,16 @@ import os
 from datetime import datetime
 
 from fastapi import File, Form, Path, Query, Request, Response, UploadFile
+from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from exceptions.exception import ServiceException
+from module_admin.entity.vo.tender_vo import CrudResponseModel
 from module_personnel.dao.file_dao import FileDAO
 from module_personnel.entity.do.file_do import OaFile
 from module_personnel.entity.vo.file_vo import OaFileBaseModel
 from module_personnel.util.file_config import UPLOAD_DIR
-from module_personnel.util.file_utils import generate_file_path, generate_file_name, save_upload_file
+from module_personnel.util.file_utils import generate_file_path, generate_file_name, save_upload_file, delete_file
 from module_personnel.util.mimetype import MIMETYPES
 
 module = 'admin'
@@ -64,9 +67,35 @@ class FileService:
         return uploaded_files
 
     @classmethod
-    async def rename(cls, file: OaFileBaseModel, db: AsyncSession) -> OaFileBaseModel:
-        return await FileDAO.rename_file(db, file)
+    async def rename(cls, file: OaFileBaseModel, db: AsyncSession) -> CrudResponseModel:
+        if file is None:
+            raise ServiceException(message='文件不存在')
+        file = await FileDAO.get_file_by_id(file.id, db)
+        if file is None:
+            raise ServiceException(message='文件不存在')
+        await FileDAO.rename_file(db, file)
+        return CrudResponseModel(is_success=True, msg='文件重命名成功')
 
     @classmethod
     async def delete(cls, file_id: int, db: AsyncSession):
-        return await FileDAO.delete_file(file_id, db)
+        ext_file = await FileDAO.get_file_by_id(file_id, db)
+        if ext_file is None:
+            raise ServiceException(message='文件不存在')
+        try:
+            await delete_file(ext_file.filepath)
+            await FileDAO.delete_file(file_id, db)
+            return CrudResponseModel(is_success=True, message='文件删除成功')
+        except Exception as e:
+            raise ServiceException(message='文件删除失败')
+
+    @classmethod
+    async def download_file(cls, db: AsyncSession, file_id: int)-> FileResponse:
+        file = await FileDAO.get_file_by_id(file_id, db)
+        if file is None:
+            raise ServiceException(message='文件不存在')
+        return FileResponse(
+            path=file.filepath,
+            filename=file.name,
+            media_type=file.mimetype,
+            content_disposition_type="attachment"
+        )
