@@ -205,3 +205,4 @@ class PurchaseModel(PurchaseBaseModel):
     keeperName: str | None = Field(default=None, description='保管人姓名')
     customerId: int | None = Field(default=None, description='关联供应商 ID')
     customer: str | None = Field(default=None, description='供应商名称')
+    records: list[dict] | None = Field(default=[], description='审批记录列表')

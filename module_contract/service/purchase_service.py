@@ -509,7 +509,56 @@ class PurchaseService:
         purchase_data.pop('signUserName', None)
         purchase_data.pop('keeperUserName', None)
         
+        # 添加审批记录
+        from module_personnel.dao.flow_record_dao import FlowRecordDao
+        from utils.time_format_util import timestamp_to_datetime
+        
+        flow_id = purchase_data.get('checkFlowId')
+        if flow_id and flow_id > 0:
+            records_raw = await FlowRecordDao.get_records_dict(query_db, purchase_id, flow_id)
+            if records_raw:
+                records = []
+                for rec in records_raw:
+                    record_dict = {
+                        'id': rec.get('id'),
+                        'actionId': rec.get('action_id'),
+                        'checkTable': rec.get('check_table'),
+                        'flowId': rec.get('flow_id'),
+                        'stepId': rec.get('step_id'),
+                        'checkUid': rec.get('check_uid'),
+                        'checkUser': rec.get('nick_name'),
+                        'checkTime': rec.get('check_time'),
+                        'checkTimeStr': timestamp_to_datetime(rec.get('check_time'), '%Y-%m-%d %H:%M:%S') if rec.get('check_time') else None,
+                        'checkStatus': rec.get('check_status'),
+                        'checkStatusStr': PurchaseService._get_check_status_text(rec.get('check_status')),
+                        'content': rec.get('content', ''),
+                        'checkFiles': rec.get('check_files', '')
+                    }
+                    records.append(record_dict)
+                purchase_data['records'] = records
+            else:
+                purchase_data['records'] = []
+        else:
+            purchase_data['records'] = []
+        
         return purchase_data
+
+    @staticmethod
+    def _get_check_status_text(check_status: int | None) -> str:
+        """
+        获取审批状态文本
+        
+        :param check_status: 审批状态码
+        :return: 状态文本
+        """
+        status_map = {
+            0: '提交',
+            1: '通过',
+            2: '驳回',
+            3: '撤销',
+            4: '反确认'
+        }
+        return status_map.get(check_status, '未知')
 
     @classmethod
     async def archive_purchase_services(
