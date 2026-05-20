@@ -7,6 +7,7 @@ from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from exceptions.exception import ServiceException
+from module_admin.dao.user_dao import UserDao
 from module_admin.entity.vo.tender_vo import CrudResponseModel
 from module_personnel.dao.file_dao import FileDAO
 from module_personnel.entity.do.file_do import OaFile
@@ -14,6 +15,8 @@ from module_personnel.entity.vo.file_vo import OaFileBaseModel
 from module_personnel.util.file_config import UPLOAD_DIR
 from module_personnel.util.file_utils import generate_file_path, generate_file_name, save_upload_file, delete_file
 from module_personnel.util.mimetype import MIMETYPES
+from utils.camel_converter import ModelConverter
+from utils.timeformat import format_timestamp
 
 module = 'admin'
 class FileService:
@@ -21,7 +24,22 @@ class FileService:
     async def add_file(cls, files: list[UploadFile], db: AsyncSession, user_id: int) -> list[OaFileBaseModel]:
         uploaded_files = await cls.upload_file(files, user_id)
         profiles = await FileDAO.add_profiles(db, uploaded_files)
-        return [ profile.id for profile in profiles ]
+        result_list = []
+        for profile in profiles:
+            pro = {
+                'id': profile.id,
+                'name': profile.name,
+                'file_name': profile.filename,
+                'file_path': profile.filepath,
+                'file_size': profile.filesize,
+                'file_mime': profile.mimetype,
+                'file_ext': profile.fileext,
+                'create_time': format_timestamp(profile.create_time),
+                'create_name': ','.join([name for name in (await UserDao.get_nick_name_by_user_id(db, [int(profile.user_id)]))]),
+
+            }
+            result_list.append(ModelConverter.convert_to_camel_case(pro))
+        return result_list
 
 
     @classmethod
