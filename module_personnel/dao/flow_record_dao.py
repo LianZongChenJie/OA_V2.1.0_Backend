@@ -46,8 +46,12 @@ class FlowRecordDao:
             return None
         for record in records:
             record = dict(record)
+            # 先保存 check_user（审批人姓名），查询时使用的是 .label('check_user')
+            check_user = record.get('check_user')
             record.update(record['OaFlowRecord'].to_dict())
             record.pop('OaFlowRecord')
+            # 将 check_user 赋值回字典
+            record['check_user'] = check_user
             record_list.append(record)
         return record_list
 

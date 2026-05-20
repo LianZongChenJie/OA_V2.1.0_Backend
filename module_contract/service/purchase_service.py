@@ -526,7 +526,7 @@ class PurchaseService:
                         'flowId': rec.get('flow_id'),
                         'stepId': rec.get('step_id'),
                         'checkUid': rec.get('check_uid'),
-                        'checkUser': rec.get('nick_name'),
+                        'checkUser': rec.get('check_user'),
                         'checkTime': rec.get('check_time'),
                         'checkTimeStr': timestamp_to_datetime(rec.get('check_time'), '%Y-%m-%d %H:%M:%S') if rec.get('check_time') else None,
                         'checkStatus': rec.get('check_status'),
