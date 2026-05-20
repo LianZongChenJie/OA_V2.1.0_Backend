@@ -2,7 +2,6 @@ import json
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from alembic.env import run_async_migrations
 from exceptions.exception import ServiceException
 from module_admin.dao.dept_dao import DeptDao
 from module_admin.dao.post_dao import PostDao
