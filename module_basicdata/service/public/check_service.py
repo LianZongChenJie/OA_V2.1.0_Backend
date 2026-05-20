@@ -467,8 +467,12 @@ class CheckService:
                 if flow_step['check_role'] == '2':
                     if detail.get('uid'):
                         check_uid = await DeptDao.get_dept_manages(db, detail['uid'],False)
+                        if check_uid is None:
+                            raise ServiceException(message='没有部门负责人，请联系管理员重新设置流程')
                     else:
                         check_uid = await DeptDao.get_dept_manages(db, detail['admin_id'], True)
+                        if check_uid is None:
+                            raise ServiceException(message='没有上级部门负责人，请联系管理员重新设置流程')
                     if check_uid:
                         check_uids.extend(check_uid.split(','))
                     check_uids = [x for x in check_uids if x != '0']
@@ -477,6 +481,8 @@ class CheckService:
                 if flow_step['check_role'] == '3':
                     check_position = await PostDao.get_post_by_id(db, flow_step['check_position_id'])
                     check_uid = await UserDao.get_user_by_post_id(db, flow_step['check_position_id'])
+                    if check_uid:
+                        raise ServiceException(message='没有岗位负责人，请联系管理员重新设置流程')
                     if check_uid:
                         check_uids.extend(check_uid)
                     else:
@@ -509,7 +515,7 @@ class CheckService:
                 step.append(st)
                 sort += 1
             if step is None:
-                return CrudResponseModel(is_success=False, message='审批流程设置有问题，无法提交审批申请，请联系HR或者管理员重新设置审批流程')
+                raise ServiceException(message='审批流程设置有问题，无法提交审批申请，请联系HR或者管理员重新设置审批流程')
             result = await OaFlowStepDao.add_flow_step(db, step)
             # 添加审核记录信息，修改表审核状态
             if result:
