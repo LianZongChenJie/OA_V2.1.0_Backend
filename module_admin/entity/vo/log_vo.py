@@ -102,11 +102,14 @@ class LogininforModel(BaseModel):
     status: Literal['0', '1'] | None = Field(default=None, description='登录状态（0成功 1失败）')
     msg: str | None = Field(default=None, description='提示消息')
     login_time: datetime | None = Field(default=None, description='访问时间')
+
+
+class LogininforListModel(LogininforModel):
     oper_nick_name: str | None = Field(default=None, description='操作人员昵称')
 
 
 
-class LoginLogPageQueryModel(LogininforModel):
+class LoginLogPageQueryModel(LogininforListModel):
     """
     登录日志管理分页查询模型
     """

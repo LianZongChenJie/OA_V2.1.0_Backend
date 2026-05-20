@@ -54,12 +54,28 @@ class OperationLogService:
         """
         operation_log_list_result = await OperationLogDao.get_operation_log_list(query_db, query_object, is_page)
         log_list = []
-        for log in operation_log_list_result.rows:
-            log = dict(log)
-            log.update(log['SysOperLog'].to_dict())
-            log.pop('SysOperLog')
-            log_list.append(ModelConverter.convert_to_camel_case(log))
-        operation_log_list_result.rows = log_list
+        if is_page:
+            for log in operation_log_list_result.rows:
+                log = dict(log)
+                log.update(log['SysOperLog'].to_dict())
+                log.pop('SysOperLog')
+                log_list.append(ModelConverter.convert_to_camel_case(log))
+            operation_log_list_result.rows = log_list
+        return operation_log_list_result
+
+    @classmethod
+    async def export_operation_log_all_list_services(
+            cls, query_db: AsyncSession, query_object: OperLogPageQueryModel, is_page: bool = False
+    ) -> PageModel | list[dict[str, Any]]:
+        """
+        获取操作日志列表信息service
+
+        :param query_db: orm对象
+        :param query_object: 查询参数对象
+        :param is_page: 是否开启分页
+        :return: 操作日志列表信息对象
+        """
+        operation_log_list_result = await OperationLogDao.export_operation_log_list(query_db, query_object, is_page)
         return operation_log_list_result
 
     @classmethod
@@ -274,6 +290,21 @@ class LoginLogService:
             log_list.append(ModelConverter.convert_to_camel_case(log))
         operation_log_list_result.rows = log_list
 
+        return operation_log_list_result
+
+    @classmethod
+    async def get_login_log_all_list_services(
+            cls, query_db: AsyncSession, query_object: LoginLogPageQueryModel, is_page: bool = False
+    ) -> PageModel | list[dict[str, Any]]:
+        """
+        获取登录日志列表信息service
+
+        :param query_db: orm对象
+        :param query_object: 查询参数对象
+        :param is_page: 是否开启分页
+        :return: 登录日志列表信息对象
+        """
+        operation_log_list_result = await LoginLogDao.get_login_log_all_list(query_db, query_object, is_page)
         return operation_log_list_result
 
     @classmethod
