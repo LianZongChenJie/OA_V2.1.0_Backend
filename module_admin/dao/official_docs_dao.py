@@ -158,11 +158,12 @@ class OfficialDocsDao:
                         func.find_in_set(str(user_id), OaOfficialDocs.check_history_uids)
                     )
             elif query_object.tab == 4:
-                # 我抄送的
+                # 发送给我的（主送 + 抄送）
                 if user_id:
-                    # 同时检查 copy_uids（抄送）和 check_copy_uids（审核抄送）
+                    # 同时检查 send_uids（主送）、copy_uids（抄送）和 check_copy_uids（审核抄送）
                     query = query.where(
                         or_(
+                            func.find_in_set(str(user_id), OaOfficialDocs.send_uids),
                             func.find_in_set(str(user_id), OaOfficialDocs.copy_uids),
                             func.find_in_set(str(user_id), OaOfficialDocs.check_copy_uids)
                         )

@@ -170,7 +170,7 @@ class OfficialDocsPageQueryModel(OfficialDocsModel):
     page_num: int = Field(default=1, description='当前页码')
     page_size: int = Field(default=10, description='每页记录数')
     keywords: str | None = Field(default=None, description='搜索关键词')
-    tab: int | None = Field(default=0, description='标签页：0 全部，1 我创建的，2 待我审批，3 我已审批，4 我抄送的')
+    tab: int | None = Field(default=0, description='标签页：0 全部，1 我创建的，2 待我审批，3 我已审批，4 发送给我的')
     secrets_filter: int | None = Field(default=None, alias='secrets', description='密级筛选')
     urgency_filter: int | None = Field(default=None, alias='urgency', description='紧急程度筛选')
 
