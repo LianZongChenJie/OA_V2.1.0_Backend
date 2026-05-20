@@ -57,7 +57,12 @@ class WorkDao:
             try:
                 start_timestamp = int(datetime.fromisoformat(query_object.begin_time).timestamp())
                 end_timestamp = int(datetime.fromisoformat(query_object.end_time + ' 23:59:59').timestamp())
-                conditions.append(OaWork.start_date.between(start_timestamp, end_timestamp))
+                conditions.append(
+                    and_(
+                        OaWork.start_date <= end_timestamp,
+                        OaWork.end_date >= start_timestamp
+                    )
+                )
             except ValueError:
                 pass
 
