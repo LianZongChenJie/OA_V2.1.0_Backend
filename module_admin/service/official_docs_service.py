@@ -292,14 +292,14 @@ class OfficialDocsService:
                 'create_time': current_time,
                 'update_time': current_time,
                 'delete_time': 0,
-                'check_status': 0,
-                'check_flow_id': 0,
-                'check_step_sort': 0,
-                'check_uids': '',
-                'check_last_uid': '',
-                'check_history_uids': '',
-                'check_copy_uids': '',
-                'check_time': 0,
+                'check_status': page_object.check_status if page_object.check_status is not None else 0,
+                'check_flow_id': page_object.check_flow_id if page_object.check_flow_id is not None else 0,
+                'check_step_sort': page_object.check_step_sort if page_object.check_step_sort is not None else 0,
+                'check_uids': page_object.check_uids or '',
+                'check_last_uid': page_object.check_last_uid or '',
+                'check_history_uids': page_object.check_history_uids or '',
+                'check_copy_uids': page_object.check_copy_uids or '',
+                'check_time': page_object.check_time if page_object.check_time is not None else 0,
             }
             
             # 将时间字符串转换回时间戳
