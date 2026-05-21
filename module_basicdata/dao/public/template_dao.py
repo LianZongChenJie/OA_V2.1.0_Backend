@@ -106,7 +106,6 @@ class OaTemplateDao:
                 await db.execute(
                     select(OaTemplate)
                     .where(
-                        OaTemplate.status == '1',
                         OaTemplate.id == templateId
                     )
                     .order_by(desc(OaTemplate.create_time))
