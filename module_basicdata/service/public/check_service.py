@@ -538,6 +538,8 @@ class CheckService:
                 await CheckDao.execute_update_sql(db, sql, update_dict)
 
                 #发送消息通知
+                if step[0].check_uids == '' or step[0].check_uids is None:
+                    raise ServiceException(message='流程配置错误，没有对应审核人')
                 check_uids = [int(uid) for uid in step[0].check_uids.split(',')]
                 data = {'check_uids': check_uids, 'file_ids':record.check_files, 'action_id':query_model.action_id}
                 template_params = {}
