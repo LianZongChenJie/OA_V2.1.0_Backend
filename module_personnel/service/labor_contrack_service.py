@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Any
 
 from exceptions.exception import ServiceException
+from module_personnel.dao.file_dao import FileDAO
 from module_personnel.dao.labor_contract_dao import LaborContractDao
 from sqlalchemy.sql import ColumnElement
 from module_personnel.entity.vo.lable_contract_vo import OaLaborContractPageQueryModel, OaLaborContractBaseModel
@@ -110,7 +111,7 @@ class LaborContractService:
         try:
             info = await LaborContractDao.get_info_by_id(query_db, id)
             if not info:
-                raise ServiceException(message="未找到该数据")
+                raise ServiceException(message="未找到该合同")
             info = dict(info)
             info.update(info['OaLaborContract'].to_dict())
             info.pop('OaLaborContract')
@@ -138,7 +139,17 @@ class LaborContractService:
                 info['change_status'] = '未变更'
             else:
                 info['change_status'] = '已变更'
-            return ModelConverter.convert_to_camel_case(info)
+            result =  ModelConverter.convert_to_camel_case(info)
+            if info['file_ids'] != '' and info['file_ids'] is not None:
+                file_ids = info['file_ids'].split(',')
+            else:
+                file_ids = []
+            attachments = await FileDAO.get_files(query_db, file_ids)
+            file_list = []
+            for attachment in attachments:
+                file_list.append(ModelConverter.convert_to_camel_case(dict(attachment)))
+            result['attachments'] = file_list
+            return result
         except Exception as e:
             await query_db.rollback()
             raise e

@@ -14,6 +14,7 @@ from datetime import datetime
 from module_administrative.entity.vo.msg_vo import OaMsgQueryPageModel
 from module_basicdata.dao.public.template_dao import OaTemplateDao
 from module_basicdata.entity.do.public.template_do import OaTemplate
+from module_personnel.dao.file_dao import FileDAO
 from utils.camel_converter import ModelConverter
 
 
@@ -326,11 +327,22 @@ class MessageService:
                 raise ServiceException('message_id不能为空')
             await MsgDao.set_read(query_db, [message_id])
             result = await MsgDao.get_msg_by_id(query_db, message_id)
+            if result is None:
+                raise ServiceException('未找到该消息')
             result = dict(result)
             result.update(result['OaMsg'].to_dict())
             result.pop('OaMsg')
             if result['from_name'] is None:
                 result['from_name'] = '系统消息'
+            if result['file_ids'] != '' and result['file_ids'] is not None:
+                file_ids = result['file_ids'].split(',')
+                attachments = await FileDAO.get_files(query_db,file_ids)
+                file_list = []
+                for attachment in attachments:
+                    file_list.append(ModelConverter.convert_to_camel_case(dict(attachment)))
+                result['attachments'] = file_list
+            else:
+                result['attachments'] = []
             return ModelConverter.convert_to_camel_case(result)
         except Exception as e:
             raise ServiceException('阅读失败:' + str(e))

@@ -4,6 +4,7 @@ from typing import Any
 from exceptions.exception import ServiceException
 from module_finance.dao.ticket_dao import TicketDao
 from module_finance.entity.do.ticket_do import OaTicket
+from module_personnel.dao.file_dao import FileDAO
 from module_personnel.dao.flow_record_dao import FlowRecordDao
 from sqlalchemy.sql import ColumnElement
 from module_finance.entity.vo.ticket_vo import OaTicketBaseModel, \
@@ -81,6 +82,15 @@ class TicketService:
             detail = {}
             detail.update(info)
             detail['records'] = records
+            if info['file_ids'] != '' and info['file_ids'] is not None:
+                file_ids = info['file_ids'].split(',')
+            else:
+                file_ids = []
+            attachments = await FileDAO.get_files(query_db, file_ids)
+            file_list = []
+            for attachment in attachments:
+                file_list.append(ModelConverter.convert_to_camel_case(dict(attachment)))
+            detail['attachments'] = file_list
             if not detail:
                 raise ServiceException(message="未找到该数据")
             return ModelConverter.convert_to_camel_case(detail)
@@ -93,6 +103,8 @@ class TicketService:
     async def del_by_id(cls, db: AsyncSession, id: int):
         try:
             ticket = await TicketDao.get_info_by_id(db, id)
+            if ticket is None:
+                raise ServiceException(message="未找到该数据")
             ticket = ticket['OaTicket']
             if ticket.check_status !=0 and ticket.check_status !=4:
                 return CrudResponseModel(is_success=False, message='当前收票发票已审核，请操作审核相关功能！')

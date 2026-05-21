@@ -6,6 +6,7 @@ from module_basicdata.dao.public.flow_cate_dao import FlowCateDao
 from module_basicdata.dao.public.flow_step_dao import OaFlowStepDao
 from module_finance.dao.invoice_dao import InvoiceDao
 from module_finance.entity.do.invoice_do import OaInvoiceIncome
+from module_personnel.dao.file_dao import FileDAO
 from module_personnel.dao.flow_record_dao import FlowRecordDao
 from sqlalchemy.sql import ColumnElement
 from module_finance.entity.vo.invoice_vo import OaInvoiceBaseModel, \
@@ -72,6 +73,8 @@ class InvoiceService:
             AsyncSession, id: int) -> dict[str, Any]:
         try:
             info = await InvoiceDao.get_info_by_id(query_db, id)
+            if info is None:
+                raise ServiceException(message="未找到该数据")
             records = await FlowRecordDao.get_records_dict(query_db, info['OaInvoice'].id, info['OaInvoice'].check_flow_id)
             detail = OaInvoiceDetailModel(info=None, records=None)
             info = dict(info)
@@ -81,6 +84,15 @@ class InvoiceService:
             detail = {}
             detail.update(info)
             detail['records'] = records
+            if info['file_ids'] != '' and info['file_ids'] is not None:
+                file_ids = info['file_ids'].split(',')
+            else:
+                file_ids = []
+            attachments = await FileDAO.get_files(query_db, file_ids)
+            file_list = []
+            for attachment in attachments:
+                file_list.append(ModelConverter.convert_to_camel_case(dict(attachment)))
+            detail['attachments'] = file_list
             if not detail:
                 raise ServiceException(message="未找到该数据")
             return ModelConverter.convert_to_camel_case(detail)

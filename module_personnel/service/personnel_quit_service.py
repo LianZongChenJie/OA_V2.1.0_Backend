@@ -3,6 +3,7 @@ from typing import Any
 
 from common.constant import CommonConstant
 from exceptions.exception import ServiceException
+from module_personnel.dao.file_dao import FileDAO
 from module_personnel.dao.flow_record_dao import FlowRecordDao
 from module_personnel.dao.personnel_quit_dao import PersonnelQuitDao
 from sqlalchemy.sql import ColumnElement
@@ -88,7 +89,7 @@ class PersonnelQuitService:
 
             info = await PersonnelQuitDao.get_info_dict(query_db, id)
             if not info:
-                raise ServiceException(message="未找到该数据")
+                raise ServiceException(message="未找到离职申请")
             info = dict(info)
             info.update(info['OaPersonalQuit'].to_dict())
             if info['post_name'] is not None:
@@ -102,8 +103,17 @@ class PersonnelQuitService:
                 info['rec_ji_names'] = info['rec_ji_names'].replace(',,', ',')
             info.pop('OaPersonalQuit')
             records = await FlowRecordDao.get_records_dict(query_db, info['id'], info['check_flow_id'])
+            if info['file_ids'] != '' and info['file_ids'] is not None:
+                file_ids = info['file_ids'].split(',')
+            else:
+                file_ids = []
+            attachments = await FileDAO.get_files(query_db, file_ids)
+            file_list = []
+            for attachment in attachments:
+                file_list.append(ModelConverter.convert_to_camel_case(dict(attachment)))
             detail = {}
             detail.update(info)
+            detail['attachments'] = file_list
             detail['records'] = records
             if not detail:
                 raise ServiceException(message="未找到该数据")
