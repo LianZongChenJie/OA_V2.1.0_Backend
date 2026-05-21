@@ -5,6 +5,7 @@ from exceptions.exception import ServiceException
 from module_admin.dao.user_dao import UserDao
 from module_administrative.dao.message_dao import MessageDao
 from module_administrative.dao.msg_dao import MsgDao
+from module_administrative.entity.do.message_do import OaMessage
 from module_administrative.entity.do.msg_do import OaMsg
 from module_administrative.entity.vo.message_vo import OaMessageBaseModel, OaMessagePageQueryModel
 from typing import Any
@@ -13,6 +14,7 @@ from datetime import datetime
 from module_administrative.entity.vo.msg_vo import OaMsgQueryPageModel
 from module_basicdata.dao.public.template_dao import OaTemplateDao
 from module_basicdata.entity.do.public.template_do import OaTemplate
+from module_personnel.dao.file_dao import FileDAO
 from utils.camel_converter import ModelConverter
 
 
@@ -113,47 +115,55 @@ class MessageService:
                 raise ServiceException('message_id不能为空')
             message = await MessageDao.get_detail(query_db, message_id)
             message = message['OaMessage']
-            msg = OaMsg()
-            msg.title = message.title
-            msg.content = message.content
-            msg.from_uid = message.from_uid
-            msg.file_ids = message.file_ids
-            msg.create_time = int(datetime.now().timestamp())
-            msg.from_uid = message.from_uid
-            msg.message_id = message_id
-            msg.is_star = 0
-            msg.clear_time = 0
-            msg.action_id = 0
+
+            msg_list = []
             if message.types == 1:
                 to_uids = message.uids.split(',')
                 for to_uid in to_uids:
-                    msg.to_uid = to_uid
-                    await MsgDao.add_by_entity(query_db, msg)
+                    msg = await cls.msg_factory(to_uid, message)
+                    msg_list.append(msg)
             elif message.types == 2:
                 dept_ids = message.dids.split(',')
                 for dept_id in dept_ids:
                     user_ids = await UserDao.get_user_id_by_dept_id(query_db, dept_id)
                     for user_id in user_ids:
-                        msg.to_uid = user_id
-                        await MsgDao.add_by_entity(query_db, msg)
+                        msg = await cls.msg_factory(user_id, message)
+                        msg_list.append(msg)
             elif message.types == 3:
-                post_ids = message.post_ids.split(',')
+                post_ids = message.pids.split(',')
                 for post_id in post_ids:
                     user_ids = await UserDao.get_user_id_by_post_id(query_db, post_id)
                     for user_id in user_ids:
-                        msg.to_uid = user_id
-                        await MsgDao.add_by_entity(query_db, msg)
+                        msg = await cls.msg_factory(user_id, message)
+                        msg_list.append(msg)
             elif message.types == 4:
                 user_ids = await UserDao.get_all_user_id(query_db)
                 for user_id in user_ids:
-                    msg.to_uid = user_id
-                    await MsgDao.add_by_entity(query_db, msg)
+                    msg = await cls.msg_factory(user_id, message)
+                    msg_list.append(msg)
+            await MsgDao.add_by_entities(query_db, msg_list)
             message.send_time = int(datetime.now().timestamp())
             message.is_draft = 1
             await MessageDao.update_by_entity(query_db, message)
             return CrudResponseModel(is_success=True, message='发送成功')
         except Exception as e:
             raise e
+
+    @classmethod
+    async def msg_factory(cls,user_id: int, message: OaMessage)-> OaMsg:
+        msg = OaMsg()
+        msg.title = message.title
+        msg.content = message.content
+        msg.from_uid = message.from_uid
+        msg.file_ids = message.file_ids
+        msg.create_time = int(datetime.now().timestamp())
+        msg.from_uid = message.from_uid
+        msg.message_id = message.id
+        msg.is_star = 0
+        msg.clear_time = 0
+        msg.action_id = 0
+        msg.to_uid = user_id
+        return msg
 
     @classmethod
     async def fields_handle(cls,fields_list:list[dict[str, Any]]):
@@ -317,11 +327,22 @@ class MessageService:
                 raise ServiceException('message_id不能为空')
             await MsgDao.set_read(query_db, [message_id])
             result = await MsgDao.get_msg_by_id(query_db, message_id)
+            if result is None:
+                raise ServiceException('未找到该消息')
             result = dict(result)
             result.update(result['OaMsg'].to_dict())
             result.pop('OaMsg')
             if result['from_name'] is None:
                 result['from_name'] = '系统消息'
+            if result['file_ids'] != '' and result['file_ids'] is not None:
+                file_ids = result['file_ids'].split(',')
+                attachments = await FileDAO.get_files(query_db,file_ids)
+                file_list = []
+                for attachment in attachments:
+                    file_list.append(ModelConverter.convert_to_camel_case(dict(attachment)))
+                result['attachments'] = file_list
+            else:
+                result['attachments'] = []
             return ModelConverter.convert_to_camel_case(result)
         except Exception as e:
             raise ServiceException('阅读失败:' + str(e))

@@ -17,7 +17,7 @@ class OaInvoiceBaseModel(BaseModel):
     amount: Decimal | None = Field(None, description='发票金额')
     did: int | None = Field(None, description='发票申请部门')
     admin_id: int | None = Field(None, description='发票申请人')
-    open_status: int | None = Field(0, description='开票状态：0未开票 1已开票 2已作废')
+    open_status: int | None = Field(None, description='开票状态：0未开票 1已开票 2已作废')
     open_admin_id: int | None = Field(None, description='发票开具人')
     open_time: int | str | None = Field(None, description='发票开具时间')
     delivery: str | None = Field(None, description='快递单号')

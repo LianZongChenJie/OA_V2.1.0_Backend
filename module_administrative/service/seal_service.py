@@ -4,6 +4,7 @@ from typing import Any
 from exceptions.exception import ServiceException
 from module_basicdata.dao.public.flow_step_dao import OaFlowStepDao
 from module_administrative.dao.seal_dao import SealDao
+from module_personnel.dao.file_dao import FileDAO
 from module_personnel.dao.flow_record_dao import FlowRecordDao
 from sqlalchemy.sql import ColumnElement
 from module_administrative.entity.vo.seal_vo import OaSealBaseModel, \
@@ -13,7 +14,7 @@ from datetime import datetime
 from module_basicdata.dao.public.flow_cate_dao import FlowCateDao
 
 from module_personnel.entity.vo.flow_record_vo import OaFlowRecordBaseModel
-from utils.camel_converter import ResponseConverter
+from utils.camel_converter import ResponseConverter, ModelConverter
 from utils.timeformat import int_time
 
 
@@ -87,7 +88,7 @@ class SealService:
 
     @classmethod
     async def get_info_service(cls, query_db: \
-            AsyncSession, id: int) -> OaSealBaseModel:
+            AsyncSession, id: int):
         try:
             detail = await SealDao.get_info_by_id(query_db, id)
             if not detail:
@@ -95,7 +96,15 @@ class SealService:
 
             detail = ResponseConverter.convert_to_camel_and_format_time(detail,cls.time_fields)
             detail['records'] = ResponseConverter.convert_to_camel_and_format_time_list(detail['records'],cls.time_fields)
-
+            if detail['fileIds'] != '' and detail['fileIds'] is not None:
+                file_ids = detail['fileIds'].split(',')
+            else:
+                file_ids = []
+            attachments = await FileDAO.get_files(query_db,file_ids)
+            file_list = []
+            for attachment in attachments:
+                file_list.append(ModelConverter.convert_to_camel_case(dict(attachment)))
+            detail['attachments'] = file_list
             return detail
         except Exception as e:
             await query_db.rollback()

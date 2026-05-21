@@ -67,6 +67,53 @@ class OperationLogDao:
         return operation_log_list
 
     @classmethod
+    async def export_operation_log_list(
+            cls, db: AsyncSession, query_object: OperLogPageQueryModel, is_page: bool = False
+    ) -> PageModel | list[dict[str, Any]]:
+        """
+        根据查询参数获取操作日志列表信息
+
+        :param db: orm对象
+        :param query_object: 查询参数对象
+        :param is_page: 是否开启分页
+        :return: 操作日志列表信息对象
+        """
+        if query_object.is_asc == 'ascending':
+            order_by_column = asc(getattr(SysOperLog, SnakeCaseUtil.camel_to_snake(query_object.order_by_column), None))
+        elif query_object.is_asc == 'descending':
+            order_by_column = desc(
+                getattr(SysOperLog, SnakeCaseUtil.camel_to_snake(query_object.order_by_column), None)
+            )
+        else:
+            order_by_column = desc(SysOperLog.oper_time)
+        query = (
+            select(SysOperLog
+                   )
+            .join(SysUser, SysUser.user_name == SysOperLog.oper_name, isouter=True)
+            .where(
+                SysOperLog.title.like(f'%{query_object.title}%') if query_object.title else True,
+                SysOperLog.oper_name.like(f'%{query_object.oper_name}%') if query_object.oper_name else True,
+                SysOperLog.business_type == query_object.business_type if query_object.business_type else True,
+                SysOperLog.status == query_object.status if query_object.status else True,
+                SysOperLog.oper_ip.like(f'%{query_object.oper_ip}%') if query_object.oper_ip else True,
+                SysUser.nick_name.like(f'%{query_object.oper_nick_name}%') if query_object.oper_nick_name else True,
+                SysOperLog.oper_time.between(
+                    datetime.combine(TimeFormatUtil.parse_date(query_object.begin_time), time(00, 00, 00)),
+                    datetime.combine(TimeFormatUtil.parse_date(query_object.end_time), time(23, 59, 59)),
+                )
+                if query_object.begin_time and query_object.end_time
+                else True,
+            )
+            .distinct()
+            .order_by(order_by_column)
+        )
+        operation_log_list: PageModel | list[dict[str, Any]] = await PageUtil.paginate(
+            db, query, query_object.page_num, query_object.page_size, is_page
+        )
+
+        return operation_log_list
+
+    @classmethod
     async def add_operation_log_dao(cls, db: AsyncSession, operation_log: OperLogModel) -> SysOperLog:
         """
         新增操作日志数据库操作
@@ -237,6 +284,53 @@ class LoginLogDao:
             .order_by(order_by_column)
         )
         login_log_list: PageModel | list[dict[str, Any]] = await PageUtil.paginate_dict(
+            db, query, query_object.page_num, query_object.page_size, is_page
+        )
+
+        return login_log_list
+
+    @classmethod
+    async def get_login_log_all_list(
+            cls, db: AsyncSession, query_object: LoginLogPageQueryModel, is_page: bool = False
+    ) -> PageModel | list[dict[str, Any]]:
+        """
+        根据查询参数获取登录日志列表信息
+
+        :param db: orm对象
+        :param query_object: 查询参数对象
+        :param is_page: 是否开启分页
+        :return: 登录日志列表信息对象
+        """
+        if query_object.is_asc == 'ascending':
+            order_by_column = asc(
+                getattr(SysLogininfor, SnakeCaseUtil.camel_to_snake(query_object.order_by_column), None)
+            )
+        elif query_object.is_asc == 'descending':
+            order_by_column = desc(
+                getattr(SysLogininfor, SnakeCaseUtil.camel_to_snake(query_object.order_by_column), None)
+            )
+        else:
+            order_by_column = desc(SysLogininfor.login_time)
+        query = (
+            select(SysLogininfor
+                   )
+            .join(SysUser, SysUser.user_name == SysLogininfor.user_name, isouter=True)
+            .where(
+                SysLogininfor.ipaddr.like(f'%{query_object.ipaddr}%') if query_object.ipaddr else True,
+                SysLogininfor.user_name.like(f'%{query_object.user_name}%') if query_object.user_name else True,
+                SysLogininfor.status == query_object.status if query_object.status else True,
+                SysUser.nick_name.like(f'%{query_object.oper_nick_name}%') if query_object.oper_nick_name else True,
+                SysLogininfor.login_time.between(
+                    datetime.combine(TimeFormatUtil.parse_date(query_object.begin_time), time(00, 00, 00)),
+                    datetime.combine(TimeFormatUtil.parse_date(query_object.end_time), time(23, 59, 59)),
+                )
+                if query_object.begin_time and query_object.end_time
+                else True,
+            )
+            .distinct()
+            .order_by(order_by_column)
+        )
+        login_log_list: PageModel | list[dict[str, Any]] = await PageUtil.paginate(
             db, query, query_object.page_num, query_object.page_size, is_page
         )
 

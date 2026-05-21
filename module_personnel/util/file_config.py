@@ -1,1 +1,1 @@
-UPLOAD_DIR = './personnel/upload/'
+UPLOAD_DIR = '/storage/upload/'

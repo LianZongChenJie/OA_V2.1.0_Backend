@@ -8,7 +8,8 @@ from module_administrative.entity.vo.new_vo import OaNewsBaseModel, OaNewsQueryP
 from common.vo import PageModel, CrudResponseModel
 from datetime import datetime
 
-from utils.camel_converter import ResponseConverter
+from module_personnel.dao.file_dao import FileDAO
+from utils.camel_converter import ResponseConverter, ModelConverter
 
 
 class NewsService:
@@ -65,6 +66,15 @@ class NewsService:
             result.update(result['OaNews'])
             result.pop('OaNews')
             result = ResponseConverter.convert_to_camel_and_format_time(result, ['createTime', 'updateTime'])
+            if result['fileIds'] != '' and result['fileIds'] is not None:
+                file_ids = result['fileIds'].split(',')
+            else:
+                file_ids = []
+            attachments = await FileDAO.get_files(query_db, file_ids)
+            file_list = []
+            for attachment in attachments:
+                file_list.append(ModelConverter.convert_to_camel_case(dict(attachment)))
+            result['attachments'] = file_list
             return result
         except Exception as e:
             await query_db.rollback()

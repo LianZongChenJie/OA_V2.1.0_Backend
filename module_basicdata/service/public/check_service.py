@@ -24,6 +24,7 @@ from utils.camel_converter import ModelConverter
 from utils.timeformat import format_timestamp
 from module_basicdata.check_after.check_after import CheckAfter
 
+from utils.log_util import logger
 
 class CheckService:
 
@@ -156,7 +157,7 @@ class CheckService:
                             await CheckAfter.check_after(db, action_id, check_table)
 
             if check_status == 1 and check_uids is None:
-                return CrudResponseModel(is_success = False, message="找不到下一步的审批人，该审批流程设置有问题，请联系HR或者管理员")
+                raise ServiceException(message="找不到下一步的审批人，该审批流程设置有问题，请联系HR或者管理员")
             # 添加历史审核人
             if detail['check_history_uids'] is None:
                 check_history_uids = user_id
@@ -467,8 +468,14 @@ class CheckService:
                 if flow_step['check_role'] == '2':
                     if detail.get('uid'):
                         check_uid = await DeptDao.get_dept_manages(db, detail['uid'],False)
+                        if check_uid is None:
+                            logger.error('没有部门负责人，请联系管理员重新设置流程')
+                            raise ServiceException(message='没有部门负责人，请联系管理员重新设置流程')
                     else:
                         check_uid = await DeptDao.get_dept_manages(db, detail['admin_id'], True)
+                        if check_uid is None:
+                            logger.error('没有上级部门负责人，请联系管理员重新设置流程')
+                            raise ServiceException(message='没有上级部门负责人，请联系管理员重新设置流程')
                     if check_uid:
                         check_uids.extend(check_uid.split(','))
                     check_uids = [x for x in check_uids if x != '0']
@@ -477,6 +484,9 @@ class CheckService:
                 if flow_step['check_role'] == '3':
                     check_position = await PostDao.get_post_by_id(db, flow_step['check_position_id'])
                     check_uid = await UserDao.get_user_by_post_id(db, flow_step['check_position_id'])
+                    if check_uid:
+                        logger.error('没有岗位负责人，请联系管理员重新设置流程')
+                        raise ServiceException(message='没有岗位负责人，请联系管理员重新设置流程')
                     if check_uid:
                         check_uids.extend(check_uid)
                     else:
@@ -509,7 +519,8 @@ class CheckService:
                 step.append(st)
                 sort += 1
             if step is None:
-                return CrudResponseModel(is_success=False, message='审批流程设置有问题，无法提交审批申请，请联系HR或者管理员重新设置审批流程')
+                logger.error('审批流程设置有问题，无法提交审批申请，请联系HR或者管理员重新设置审批流程')
+                raise ServiceException(message='审批流程设置有问题，无法提交审批申请，请联系HR或者管理员重新设置审批流程')
             result = await OaFlowStepDao.add_flow_step(db, step)
             # 添加审核记录信息，修改表审核状态
             if result:
@@ -784,8 +795,8 @@ class CheckService:
                     await CheckAfter.check_after(db, action_id, check_table)
 
         if check_status == 1 and check_uids is None:
-            return CrudResponseModel(is_success=False,
-                                     message="找不到下一步的审批人，该审批流程设置有问题，请联系HR或者管理员")
+            logger.error("没有下一步的审批人，请检查审批流程设置，无法跳过审核")
+            raise ServiceException(message="找不到下一步的审批人，该审批流程设置有问题，请联系HR或者管理员")
         # 添加历史审核人
         if detail['check_history_uids'] is None:
             check_history_uids = user_id
@@ -844,7 +855,7 @@ class CheckService:
             await MessageService.send_template_message(db, flow_cate['template_id'], data, template_params)
             return CrudResponseModel(is_success=True, data={'subject': subject, 'step': step}, message='条部审批成功！')
         else:
-            return CrudResponseModel(is_success=False, message='跳审批失败')
+            raise ServiceException(message='跳审批失败')
 
 
 

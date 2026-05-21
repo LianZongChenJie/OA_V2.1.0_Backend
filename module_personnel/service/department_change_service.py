@@ -5,6 +5,7 @@ from common.constant import CommonConstant
 from exceptions.exception import ServiceException
 from module_basicdata.dao.public.flow_step_dao import OaFlowStepDao
 from module_personnel.dao.department_change_dao import DepartmentChangeDao
+from module_personnel.dao.file_dao import FileDAO
 from module_personnel.dao.flow_record_dao import FlowRecordDao
 from sqlalchemy.sql import ColumnElement
 from module_personnel.entity.vo.department_change_vo import OaDepartmentChangeBassModel, \
@@ -14,7 +15,7 @@ from datetime import datetime
 from module_basicdata.dao.public.flow_cate_dao import FlowCateDao
 
 from module_personnel.entity.vo.flow_record_vo import OaFlowRecordBaseModel
-from utils.camel_converter import ResponseConverter
+from utils.camel_converter import ResponseConverter, ModelConverter
 from utils.timeformat import int_time
 
 
@@ -94,8 +95,19 @@ class DepartmentChangeService:
             AsyncSession, id: int) -> dict:
         try:
             detail = await DepartmentChangeDao.get_info_by_id(query_db, id)
+            if detail is None:
+                raise ServiceException(message="未找到该数据")
             detail = ResponseConverter.convert_to_camel_and_format_time(detail,cls.time_fields)
             detail['records'] = ResponseConverter.convert_to_camel_and_format_time_list(detail['records'],cls.time_fields)
+            if detail['fileIds'] != '' and detail['fileIds'] is not None:
+                file_ids = detail['fileIds'].split(',')
+            else:
+                file_ids = []
+            attachments = await FileDAO.get_files(query_db, file_ids)
+            file_list = []
+            for attachment in attachments:
+                file_list.append(ModelConverter.convert_to_camel_case(dict(attachment)))
+            detail['attachments'] = file_list
             if not detail:
                 raise ServiceException(message="未找到该数据")
             return detail

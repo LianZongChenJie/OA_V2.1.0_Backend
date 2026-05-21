@@ -139,7 +139,7 @@ async def export_system_operation_log_list(
     query_db: Annotated[AsyncSession, DBSessionDependency()],
 ) -> Response:
     # 获取全量数据
-    operation_log_query_result = await OperationLogService.get_operation_log_list_services(
+    operation_log_query_result = await OperationLogService.export_operation_log_all_list_services(
         query_db, operation_log_page_query, is_page=False
     )
     operation_log_export_result = await OperationLogService.export_operation_log_list_services(
@@ -250,7 +250,7 @@ async def export_system_login_log_list(
     query_db: Annotated[AsyncSession, DBSessionDependency()],
 ) -> Response:
     # 获取全量数据
-    login_log_query_result = await LoginLogService.get_login_log_list_services(
+    login_log_query_result = await LoginLogService.get_login_log_all_list_services(
         query_db, login_log_page_query, is_page=False
     )
     login_log_export_result = await LoginLogService.export_login_log_list_services(login_log_query_result)

@@ -3,6 +3,8 @@ from datetime import datetime
 from fastapi import UploadFile
 import uuid
 import hashlib
+import aiofiles
+from pathlib import Path
 # 创建目录
 def make_dir(file_path):
     return os.makedirs(file_path, exist_ok=True)
@@ -33,9 +35,11 @@ async def save_upload_file(file: UploadFile, file_path: str) -> int:
     :return: 文件大小（字节）
     """
     file_size = 0
-    with open(file_path, "wb") as f:
+    path = Path(file_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    async with aiofiles.open(file_path, "wb") as f:
         while chunk := await file.read(1024 * 1024):  # 按1MB分块读取
-            f.write(chunk)
+            await f.write(chunk)
             file_size += len(chunk)
     return file_size
 
@@ -65,3 +69,16 @@ async def delete_file(file_path: str):
             os.remove(file_path)
     except Exception as e:
         print("删除文件失败", e)
+
+
+def find_project_root(marker_files=('app.py', 'requirements.txt')):
+    """
+    从当前文件所在目录向上查找，返回第一个包含任意 marker_files 的目录。
+    如果找不到，则返回当前工作目录。
+    """
+    current = Path(__file__).resolve().parent
+    for parent in [current] + list(current.parents):
+        for marker in marker_files:
+            if (parent / marker).exists():
+                return parent
+    return str(current)

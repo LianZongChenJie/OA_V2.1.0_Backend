@@ -8,6 +8,7 @@ from sqlalchemy.sql import ColumnElement
 from module_personnel.entity.vo.admin_profile_vo import OaAdminProfilesUpdateModel
 from module_admin.dao.user_dao import UserDao
 from module_personnel.dao.profile_dao import AdminProfileDao
+from utils.camel_converter import ModelConverter
 from utils.response_util import ResponseUtil
 from module_personnel.dao.file_dao import FileDAO
 
@@ -53,11 +54,17 @@ class ProfileService:
             if not user['user_basic_info']:
                 return ResponseUtil.error(msg="为查询到相关员工")
             profiles = await AdminProfileDao.get_profile_list(db, user['user_basic_info'])
-            files = await FileDAO.get_file_by_ids(user['user_basic_info'].file_ids, db)
+            if user['user_basic_info'].file_ids != '' and user['user_basic_info'].file_ids is not None:
+                files = await FileDAO.get_files(db,user['user_basic_info'].file_ids)
+            else:
+                files = []
+
             result = OaAdminProfilesUpdateModel()
             result.files = files
             result.user = user['user_basic_info']
             result.profiles = profiles
+            result = ModelConverter.convert_to_camel_case(result)
+            result['attachments'] = files
             return ResponseUtil.success(data=result)
         except Exception as e:
             return ResponseUtil.error(msg="获取失败")
