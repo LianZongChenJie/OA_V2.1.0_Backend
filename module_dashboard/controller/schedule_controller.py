@@ -32,10 +32,12 @@ dashboard_schedule_controller = APIRouterPro(
 )
 async def get_page_list(
     request: Request,
+    current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
     query_db: Annotated[AsyncSession, DBSessionDependency()],
     query_object: Annotated[OaSchedulePageQueryModel, Query()],
     data_scope_sql: Annotated[ColumnElement, DataScopeDependency(OaSchedule)],
 ) -> Response:
+    query_object.uid = current_user.user.user_id
     result =  await ScheduleService.get_page_list_service(query_db,query_object,data_scope_sql,True)
     return ResponseUtil.success(model_content=result)
 
