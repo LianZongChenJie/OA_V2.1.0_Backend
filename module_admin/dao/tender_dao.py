@@ -1,5 +1,6 @@
 from datetime import datetime
 from typing import Any
+import logging
 
 from sqlalchemy import and_, delete, desc, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,6 +13,8 @@ from module_admin.entity.vo.tender_vo import (
 )
 from utils.page_util import PageUtil
 
+logger = logging.getLogger(__name__)
+
 class TenderDao:
     """招投标管理模块数据库操作层"""
 
@@ -22,55 +25,71 @@ class TenderDao:
         """获取投标信息列表"""
         from module_admin.entity.do.user_do import SysUser
         
-        query = select(OaProjectTender).where(OaProjectTender.delete_time == 0)
+        try:
+            query = select(OaProjectTender).where(OaProjectTender.delete_time == 0)
 
-        # 添加查询条件
-        if query_object.month and query_object.month.strip():
-            query = query.where(OaProjectTender.month.like(f'%{query_object.month.strip()}%'))
-        if query_object.customer_name and query_object.customer_name.strip():
-            query = query.where(OaProjectTender.customer_name.like(f'%{query_object.customer_name.strip()}%'))
-        if query_object.project_name and query_object.project_name.strip():
-            query = query.where(OaProjectTender.project_name.like(f'%{query_object.project_name.strip()}%'))
-        if query_object.tender_leader and query_object.tender_leader.strip():
-            # 根据username查找用户姓名
-            user_result = await db.execute(
-                select(SysUser.nick_name)
-                .where(SysUser.user_name == query_object.tender_leader.strip())
-            )
-            user_name = user_result.scalar_one_or_none()
-            # 如果找到用户姓名，用姓名查询；否则用传入的值直接查询
-            if user_name:
-                query = query.where(OaProjectTender.tender_leader.like(f'%{user_name}%'))
-            else:
-                query = query.where(OaProjectTender.tender_leader.like(f'%{query_object.tender_leader.strip()}%'))
-        if query_object.is_tender_submitted:
-            query = query.where(OaProjectTender.is_tender_submitted == query_object.is_tender_submitted)
-        if query_object.bid_result and query_object.bid_result.strip():
-            query = query.where(OaProjectTender.bid_result.like(f'%{query_object.bid_result.strip()}%'))
+            # 添加查询条件
+            if query_object.month and query_object.month.strip():
+                query = query.where(OaProjectTender.month.like(f'%{query_object.month.strip()}%'))
+            if query_object.customer_name and query_object.customer_name.strip():
+                query = query.where(OaProjectTender.customer_name.like(f'%{query_object.customer_name.strip()}%'))
+            if query_object.project_name and query_object.project_name.strip():
+                query = query.where(OaProjectTender.project_name.like(f'%{query_object.project_name.strip()}%'))
+            if query_object.tender_leader and query_object.tender_leader.strip():
+                try:
+                    # 根据username查找用户姓名
+                    user_result = await db.execute(
+                        select(SysUser.nick_name)
+                        .where(SysUser.user_name == query_object.tender_leader.strip())
+                    )
+                    user_name = user_result.scalar_one_or_none()
+                    # 如果找到用户姓名，用姓名查询；否则用传入的值直接查询
+                    if user_name:
+                        query = query.where(OaProjectTender.tender_leader.like(f'%{user_name}%'))
+                    else:
+                        query = query.where(OaProjectTender.tender_leader.like(f'%{query_object.tender_leader.strip()}%'))
+                except Exception as e:
+                    logger.warning(f'查询用户信息失败，使用原始值查询：{str(e)}')
+                    query = query.where(OaProjectTender.tender_leader.like(f'%{query_object.tender_leader.strip()}%'))
+            
+            # 处理枚举字段查询 - 确保值为 '是' 或 '否'
+            if query_object.is_tender_submitted:
+                valid_values = ['是', '否']
+                if query_object.is_tender_submitted in valid_values:
+                    query = query.where(OaProjectTender.is_tender_submitted == query_object.is_tender_submitted)
+                else:
+                    logger.warning(f'无效的is_tender_submitted值: {query_object.is_tender_submitted}，跳过该条件')
+            
+            if query_object.bid_result and query_object.bid_result.strip():
+                query = query.where(OaProjectTender.bid_result.like(f'%{query_object.bid_result.strip()}%'))
 
-        # 开标日期条件处理（使用 begin_time 和 end_time 参数）
-        if query_object.begin_time and query_object.end_time:
-            try:
-                bid_opening_start = datetime.strptime(query_object.begin_time, '%Y-%m-%d').date()
-                bid_opening_end = datetime.strptime(query_object.end_time, '%Y-%m-%d').date()
-                query = query.where(
-                    and_(
-                        OaProjectTender.bid_opening_date >= bid_opening_start,
-                        OaProjectTender.bid_opening_date <= bid_opening_end,
+            # 开标日期条件处理（使用 begin_time 和 end_time 参数）
+            if query_object.begin_time and query_object.end_time:
+                try:
+                    bid_opening_start = datetime.strptime(query_object.begin_time, '%Y-%m-%d').date()
+                    bid_opening_end = datetime.strptime(query_object.end_time, '%Y-%m-%d').date()
+                    query = query.where(
+                        and_(
+                            OaProjectTender.bid_opening_date >= bid_opening_start,
+                            OaProjectTender.bid_opening_date <= bid_opening_end,
                         )
-                )
-            except ValueError:
-                pass
+                    )
+                except ValueError as e:
+                    logger.warning(f'日期格式错误：{str(e)}')
+                    pass
 
-        # 排序
-        query = query.order_by(desc(OaProjectTender.sort), desc(OaProjectTender.id))
+            # 排序
+            query = query.order_by(desc(OaProjectTender.sort), desc(OaProjectTender.id))
 
-        if is_page:
-            result = await PageUtil.paginate(db, query, query_object.page_num, query_object.page_size, is_page=True)
-        else:
-            result = (await db.execute(query)).scalars().all()
+            if is_page:
+                result = await PageUtil.paginate(db, query, query_object.page_num, query_object.page_size, is_page=True)
+            else:
+                result = (await db.execute(query)).scalars().all()
 
-        return result
+            return result
+        except Exception as e:
+            logger.error(f'获取投标列表失败：{str(e)}', exc_info=True)
+            raise
 
     @classmethod
     async def get_tender_detail_by_id(cls, db: AsyncSession, tender_id: int) -> OaProjectTender | None:

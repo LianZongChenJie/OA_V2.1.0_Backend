@@ -78,19 +78,46 @@ async def get_tender_list(
             for item in rows_data:
                 if hasattr(item, 'model_dump'):
                     row_dict = item.model_dump(by_alias=True)
+                elif isinstance(item, dict):
+                    row_dict = item.copy()
                 else:
-                    row_dict = jsonable_encoder(item)
+                    # 处理 SQLAlchemy Row 对象
+                    from sqlalchemy.orm import class_mapper
+                    try:
+                        row_dict = {}
+                        for key in item.keys():
+                            value = getattr(item, key)
+                            # 处理特殊类型
+                            if hasattr(value, 'isoformat'):
+                                # Date/DateTime 类型转换为字符串
+                                row_dict[key] = value.isoformat()
+                            elif hasattr(value, '__float__'):
+                                # Decimal 类型转换为 float
+                                row_dict[key] = float(value)
+                            else:
+                                row_dict[key] = value
+                    except Exception as convert_error:
+                        logger.error(f'数据转换失败：{str(convert_error)}')
+                        row_dict = {'error': '数据转换失败'}
                 
                 # 时间格式化：将时间戳转换为可读格式
                 if 'createTime' in row_dict and row_dict['createTime']:
                     try:
-                        row_dict['createTime'] = datetime.fromtimestamp(row_dict['createTime']).strftime('%Y-%m-%d %H:%M:%S')
-                    except:
+                        if isinstance(row_dict['createTime'], (int, float)):
+                            row_dict['createTime'] = datetime.fromtimestamp(row_dict['createTime']).strftime('%Y-%m-%d %H:%M:%S')
+                        elif hasattr(row_dict['createTime'], 'strftime'):
+                            row_dict['createTime'] = row_dict['createTime'].strftime('%Y-%m-%d %H:%M:%S')
+                    except Exception as e:
+                        logger.warning(f'createTime格式化失败：{str(e)}')
                         pass
                 if 'updateTime' in row_dict and row_dict['updateTime']:
                     try:
-                        row_dict['updateTime'] = datetime.fromtimestamp(row_dict['updateTime']).strftime('%Y-%m-%d %H:%M:%S')
-                    except:
+                        if isinstance(row_dict['updateTime'], (int, float)):
+                            row_dict['updateTime'] = datetime.fromtimestamp(row_dict['updateTime']).strftime('%Y-%m-%d %H:%M:%S')
+                        elif hasattr(row_dict['updateTime'], 'strftime'):
+                            row_dict['updateTime'] = row_dict['updateTime'].strftime('%Y-%m-%d %H:%M:%S')
+                    except Exception as e:
+                        logger.warning(f'updateTime格式化失败：{str(e)}')
                         pass
                 
                 processed_rows.append(row_dict)
@@ -114,8 +141,13 @@ async def get_tender_list(
         else:
             # 其他类型：直接返回
             return ResponseUtil.success(data=tender_page_query_result)
+    except ServiceException as e:
+        logger.error(f'获取投标列表失败（业务异常）：{e.message}', exc_info=True)
+        return ResponseUtil.error(msg=f'获取列表失败：{e.message}')
     except Exception as e:
-        logger.error(f'获取投标列表失败：{str(e)}', exc_info=True)
+        logger.error(f'获取投标列表失败（系统异常）：{str(e)}', exc_info=True)
+        import traceback
+        logger.error(f'异常堆栈：{traceback.format_exc()}')
         return ResponseUtil.error(msg=f'获取列表失败：{str(e)}')
 
 @tender_controller.get(

@@ -87,8 +87,10 @@ class TenderService:
     ) -> PageModel | list[dict[str, Any]]:
         """获取投标列表"""
         try:
-            return await TenderDao.get_tender_list(query_db, query_object, is_page)
+            result = await TenderDao.get_tender_list(query_db, query_object, is_page)
+            return result
         except Exception as e:
+            logger.error(f'获取投标列表失败：{str(e)}', exc_info=True)
             raise ServiceException(message=f'获取投标列表失败：{str(e)}') from e
 
     @classmethod

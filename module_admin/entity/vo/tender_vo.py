@@ -44,7 +44,7 @@ class TenderModel(BaseModel):
     
     id: Optional[int] = None
     month: Optional[str] = Field(None, description='月份', max_length=20)
-    tender_leader_id: Optional[Union[str, int]] = Field(None, description='标书负责人ID')
+    tender_leader_id: Optional[Union[str, int]] = Field(None, description='标书负责人ID（预留字段）')
     customer_name: Optional[str] = Field(None, description='客户名称', max_length=100)
     project_name: Optional[str] = Field(None, description='项目名称', max_length=200)
     tender_leader: Optional[str] = Field(None, description='投标负责人', max_length=50)
