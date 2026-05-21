@@ -409,13 +409,17 @@ class ProjectService:
         :param current_time: 当前时间戳
         :return: None
         """
-        for stage in stages:
+        for idx, stage in enumerate(stages):
             stage_data = {
                 'project_id': project_id,
-                'title': stage.title,
-                'start_time': stage.start_time,
-                'end_time': stage.end_time,
-                'remark': stage.remark,
+                'title': stage.title if stage.title else '',
+                'director_uid': stage.director_uid if stage.director_uid is not None else 0,
+                'uids': stage.uids if stage.uids else '',
+                'sort': idx + 1,
+                'is_current': stage.is_current if stage.is_current is not None else 0,
+                'start_time': stage.start_time if stage.start_time is not None else 0,
+                'end_time': stage.end_time if stage.end_time is not None else 0,
+                'remark': stage.remark if stage.remark else '',
                 'create_time': current_time,
                 'update_time': current_time,
                 'delete_time': 0,
@@ -461,7 +465,7 @@ class ProjectService:
             cls, query_db: AsyncSession, project_id: int, stages: list[ProjectStepModel], current_time: int
     ) -> None:
         """
-        更新项目阶段
+        更新项目阶段（先删除旧的，再新增新的）
 
         :param query_db: orm 对象
         :param project_id: 项目 ID
@@ -469,15 +473,26 @@ class ProjectService:
         :param current_time: 当前时间戳
         :return: None
         """
-        for stage in stages:
+        # 先逻辑删除所有现有阶段
+        await ProjectStepDao.delete_steps_by_project_id(query_db, project_id)
+        
+        # 重新新增所有阶段
+        for idx, stage in enumerate(stages):
             stage_data = {
-                'title': stage.title,
-                'start_time': stage.start_time,
-                'end_time': stage.end_time,
-                'remark': stage.remark,
+                'project_id': project_id,
+                'title': stage.title if stage.title else '',
+                'director_uid': stage.director_uid if stage.director_uid is not None else 0,
+                'uids': stage.uids if stage.uids else '',
+                'sort': idx + 1,
+                'is_current': stage.is_current if stage.is_current is not None else 0,
+                'start_time': stage.start_time if stage.start_time is not None else 0,
+                'end_time': stage.end_time if stage.end_time is not None else 0,
+                'remark': stage.remark if stage.remark else '',
+                'create_time': current_time,
                 'update_time': current_time,
+                'delete_time': 0,
             }
-            await ProjectStepDao.update_step(query_db, stage.id, stage_data)
+            await ProjectStepDao.add_step(query_db, stage_data)
 
     @classmethod
     async def _update_project_users(

@@ -694,18 +694,18 @@ class ProjectDao:
         )
 
     @classmethod
-    async def delete_project_dao(cls, db: AsyncSession, project: ProjectModel) -> None:
+    async def delete_project_dao(cls, db: AsyncSession, project_id: int) -> None:
         """
         删除项目数据库操作（逻辑删除）
 
         :param db: orm 对象
-        :param project: 项目对象
+        :param project_id: 项目 ID
         :return:
         """
-        update_time = project.update_time if project.update_time is not None else int(datetime.now().timestamp())
+        update_time = int(datetime.now().timestamp())
         await db.execute(
             update(OaProject)
-            .where(OaProject.id == project.id)
+            .where(OaProject.id == project_id)
             .values(delete_time=update_time, update_time=update_time)
         )
 

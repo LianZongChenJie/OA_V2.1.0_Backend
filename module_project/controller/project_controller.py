@@ -32,7 +32,6 @@ project_controller = APIRouterPro(
     '/list',
     summary='获取项目分页列表接口',
     description='用于获取项目分页列表',
-    dependencies=[UserInterfaceAuthDependency('project:list')],
 )
 async def get_project_list(
         request: Request,

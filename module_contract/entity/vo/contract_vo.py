@@ -85,6 +85,9 @@ class ContractModel(BaseModel):
     admin_name_camel: str | None = Field(default=None, alias='adminName', description='创建人姓名')
     prepared_name_camel: str | None = Field(default=None, alias='preparedName', description='合同制定人姓名')
     dept_name: str | None = Field(default=None, alias='deptName', description='所属部门名称')
+    
+    # 审批记录
+    records: list[dict] | None = Field(default=[], description='审批记录列表')
 
     @field_validator('start_time', 'end_time', 'sign_time', 'stop_time', 'void_time', 'archive_time', 'check_time', mode='before')
     @classmethod
