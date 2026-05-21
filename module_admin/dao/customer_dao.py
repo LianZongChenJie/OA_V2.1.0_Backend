@@ -295,8 +295,31 @@ class CustomerDao:
             # 分享客户
             conditions.append(func.find_in_set(str(user_id), OaCustomer.share_ids))
 
-        query = select(OaCustomer).where(*conditions)
-        query = query.order_by(OaCustomer.create_time.desc())
+        from module_admin.entity.do.customer_contact_do import OaCustomerContact
+        
+        # 定义联系人表别名
+        contact = OaCustomerContact.__table__.alias('contact')
+        
+        # 关联查询客户和联系人表
+        query = (
+            select(
+                OaCustomer,
+                contact.c.name.label('contact_name'),
+                contact.c.mobile.label('contact_mobile'),
+                contact.c.email.label('contact_email'),
+            )
+            .select_from(OaCustomer)
+            .outerjoin(
+                contact,
+                and_(
+                    OaCustomer.id == contact.c.cid,
+                    contact.c.delete_time == 0,
+                    contact.c.is_default == 1
+                )
+            )
+            .where(*conditions)
+            .order_by(OaCustomer.create_time.desc())
+        )
 
         customer_list: PageModel | list[dict[str, Any]] = await PageUtil.paginate(
             db, query, query_object.page_num, query_object.page_size, is_page
@@ -306,25 +329,45 @@ class CustomerDao:
         if isinstance(customer_list, PageModel) and hasattr(customer_list, 'rows'):
             processed_rows = []
             for row in customer_list.rows:
-                item = await cls._process_customer_row(db, row)
+                # row 是元组: (OaCustomer对象, contact_name, contact_mobile, contact_email)
+                if isinstance(row, tuple) and len(row) >= 4:
+                    customer_obj = row[0]
+                    contact_info = {
+                        'contact_name': row[1],
+                        'contact_mobile': row[2],
+                        'contact_email': row[3]
+                    }
+                    item = await cls._process_customer_row(db, customer_obj, contact_info)
+                else:
+                    item = await cls._process_customer_row(db, row)
                 processed_rows.append(item)
             customer_list.rows = processed_rows
         elif isinstance(customer_list, list):
             processed_list = []
             for row in customer_list:
-                item = await cls._process_customer_row(db, row)
+                if isinstance(row, tuple) and len(row) >= 4:
+                    customer_obj = row[0]
+                    contact_info = {
+                        'contact_name': row[1],
+                        'contact_mobile': row[2],
+                        'contact_email': row[3]
+                    }
+                    item = await cls._process_customer_row(db, customer_obj, contact_info)
+                else:
+                    item = await cls._process_customer_row(db, row)
                 processed_list.append(item)
             customer_list = processed_list
 
         return customer_list
 
     @classmethod
-    async def _process_customer_row(cls, db: AsyncSession, row: Any) -> dict[str, Any]:
+    async def _process_customer_row(cls, db: AsyncSession, row: Any, contact_info: dict = None) -> dict[str, Any]:
         """
         处理客户行数据，添加扩展字段
 
         :param db: orm 对象
         :param row: 客户行数据
+        :param contact_info: 联系人信息字典（可选，来自 JOIN 查询）
         :return: 处理后的字典数据
         """
         from utils.camel_converter import ModelConverter
@@ -402,19 +445,25 @@ class CustomerDao:
             except Exception as e:
                 logger.error(f'查询行业失败: {e}')
 
-        # 查询第一联系人信息
-        contact_first = row.get('contactFirst')
-        if contact_first and int(contact_first) > 0:
-            from module_admin.entity.do.customer_contact_do import OaCustomerContact
-            try:
-                query = select(OaCustomerContact).where(OaCustomerContact.id == int(contact_first))
-                contact_info = (await db.execute(query)).scalars().first()
-                if contact_info:
-                    result['contactName'] = contact_info.name
-                    result['contactMobile'] = contact_info.mobile
-                    result['contactEmail'] = contact_info.email
-            except Exception as e:
-                logger.error(f'查询联系人失败: {e}')
+        # 使用 JOIN 查询的联系人信息（如果有）
+        if contact_info:
+            result['contactName'] = contact_info.get('contact_name')
+            result['contactMobile'] = contact_info.get('contact_mobile')
+            result['contactEmail'] = contact_info.get('contact_email')
+        else:
+            # 查询第一联系人信息（原有逻辑作为后备）
+            contact_first = row.get('contactFirst')
+            if contact_first and int(contact_first) > 0:
+                from module_admin.entity.do.customer_contact_do import OaCustomerContact
+                try:
+                    query = select(OaCustomerContact).where(OaCustomerContact.id == int(contact_first))
+                    contact_info = (await db.execute(query)).scalars().first()
+                    if contact_info:
+                        result['contactName'] = contact_info.name
+                        result['contactMobile'] = contact_info.mobile
+                        result['contactEmail'] = contact_info.email
+                except Exception as e:
+                    logger.error(f'查询联系人失败: {e}')
 
         # 格式化时间字段
         follow_time = row.get('followTime')
