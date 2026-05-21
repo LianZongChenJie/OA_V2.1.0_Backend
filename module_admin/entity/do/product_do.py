@@ -32,8 +32,6 @@ class OaProduct(Base):
     stock = Column(Integer, nullable=False, server_default='0', comment='库存')
     is_object = Column(Integer, nullable=False, server_default='1', comment='是否是实物，1 是 2 不是')
     status = Column(Integer, nullable=False, server_default='1', comment='状态：0 禁用 1 启用')
-    admin_id = Column(Integer, nullable=False, server_default='0', comment='创建人')
     create_time = Column(BigInteger, nullable=False, server_default='0', comment='创建时间')
     update_time = Column(BigInteger, nullable=False, server_default='0', comment='更新时间')
     delete_time = Column(BigInteger, nullable=False, server_default='0', comment='删除时间')
-

@@ -117,7 +117,6 @@ class ProductService:
                 'status': page_object.status if page_object.status is not None else 1,
                 'create_time': current_time,
                 'update_time': current_time,
-                'admin_id': current_user_id if current_user_id else 0,
             }
             await ProductDao.add_product_dao(query_db, add_product_dict)
             await query_db.commit()
