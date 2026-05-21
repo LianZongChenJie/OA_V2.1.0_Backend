@@ -275,6 +275,11 @@ WHERE NOT EXISTS (
 UPDATE oa20_dev_test.sys_user u
     JOIN oa20_dev_test.oa_admin a
 ON u.user_name = a.username COLLATE utf8mb4_unicode_ci  -- 按用户名匹配 + 解决字符集冲突
-    SET u.dept_id = a.did  -- 把旧表部门id 赋值给新表dept_id
+    SET u.dept_id = a.did ; -- 把旧表部门id 赋值给新表dept_id
+-- 根据用户名匹配，将 sys_user.user_id 改为 oa_admin.id（保持ID一致）
+UPDATE oa20_dev_test.sys_user u
+    INNER JOIN oa20_dev_test.oa_admin a
+ON u.user_name = a.username COLLATE utf8mb4_unicode_ci
+    SET u.user_id = a.id;  -- 关键：把旧表id赋值给新表user_id
 
 
