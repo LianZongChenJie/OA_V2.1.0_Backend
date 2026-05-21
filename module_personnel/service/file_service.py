@@ -13,7 +13,7 @@ from module_personnel.dao.file_dao import FileDAO
 from module_personnel.entity.do.file_do import OaFile
 from module_personnel.entity.vo.file_vo import OaFileBaseModel
 from module_personnel.util.file_config import UPLOAD_DIR
-from module_personnel.util.file_utils import generate_file_path, generate_file_name, save_upload_file, delete_file
+from module_personnel.util.file_utils import generate_file_path, generate_file_name, save_upload_file, delete_file, find_project_root
 from module_personnel.util.mimetype import MIMETYPES
 from utils.camel_converter import ModelConverter
 from utils.timeformat import format_timestamp
@@ -51,7 +51,9 @@ class FileService:
             try:
                 # 保存文件
                 old_file_name = file.filename
+                base_path = find_project_root()
                 file_path = generate_file_path(UPLOAD_DIR)
+                file_path = str(base_path) + '/' +  file_path
                 safe_filename = generate_file_name(file.filename)
                 file_path = os.path.join(file_path, safe_filename)
 
