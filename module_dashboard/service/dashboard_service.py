@@ -1,10 +1,10 @@
 # module_dashboard/service/dashboard_service.py
 from sqlalchemy.ext.asyncio import AsyncSession
+from typing import List
 
 from module_dashboard.dao.dashboard_dao import DashboardDao
 from module_dashboard.entity.vo.dashboard_vo import (
     UrgentItemModel,
-    DashboardUrgentResponseModel
 )
 
 
@@ -19,7 +19,7 @@ class DashboardService:
         department_ids: list[int] | None = None,
         contract_delay_days: int = 30,
         project_delay_days: int = 3
-    ) -> DashboardUrgentResponseModel:
+    ) -> list[UrgentItemModel]:
         """
         获取首页紧急事项统计
 
@@ -28,31 +28,28 @@ class DashboardService:
         :param department_ids: 部门ID列表
         :param contract_delay_days: 合同到期提醒天数，默认30天
         :param project_delay_days: 项目/任务到期提醒天数，默认3天
-        :return: 紧急事项统计结果
+        :return: 紧急事项统计结果列表
         """
 
-        # 待办事项统计
-        handle = []
-
         # 到期提醒统计
-        todue = []
+        result = []
 
         # 1. 快到期的开标时间（72小时内）
         expiring_tender_bid_count = await DashboardDao.get_expiring_tender_bid_opening_count(query_db, 72)
-        todue.append(UrgentItemModel(
+        result.append(UrgentItemModel(
             name='快到期的开标时间',
             num=expiring_tender_bid_count,
-            id=414,
-            url='/tender/list'
+            target_name='Bidinfo',
+            target_path='/bidding/bidInfo'
         ))
 
         # 2. 快到期的保证金缴纳（72小时内）
         expiring_tender_deposit_count = await DashboardDao.get_expiring_tender_deposit_count(query_db, 72)
-        todue.append(UrgentItemModel(
+        result.append(UrgentItemModel(
             name='快到期的保证金缴纳',
             num=expiring_tender_deposit_count,
-            id=414,
-            url='/tender/list'
+            target_name='Bidinfo',
+            target_path='/bidding/bidInfo'
         ))
 
         # 3. 快到期的销售合同
@@ -62,11 +59,11 @@ class DashboardService:
             department_ids,
             contract_delay_days
         )
-        todue.append(UrgentItemModel(
+        result.append(UrgentItemModel(
             name='快到期的销售合同',
             num=expiring_contract_count,
-            id=319,
-            url='/system/contract/list'
+            target_name='Salescontract',
+            target_path='/contract/salesContract'
         ))
 
         # 4. 快到期的采购合同
@@ -76,11 +73,11 @@ class DashboardService:
             department_ids,
             contract_delay_days
         )
-        todue.append(UrgentItemModel(
+        result.append(UrgentItemModel(
             name='快到期的采购合同',
             num=expiring_purchase_count,
-            id=323,
-            url='/system/purchase/list'
+            target_name='Procurementcontract',
+            target_path='/contract/procurementContract'
         ))
 
         # 5. 快到期的项目
@@ -89,11 +86,11 @@ class DashboardService:
             current_user_id,
             project_delay_days
         )
-        todue.append(UrgentItemModel(
+        result.append(UrgentItemModel(
             name='快到期的项目',
             num=expiring_project_count,
-            id=343,
-            url='/project/list'
+            target_name='Itemlist',
+            target_path='/project/itemList'
         ))
 
         # 6. 快到期的任务
@@ -102,15 +99,11 @@ class DashboardService:
             current_user_id,
             project_delay_days
         )
-        todue.append(UrgentItemModel(
+        result.append(UrgentItemModel(
             name='快到期的任务',
             num=expiring_task_count,
-            id=348,
-            url='/project/task/list'
+            target_name='Task',
+            target_path='/project/task'
         ))
 
-        return DashboardUrgentResponseModel(
-            total=[],
-            handle=handle,
-            todue=todue
-        )
+        return result

@@ -232,7 +232,15 @@ class OfficialDocsService:
         """
         docs_list_result = await OfficialDocsDao.get_pending_docs_list(query_db, query_object, user_id, is_page)
 
-        return CamelCaseUtil.transform_result(docs_list_result)
+        docs_list_result = CamelCaseUtil.transform_result(docs_list_result)
+
+        if is_page and hasattr(docs_list_result, 'rows') and docs_list_result.rows:
+            formatted_rows = await cls._format_docs_list(docs_list_result.rows, query_db)
+            docs_list_result.rows = formatted_rows
+        elif not is_page and docs_list_result:
+            docs_list_result = await cls._format_docs_list(docs_list_result, query_db)
+
+        return docs_list_result
 
     @classmethod
     async def get_reviewed_docs_list_services(
@@ -249,7 +257,15 @@ class OfficialDocsService:
         """
         docs_list_result = await OfficialDocsDao.get_reviewed_docs_list(query_db, query_object, user_id, is_page)
 
-        return CamelCaseUtil.transform_result(docs_list_result)
+        docs_list_result = CamelCaseUtil.transform_result(docs_list_result)
+
+        if is_page and hasattr(docs_list_result, 'rows') and docs_list_result.rows:
+            formatted_rows = await cls._format_docs_list(docs_list_result.rows, query_db)
+            docs_list_result.rows = formatted_rows
+        elif not is_page and docs_list_result:
+            docs_list_result = await cls._format_docs_list(docs_list_result, query_db)
+
+        return docs_list_result
 
     @classmethod
     async def add_official_docs_services(

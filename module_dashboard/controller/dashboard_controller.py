@@ -57,4 +57,4 @@ async def get_urgent_items(
         project_delay_days
     )
 
-    return ResponseUtil.success(data=result.model_dump())
+    return ResponseUtil.success(data=result)
