@@ -16,7 +16,7 @@ from module_basicdata.dao.public.template_dao import OaTemplateDao
 from module_basicdata.entity.do.public.template_do import OaTemplate
 from module_personnel.dao.file_dao import FileDAO
 from utils.camel_converter import ModelConverter
-
+from utils.timeformat import format_date
 
 class MessageService:
     @classmethod
@@ -459,21 +459,23 @@ class MessageService:
             raise ServiceException('模板不能为空')
         if is_copy:
             title = template.msg_title_3.replace('{from_user}', from_user)
-            content = template.msg_content_3.replace('{create_time}', create_time).replace('{from_user}', from_user)
+            content = template.msg_content_3.replace('{create_time}', create_time).replace('{from_user}', from_user).replace('{date}', format_date(int(datetime.now().timestamp())))
             return title, content
         if is_check:
             title = template.msg_title_0.replace('{from_user}', from_user)
-            content = template.msg_content_0.replace('{create_time}', create_time).replace('{from_user}', from_user)
+            content = template.msg_content_0.replace('{create_time}', create_time).replace('{from_user}', from_user).replace('{date}', format_date(int(datetime.now().timestamp())))
             return title, content
         if is_user:
             if is_end:
                 if is_pass:
                     title = template.msg_title_1.replace('{from_user}', from_user)
-                    content = template.msg_content_1.replace('{create_time}', create_time).replace('{from_user}', from_user)
+                    date_str = format_date(int(datetime.now().timestamp()))
+                    content = template.msg_content_1.replace('{create_time}', create_time).replace('{from_user}', from_user).replace('{date}', date_str)
                     return title, content
                 else:
                     title = template.msg_title_2.replace('{from_user}', from_user)
-                    content = template.msg_content_2.replace('{create_time}', create_time).replace('{from_user}', from_user)
+                    date_str = format_date(int(datetime.now().timestamp()))
+                    content = template.msg_content_2.replace('{create_time}', create_time).replace('{from_user}', from_user).replace('{date}', date_str)
                     return title, content
         return None, None
 
