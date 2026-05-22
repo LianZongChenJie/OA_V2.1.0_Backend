@@ -133,12 +133,12 @@ class CheckService:
                             # 存在下一步审核
                             if next_step.check_role == 1:
                                 if detail.get('uid'):
-                                    check_uids = await PostDao.get_post_manage(db, detail['uid'])
+                                    check_uids = await DeptDao.get_dept_manages(db, detail['uid'])
                                 else:
                                     check_uids = await DeptDao.get_dept_manages(db, detail['admin_id'])
                             elif next_step.check_role == 2:
                                 if detail.get('uid'):
-                                    check_uids = await PostDao.get_post_manage(db, detail['uid'], True)
+                                    check_uids = await DeptDao.get_dept_manages(db, detail['uid'], True)
                                 else:
                                     check_uids = await DeptDao.get_dept_manages(db, detail['admin_id'], True)
                             elif next_step.check_role == 3:
@@ -467,7 +467,7 @@ class CheckService:
                     check_position_id = 0
                 if flow_step['check_role'] == '2':
                     if detail.get('uid'):
-                        check_uid = await DeptDao.get_dept_manages(db, detail['uid'],False)
+                        check_uid = await DeptDao.get_dept_manages(db, detail['uid'],True)
                         if check_uid is None:
                             logger.error('没有部门负责人，请联系管理员重新设置流程')
                             raise ServiceException(message='没有部门负责人，请联系管理员重新设置流程')
