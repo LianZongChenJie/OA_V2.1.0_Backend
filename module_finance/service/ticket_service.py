@@ -8,7 +8,7 @@ from module_personnel.dao.file_dao import FileDAO
 from module_personnel.dao.flow_record_dao import FlowRecordDao
 from sqlalchemy.sql import ColumnElement
 from module_finance.entity.vo.ticket_vo import OaTicketBaseModel, \
-    OaTicketPageQueryModel, OaTicketPaymentBaseModel
+    OaTicketPageQueryModel, OaTicketPaymentBaseModel, OaTicketPaymentPageQueryModel
 from common.vo import PageModel, CrudResponseModel
 from datetime import datetime
 from utils.camel_converter import ModelConverter
@@ -239,7 +239,7 @@ class TicketService:
             await db.rollback()
             raise e
     @classmethod
-    async def ticket_get_payment_list(cls, db: AsyncSession, query_object: OaTicketBaseModel, data_scope_sql: ColumnElement,
+    async def ticket_get_payment_list(cls, db: AsyncSession, query_object: OaTicketPaymentPageQueryModel, data_scope_sql: ColumnElement,
                             is_page: bool = False):
         try:
             query_list = await TicketDao.ticket_get_payment_list(db, query_object, data_scope_sql,is_page)
