@@ -33,7 +33,7 @@ class FlowRecordDao:
         query = (select(OaFlowRecord,
                        SysUser.nick_name.label('check_user')
                        ).join(SysUser, OaFlowRecord.check_uid == SysUser.user_id, isouter=True)
-                 .filter(OaFlowRecord.action_id == action_id, OaFlowRecord.flow_id == flow_id)
+                 .filter(OaFlowRecord.action_id == action_id, OaFlowRecord.flow_id == flow_id, OaFlowRecord.delete_time == 0)
                  .order_by(desc(OaFlowRecord.check_time)))
         check_records = (await db.execute(query)).mappings().all()
         return check_records
