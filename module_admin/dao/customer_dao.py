@@ -228,137 +228,268 @@ class CustomerDao:
         :param is_page: 是否开启分页
         :return: 客户列表信息对象
         """
-        conditions = [
-            OaCustomer.delete_time == 0,
-            OaCustomer.discard_time == 0
-        ]
-
-        # 获取关键词，兼容 keywords 和 name 两种参数名
+        from sqlalchemy import text
+        from utils.common_util import CamelCaseUtil
+        
+        # 构建基础 SQL 查询
+        base_sql = """
+            SELECT 
+                c.id, c.name, c.source_id, c.grade_id, c.industry_id, c.services_id,
+                c.provinceid, c.cityid, c.distid, c.townid, c.address,
+                c.customer_status, c.intent_status, c.contact_first, c.admin_id,
+                c.belong_uid, c.belong_did, c.belong_time, c.distribute_time,
+                c.follow_time, c.next_time, c.discard_time, c.share_ids,
+                c.content, c.market, c.remark, c.tax_bank, c.tax_banksn,
+                c.tax_num, c.tax_mobile, c.tax_address, c.is_lock,
+                c.create_time, c.update_time, c.delete_time,
+                contact.name AS contact_name,
+                contact.mobile AS contact_mobile,
+                contact.email AS contact_email
+            FROM oa_customer c
+            LEFT JOIN oa_customer_contact AS contact 
+                ON c.id = contact.cid 
+                AND contact.delete_time = 0 
+                AND contact.is_default = 1
+            WHERE c.delete_time = 0 AND c.discard_time = 0
+        """
+        
+        conditions = []
+        params = {}
+        
+        # 关键词搜索
         search_keyword = query_object.keywords or query_object.name
         if search_keyword:
-            conditions.append(
-                or_(
-                    OaCustomer.id.like(f'%{search_keyword}%'),
-                    OaCustomer.name.like(f'%{search_keyword}%')
-                )
-            )
-
-        # 获取客户状态，兼容 customer_status_filter 和 customer_status
+            conditions.append("(c.id LIKE :keyword OR c.name LIKE :keyword)")
+            params['keyword'] = f'%{search_keyword}%'
+        
+        # 客户状态筛选
         customer_status = query_object.customer_status_filter if query_object.customer_status_filter is not None else query_object.customer_status
         if customer_status is not None:
-            conditions.append(OaCustomer.customer_status == customer_status)
-
-        # 获取行业，兼容 industry_id_filter 和 industry_id
+            conditions.append("c.customer_status = :customer_status")
+            params['customer_status'] = customer_status
+        
+        # 行业筛选
         industry_id = query_object.industry_id_filter if query_object.industry_id_filter is not None else query_object.industry_id
         if industry_id is not None:
-            conditions.append(OaCustomer.industry_id == industry_id)
-
-        # 获取来源，兼容 source_id_filter 和 source_id
+            conditions.append("c.industry_id = :industry_id")
+            params['industry_id'] = industry_id
+        
+        # 来源筛选
         source_id = query_object.source_id_filter if query_object.source_id_filter is not None else query_object.source_id
         if source_id is not None:
-            conditions.append(OaCustomer.source_id == source_id)
-
-        # 获取等级，兼容 grade_id_filter 和 grade_id
+            conditions.append("c.source_id = :source_id")
+            params['source_id'] = source_id
+        
+        # 等级筛选
         grade_id = query_object.grade_id_filter if query_object.grade_id_filter is not None else query_object.grade_id
         if grade_id is not None:
-            conditions.append(OaCustomer.grade_id == grade_id)
-
-        # 获取意向状态，兼容 intent_status_filter 和 intent_status
+            conditions.append("c.grade_id = :grade_id")
+            params['grade_id'] = grade_id
+        
+        # 意向状态筛选
         intent_status = query_object.intent_status_filter if query_object.intent_status_filter is not None else query_object.intent_status
         if intent_status is not None:
-            conditions.append(OaCustomer.intent_status == intent_status)
-
+            conditions.append("c.intent_status = :intent_status")
+            params['intent_status'] = intent_status
+        
+        # 跟进时间范围
         if query_object.follow_time_start is not None:
-            conditions.append(OaCustomer.follow_time >= query_object.follow_time_start)
-
+            conditions.append("c.follow_time >= :follow_time_start")
+            params['follow_time_start'] = query_object.follow_time_start
+        
         if query_object.follow_time_end is not None:
-            conditions.append(OaCustomer.follow_time <= query_object.follow_time_end)
-
+            conditions.append("c.follow_time <= :follow_time_end")
+            params['follow_time_end'] = query_object.follow_time_end
+        
+        # 下次跟进时间范围
         if query_object.next_time_start is not None:
-            conditions.append(OaCustomer.next_time >= query_object.next_time_start)
-
+            conditions.append("c.next_time >= :next_time_start")
+            params['next_time_start'] = query_object.next_time_start
+        
         if query_object.next_time_end is not None:
-            conditions.append(OaCustomer.next_time <= query_object.next_time_end)
-
-        # 根据 tab 参数设置查询条件
-        if query_object.tab == 0:
-            # 全部客户（根据权限过滤，排除公海客户）
-            conditions.append(OaCustomer.belong_uid != 0)
-        elif query_object.tab == 1:
+            conditions.append("c.next_time <= :next_time_end")
+            params['next_time_end'] = query_object.next_time_end
+        
+        # tab 筛选条件
+        if query_object.tab == 1:
             # 我的客户
-            conditions.append(OaCustomer.belong_uid == user_id)
+            conditions.append("c.belong_uid = :user_id")
+            params['user_id'] = user_id
         elif query_object.tab == 2:
             # 下属客户
-            conditions.append(OaCustomer.belong_uid != user_id)
-            conditions.append(OaCustomer.belong_uid != 0)  # 排除公海客户
+            conditions.append("c.belong_uid != :user_id")
+            conditions.append("c.belong_uid != 0")
+            params['user_id'] = user_id
         elif query_object.tab == 3:
             # 分享客户
-            conditions.append(func.find_in_set(str(user_id), OaCustomer.share_ids))
-
-        from module_admin.entity.do.customer_contact_do import OaCustomerContact
+            conditions.append("FIND_IN_SET(:user_id, c.share_ids)")
+            params['user_id'] = user_id
         
-        # 定义联系人表别名
-        contact = OaCustomerContact.__table__.alias('contact')
+        # 组装 WHERE 条件
+        where_clause = " AND ".join(conditions) if conditions else "1=1"
+        full_sql = f"{base_sql} AND {where_clause} ORDER BY c.create_time DESC"
         
-        # 关联查询客户和联系人表
-        query = (
-            select(
-                OaCustomer,
-                contact.c.name.label('contact_name'),
-                contact.c.mobile.label('contact_mobile'),
-                contact.c.email.label('contact_email'),
-            )
-            .select_from(OaCustomer)
-            .outerjoin(
-                contact,
-                and_(
-                    OaCustomer.id == contact.c.cid,
-                    contact.c.delete_time == 0,
-                    contact.c.is_default == 1
-                )
-            )
-            .where(*conditions)
-            .order_by(OaCustomer.create_time.desc())
-        )
-
-        customer_list: PageModel | list[dict[str, Any]] = await PageUtil.paginate(
-            db, query, query_object.page_num, query_object.page_size, is_page
-        )
-
-        # 处理列表数据，添加扩展字段
-        if isinstance(customer_list, PageModel) and hasattr(customer_list, 'rows'):
+        # 执行查询获取总数
+        count_sql = f"SELECT COUNT(*) as total FROM ({full_sql}) as tmp"
+        count_result = await db.execute(text(count_sql), params)
+        total = count_result.scalar() or 0
+        
+        # 分页处理
+        if is_page:
+            offset = (query_object.page_num - 1) * query_object.page_size
+            paginated_sql = f"{full_sql} LIMIT :limit OFFSET :offset"
+            paginated_params = {**params, 'limit': query_object.page_size, 'offset': offset}
+            
+            result = await db.execute(text(paginated_sql), paginated_params)
+            rows = result.mappings().all()
+            
+            # 处理每一行数据，添加扩展字段
             processed_rows = []
-            for row in customer_list.rows:
-                # row 是元组: (OaCustomer对象, contact_name, contact_mobile, contact_email)
-                if isinstance(row, tuple) and len(row) >= 4:
-                    customer_obj = row[0]
-                    contact_info = {
-                        'contact_name': row[1],
-                        'contact_mobile': row[2],
-                        'contact_email': row[3]
-                    }
-                    item = await cls._process_customer_row(db, customer_obj, contact_info)
-                else:
-                    item = await cls._process_customer_row(db, row)
-                processed_rows.append(item)
-            customer_list.rows = processed_rows
-        elif isinstance(customer_list, list):
-            processed_list = []
-            for row in customer_list:
-                if isinstance(row, tuple) and len(row) >= 4:
-                    customer_obj = row[0]
-                    contact_info = {
-                        'contact_name': row[1],
-                        'contact_mobile': row[2],
-                        'contact_email': row[3]
-                    }
-                    item = await cls._process_customer_row(db, customer_obj, contact_info)
-                else:
-                    item = await cls._process_customer_row(db, row)
-                processed_list.append(item)
-            customer_list = processed_list
+            for row in rows:
+                row_dict = dict(row)
+                processed_row = await cls._process_customer_row_from_dict(db, row_dict)
+                processed_rows.append(processed_row)
+            
+            has_next = (query_object.page_num * query_object.page_size) < total
+            
+            # 转换为驼峰命名
+            camel_rows = CamelCaseUtil.transform_result(processed_rows)
+            
+            return PageModel(
+                rows=camel_rows,
+                pageNum=query_object.page_num,
+                pageSize=query_object.page_size,
+                total=total,
+                hasNext=has_next,
+            )
+        else:
+            result = await db.execute(text(full_sql), params)
+            rows = result.mappings().all()
+            
+            # 处理每一行数据
+            processed_rows = []
+            for row in rows:
+                row_dict = dict(row)
+                processed_row = await cls._process_customer_row_from_dict(db, row_dict)
+                processed_rows.append(processed_row)
+            
+            # 转换为驼峰命名
+            return CamelCaseUtil.transform_result(processed_rows)
 
-        return customer_list
+    @classmethod
+    async def _process_customer_row_from_dict(cls, db: AsyncSession, row: dict) -> dict:
+        """
+        从字典格式的客户行数据处理，添加扩展字段
+
+        :param db: orm 对象
+        :param row: 客户行数据字典
+        :return: 处理后的字典数据
+        """
+        result = row.copy()
+        
+        # 初始化扩展字段（使用蛇形命名，后续会统一转换为驼峰）
+        result['belong_name'] = None
+        result['belong_department'] = None
+        result['industry'] = None
+        result['grade'] = None
+        result['source'] = None
+        result['customer_status_name'] = None
+        result['intent_status_name'] = None
+        result['follow_time_str'] = None
+        result['next_time_str'] = None
+        result['create_time_str'] = None
+        result['belong_time_str'] = None
+        result['distribute_time_str'] = None
+        result['update_time_str'] = None
+        
+        # 查询所属人姓名
+        belong_uid = row.get('belong_uid')
+        if belong_uid and int(belong_uid) > 0:
+            from module_admin.dao.user_dao import UserDao
+            user_result = await UserDao.get_user_by_id(db, int(belong_uid))
+            if user_result and user_result.get('user_basic_info'):
+                user_info = user_result['user_basic_info']
+                result['belong_name'] = user_info.nick_name or user_info.user_name
+        
+        # 查询所属部门名称
+        belong_did = row.get('belong_did')
+        if belong_did and int(belong_did) > 0:
+            from module_admin.dao.dept_dao import DeptDao
+            dept_info = await DeptDao.get_dept_detail_by_id(db, int(belong_did))
+            if dept_info:
+                result['belong_department'] = dept_info.dept_name
+        
+        # 查询客户等级
+        grade_id = row.get('grade_id')
+        if grade_id and int(grade_id) > 0:
+            from module_basicdata.dao.custom.customer_gradle_dao import CustomerGradleDao
+            try:
+                grade_info = await CustomerGradleDao.get_info_by_id(db, int(grade_id))
+                if grade_info:
+                    result['grade'] = grade_info.title
+            except Exception as e:
+                logger.error(f'查询客户等级失败: {e}')
+        
+        # 查询来源渠道
+        source_id = row.get('source_id')
+        if source_id and int(source_id) > 0:
+            from module_basicdata.dao.custom.customer_source_dao import CustomerSourceDao
+            try:
+                source_info = await CustomerSourceDao.get_info_by_id(db, int(source_id))
+                if source_info:
+                    result['source'] = source_info.title
+            except Exception as e:
+                logger.error(f'查询客户来源失败: {e}')
+        
+        # 查询所属行业
+        industry_id = row.get('industry_id')
+        if industry_id and int(industry_id) > 0:
+            from module_basicdata.dao.custom.industry_dao import IndustryDao
+            try:
+                industry_info = await IndustryDao.get_industry_info(db, int(industry_id))
+                if industry_info:
+                    result['industry'] = industry_info.title
+            except Exception as e:
+                logger.error(f'查询行业失败: {e}')
+        
+        # 格式化时间字段
+        follow_time = row.get('follow_time')
+        if follow_time and int(follow_time) > 0:
+            result['follow_time_str'] = timestamp_to_datetime(int(follow_time), '%Y-%m-%d %H:%M:%S')
+        
+        next_time = row.get('next_time')
+        if next_time and int(next_time) > 0:
+            result['next_time_str'] = timestamp_to_datetime(int(next_time), '%Y-%m-%d %H:%M:%S')
+        
+        create_time = row.get('create_time')
+        if create_time and int(create_time) > 0:
+            result['create_time_str'] = timestamp_to_datetime(int(create_time), '%Y-%m-%d %H:%M:%S')
+        
+        belong_time = row.get('belong_time')
+        if belong_time and int(belong_time) > 0:
+            result['belong_time_str'] = timestamp_to_datetime(int(belong_time), '%Y-%m-%d %H:%M:%S')
+        
+        distribute_time = row.get('distribute_time')
+        if distribute_time and int(distribute_time) > 0:
+            result['distribute_time_str'] = timestamp_to_datetime(int(distribute_time), '%Y-%m-%d %H:%M:%S')
+        
+        update_time = row.get('update_time')
+        if update_time and int(update_time) > 0:
+            result['update_time_str'] = timestamp_to_datetime(int(update_time), '%Y-%m-%d %H:%M:%S')
+        
+        # 客户状态名称
+        customer_status = row.get('customer_status')
+        if customer_status is not None:
+            status_map = {0: '未设置', 1: '潜在客户', 2: '意向客户', 3: '正式客户', 4: '流失客户'}
+            result['customer_status_name'] = status_map.get(int(customer_status), '未知')
+        
+        # 意向状态名称
+        intent_status = row.get('intent_status')
+        if intent_status is not None:
+            intent_map = {0: '未设置', 1: '高意向', 2: '中意向', 3: '低意向', 4: '无意向'}
+            result['intent_status_name'] = intent_map.get(int(intent_status), '未知')
+        
+        return result
 
     @classmethod
     async def _process_customer_row(cls, db: AsyncSession, row: Any, contact_info: dict = None) -> dict[str, Any]:
