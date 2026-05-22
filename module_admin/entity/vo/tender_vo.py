@@ -87,6 +87,7 @@ class TenderPageQueryModel(PageQueryModel):
     end_time: Optional[str] = Field(None, description='结束时间（YYYY-MM-DD）')
     bid_opening_date_start: Optional[str] = Field(None, description='开标日期开始（YYYY-MM-DD）')
     bid_opening_date_end: Optional[str] = Field(None, description='开标日期结束（YYYY-MM-DD）')
+    order_direction: Optional[str] = Field('asc', description='排序方向（asc/desc）')
 
 # 新增/编辑/删除模型
 class AddTenderModel(TenderModel):

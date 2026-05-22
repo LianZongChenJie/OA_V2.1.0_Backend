@@ -78,8 +78,12 @@ class TenderDao:
                     logger.warning(f'日期格式错误：{str(e)}')
                     pass
 
-            # 排序
-            query = query.order_by(desc(OaProjectTender.sort), desc(OaProjectTender.id))
+            # 排序：默认按开标日期升序，支持通过参数控制
+            from sqlalchemy import asc as sql_asc
+            if query_object.order_direction and query_object.order_direction.lower() == 'desc':
+                query = query.order_by(desc(OaProjectTender.bid_opening_date), desc(OaProjectTender.id))
+            else:
+                query = query.order_by(sql_asc(OaProjectTender.bid_opening_date), desc(OaProjectTender.id))
 
             if is_page:
                 result = await PageUtil.paginate(db, query, query_object.page_num, query_object.page_size, is_page=True)
