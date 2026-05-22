@@ -281,5 +281,16 @@ UPDATE oa20_dev_test.sys_user u
     INNER JOIN oa20_dev_test.oa_admin a
 ON u.user_name = a.username COLLATE utf8mb4_unicode_ci
     SET u.user_id = a.id;  -- 关键：把旧表id赋值给新表user_id
+--招投标信息 添加负责人字段
+ALTER TABLE oa_project_tender ADD tender_leader_id varchar(100) NULL COMMENT '标书负责人id';
+--招投标信息 同步负责人id
+UPDATE oa_project_tender t
+    JOIN sys_user u
+ON CONVERT(u.nick_name USING utf8mb4) COLLATE utf8mb4_unicode_ci =
+    CONVERT(t.tender_leader USING utf8mb4) COLLATE utf8mb4_unicode_ci
+    SET t.tender_leader_id = u.user_id
+WHERE t.tender_leader IS NOT NULL;
+--项目周期字段
+ALTER TABLE oa_project_tender ADD project_cycle_num int NULL COMMENT '项目周期(X)月';
 
 

@@ -328,10 +328,12 @@ class TenderService:
                 'month': '月份(必填，格式：YYYY-MM)',
                 'customer_name': '客户名称(必填)',
                 'project_name': '项目名称(必填)',
+                'tender_leader_id': '标书负责人ID',
                 'tender_leader': '投标负责人',
                 'purchase_date': '购买日期(格式：YYYY-MM-DD)',
                 'tender_agency': '招标机构',
                 'project_cycle': '项目周期',
+                'project_cycle_num': '项目周期(月)',
                 'shortlisted_countries': '入围家数(数字)',
                 'budget_amount': '预算金额(数字，元)',
                 'bid_opening_date': '开标日期(格式：YYYY-MM-DD)',
@@ -507,9 +509,11 @@ class TenderService:
                     add_model.month = import_model.month.strip()
                     add_model.customer_name = import_model.customer_name.strip()
                     add_model.project_name = import_model.project_name.strip()
+                    add_model.tender_leader_id = import_model.tender_leader_id.strip() or None if hasattr(import_model, 'tender_leader_id') else None
                     add_model.tender_leader = import_model.tender_leader.strip() or None
                     add_model.tender_agency = import_model.tender_agency.strip() or None
                     add_model.project_cycle = import_model.project_cycle.strip() or None
+                    add_model.project_cycle_num = int(import_model.project_cycle_num.strip()) if import_model.project_cycle_num.strip() else None
                     add_model.non_tender_reason = import_model.non_tender_reason.strip() or None
                     add_model.deposit_account_name = import_model.deposit_account_name.strip() or None
                     add_model.deposit_bank = import_model.deposit_bank.strip() or None

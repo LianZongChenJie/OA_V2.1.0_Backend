@@ -52,6 +52,21 @@ class FlowRecordDao:
             record.pop('OaFlowRecord')
             # 将 check_user 赋值回字典
             record['check_user'] = check_user
+            
+            # 格式化 check_time 字段
+            check_time = record.get('check_time')
+            if check_time and isinstance(check_time, (int, float)) and check_time > 0:
+                try:
+                    if check_time > 1e12:
+                        check_time_seconds = check_time / 1000
+                    else:
+                        check_time_seconds = check_time
+                    record['check_time'] = datetime.fromtimestamp(check_time_seconds).strftime('%Y-%m-%d %H:%M:%S')
+                except Exception as e:
+                    record['check_time'] = ''
+            else:
+                record['check_time'] = ''
+            
             record_list.append(record)
         return record_list
 
