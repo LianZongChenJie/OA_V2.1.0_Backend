@@ -484,7 +484,7 @@ class CheckService:
                 if flow_step['check_role'] == '3':
                     check_position = await PostDao.get_post_by_id(db, flow_step['check_position_id'])
                     check_uid = await UserDao.get_user_by_post_id(db, flow_step['check_position_id'])
-                    if check_uid:
+                    if check_uid == '' or check_uid is None:
                         logger.error('没有岗位负责人，请联系管理员重新设置流程')
                         raise ServiceException(message='没有岗位负责人，请联系管理员重新设置流程')
                     if check_uid:
