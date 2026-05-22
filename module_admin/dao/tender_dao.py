@@ -115,9 +115,9 @@ class TenderDao:
     @classmethod
     async def add_tender_dao(cls, db: AsyncSession, tender: AddTenderModel) -> OaProjectTender:
         """新增投标信息"""
-        # 排除 attachments 和 tender_leader_id 字段，因为数据库模型中没有这些字段
+        # 排除 attachments 字段
         # 使用 by_alias=False 确保使用下划线命名（与数据库模型一致）
-        tender_data = tender.model_dump(exclude_unset=True, exclude={'attachments', 'tender_leader_id'}, by_alias=False)
+        tender_data = tender.model_dump(exclude_unset=True, exclude={'attachments'}, by_alias=False)
         db_tender = OaProjectTender(**tender_data)
         db.add(db_tender)
         await db.flush()
@@ -128,8 +128,8 @@ class TenderDao:
     async def edit_tender_dao(cls, db: AsyncSession, tender: EditTenderModel) -> OaProjectTender:
         """编辑投标信息"""
         # 使用 by_alias=False 确保使用下划线命名（与数据库模型一致）
-        # 排除 id、attachments 和 tender_leader_id 字段（tender_leader_id 为预留字段，数据库中不存在）
-        edit_data = tender.model_dump(exclude_unset=True, exclude={'id', 'attachments', 'tender_leader_id'}, by_alias=False)
+        # 排除 id、attachments 字段
+        edit_data = tender.model_dump(exclude_unset=True, exclude={'id', 'attachments'}, by_alias=False)
         
         # MySQL 不支持 RETURNING 子句，需要先更新再查询
         query = (

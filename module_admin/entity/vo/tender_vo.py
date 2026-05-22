@@ -51,6 +51,7 @@ class TenderModel(BaseModel):
     purchase_date: Optional[str] = Field(None, description='购买日期（YYYY-MM-DD）')
     tender_agency: Optional[str] = Field(None, description='招标机构', max_length=100)
     project_cycle: Optional[Union[str, int]] = Field(None, description='项目周期')
+    project_cycle_num: Optional[int] = Field(None, description='项目周期(X)月')
     shortlisted_countries: Optional[Union[str, int]] = Field(None, description='入围家数')
     budget_amount: Optional[float] = Field(None, description='预算金额（元）')
     bid_opening_date: Optional[str] = Field(None, description='开标日期（YYYY-MM-DD）')
@@ -151,10 +152,12 @@ class TenderImportTempModel(BaseModel):
     project_name: str
     is_tender_submitted: str
     # 非必填字段（加默认值）
+    tender_leader_id: str = ''
     tender_leader: str = ''
     purchase_date: str = ''
     tender_agency: str = ''
     project_cycle: str = ''
+    project_cycle_num: str = ''
     shortlisted_countries: str = ''
     budget_amount: str = ''
     bid_opening_date: str = ''
