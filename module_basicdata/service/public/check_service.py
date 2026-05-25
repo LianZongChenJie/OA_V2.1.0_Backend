@@ -527,17 +527,6 @@ class CheckService:
             # 添加审核记录信息，修改表审核状态
             if result:
                 # await FlowRecordDao.add(db, record)
-                update_dict = {
-                    'check_flow_id': query_model.flow_id,
-                    "check_step_sort": 0,
-                    "check_status": 1,
-                    "check_uids": step[0].check_uids,
-                    "check_copy_uids": query_model.check_copy_uids if query_model.check_copy_uids else '',
-                    "action_id": query_model.action_id
-                }
-                sql = 'update %s set check_flow_id = :check_flow_id,check_step_sort=:check_step_sort,check_status=:check_status,check_uids=:check_uids, check_copy_uids=:check_copy_uids where id = :action_id' % ('oa_'+ flow_cate['check_table'])
-                # 更新表审核信息
-                await CheckDao.execute_update_sql(db, sql, update_dict)
 
                 #发送消息通知
                 if step[0].check_uids == '' or step[0].check_uids is None:
@@ -548,6 +537,19 @@ class CheckService:
                 template_params['from_user'] = ','.join(await UserDao.get_nick_name_by_user_id(db, [user_id]))
                 template_params['create_time'] = ''
                 await MessageService.send_template_message(db, flow_cate['template_id'], data, template_params)
+
+                update_dict = {
+                    'check_flow_id': query_model.flow_id,
+                    "check_step_sort": 0,
+                    "check_status": 1,
+                    "check_uids": step[0].check_uids,
+                    "check_copy_uids": query_model.check_copy_uids if query_model.check_copy_uids else '',
+                    "action_id": query_model.action_id
+                }
+                sql = 'update %s set check_flow_id = :check_flow_id,check_step_sort=:check_step_sort,check_status=:check_status,check_uids=:check_uids, check_copy_uids=:check_copy_uids where id = :action_id' % (
+                            'oa_' + flow_cate['check_table'])
+                # 更新表审核信息
+                await CheckDao.execute_update_sql(db, sql, update_dict)
 
                 return CrudResponseModel(is_success=True, message='提交审核成功')
             else:
@@ -564,7 +566,18 @@ class CheckService:
             result = await OaFlowStepDao.add(db, step)
             if result:
                 # 添加审核申请记录
-                await FlowRecordDao.add(db, record)
+                # await FlowRecordDao.add(db, record)
+
+                # 发送消息通知
+                if step[0].check_uids == '' or step[0].check_uids is None:
+                    raise ServiceException(message='流程配置错误，没有对应审核人')
+                check_uids = [int(uid) for uid in step[0].check_uids.split(',')]
+                data = {'check_uids': check_uids, 'file_ids': record.check_files, 'action_id': query_model.action_id}
+                template_params = {}
+                template_params['from_user'] = ','.join(await UserDao.get_nick_name_by_user_id(db, [user_id]))
+                template_params['create_time'] = ''
+                await MessageService.send_template_message(db, flow_cate['template_id'], data, template_params)
+
                 # 修改审核信息
                 update_dict = {
                     'check_flow_id': query_model.check_flow_id,
@@ -576,8 +589,7 @@ class CheckService:
                 }
                 sql = 'update %s set check_flow_id = :check_flow_id,check_step_sort=:check_step_sort,check_status=:check_status,check_uids=:check_uids, check_copy_uids=:check_copy_uids where id = :action_id' % ('oa_'+ flow_cate['check_table'])
                 await CheckDao.execute_update_sql(db, sql, update_dict)
-                # 发送消息通知
-                # todo
+
             return CrudResponseModel(is_success=True, message='提交审核成功')
         else:
             raise ServiceException(message='操作失败')
