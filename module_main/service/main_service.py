@@ -79,6 +79,7 @@ class MainService:
         except Exception as e:
             await query_db.rollback()
             raise e
+
     @classmethod
     async def get_last_data(cls, db:AsyncSession,user_name:str) -> dict:
         """

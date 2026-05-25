@@ -682,3 +682,10 @@ class CustomerDao:
             .where(OaCustomer.id.in_([customer.id]))
             .values(discard_time=discard_time, update_time=update_time)
         )
+
+#------------------- 首页统计功能---------------------------
+    @classmethod
+    async def get_customer_count(cls, db: AsyncSession) -> OaCustomer | None:
+        query = select(func.count()).select_from(OaCustomer).where(OaCustomer.delete_time == 0)
+        count = await db.execute(query)
+        return count.scalar()

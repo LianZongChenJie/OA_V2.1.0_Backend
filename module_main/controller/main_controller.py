@@ -22,7 +22,7 @@ main_controller = APIRouterPro(
     summary='获取首页我的报销开票等数据统计信息',
     description='用于获取首页我的报销开票等数据统计信息',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:personnel:mian:query')],
+    dependencies=[],
 )
 async def get_count(
     query_db: Annotated[AsyncSession, DBSessionDependency()],
@@ -45,7 +45,7 @@ async def get_count(
     summary='获取首页我的报销开票等数据统计信息',
     description='用于获取首页我的报销开票等数据统计信息',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:personnel:mian:query')],
+    dependencies=[],
 )
 async def get_await_review(
     query_db: Annotated[AsyncSession, DBSessionDependency()],
@@ -68,7 +68,7 @@ async def get_await_review(
     summary='获取最近30天用户操作日志数据',
     description='获取最近30天用户操作日志数据',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:personnel:mian:query')],
+    dependencies=[],
 )
 async def get_view_log(
     request: Request,
@@ -82,7 +82,7 @@ async def get_view_log(
     summary='获取用户昨天和今天操作数据统计',
     description='获取用户昨天和今天操作数据统计',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:personnel:mian:query')],
+    dependencies=[],
 )
 async def get_last_data(
     query_db: Annotated[AsyncSession, DBSessionDependency()],
@@ -97,7 +97,7 @@ async def get_last_data(
     summary='获取一年内每日访问量数据',
     description='获取一年内每日访问量数据',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('humanresource:staff:archive:personnel:mian:query')],
+    dependencies=[],
 )
 async def get_year_log(
     query_db: Annotated[AsyncSession, DBSessionDependency()],
