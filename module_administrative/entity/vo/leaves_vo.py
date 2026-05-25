@@ -18,8 +18,8 @@ class LeavesModel(BaseModel):
     types: Literal[1, 2, 3, 4, 5, 6, 7, 8, 9] | None = Field(default=None, description='请假类型:1事假,2年假,3调休假,4病假,5婚假,6丧假,7产假,8陪产假,9其他')
     start_date: int | str | None = Field(default=None, description='开始日期')
     end_date: int | str | None = Field(default=None, description='结束日期')
-    start_span: Literal[1, 2] | None = Field(default=None, description='时间段:1上午,2下午')
-    end_span: Literal[1, 2] | None = Field(default=None, description='时间段:1上午,2下午')
+    start_span: Literal[0, 1, 2] | None = Field(default=None, description='时间段:0未设置,1上午,2下午')
+    end_span: Literal[0, 1, 2] | None = Field(default=None, description='时间段:0未设置,1上午,2下午')
     duration: Decimal | float | None = Field(default=None, description='时长(工作日)')
     reason: str | None = Field(default=None, description='请假原因')
     file_ids: str | None = Field(default=None, description='附件 ids')
@@ -30,12 +30,12 @@ class LeavesModel(BaseModel):
     check_last_uid: str | None = Field(default=None, description='上一审批人')
     check_history_uids: str | None = Field(default=None, description='历史审批人 ID')
     check_copy_uids: str | None = Field(default=None, description='抄送人 ID')
-    check_time: int | None = Field(default=None, description='审核通过时间')
+    check_time: int | str | None = Field(default=None, description='审核通过时间')
     admin_id: int | None = Field(default=None, description='创建人ID')
     did: int | None = Field(default=None, description='创建人部门ID')
-    create_time: int | None = Field(default=None, description='创建时间')
-    update_time: int | None = Field(default=None, description='更新时间')
-    delete_time: int | None = Field(default=None, description='删除时间')
+    create_time: int | str | None = Field(default=None, description='创建时间')
+    update_time: int | str | None = Field(default=None, description='更新时间')
+    delete_time: int | str | None = Field(default=None, description='删除时间')
 
     types_str: str | None = Field(default=None, description='请假类型字符串')
     admin_name: str | None = Field(default=None, description='创建人姓名')
@@ -61,7 +61,7 @@ class LeavesModel(BaseModel):
 
     @field_validator('start_date', mode='before')
     @classmethod
-    def validate_start_date(cls, value: Any) -> int | None:
+    def validate_start_date(cls, value: Any) -> int | str | None:
         """验证并转换开始时间"""
         if value is None or value == '':
             return None
@@ -70,20 +70,29 @@ class LeavesModel(BaseModel):
             return value
         
         if isinstance(value, str):
+            # 尝试解析日期时间字符串为时间戳
             try:
                 dt = datetime.fromisoformat(value)
                 return int(dt.timestamp())
             except ValueError:
                 try:
-                    return int(value)
+                    dt = datetime.strptime(value, '%Y-%m-%d %H:%M:%S')
+                    return int(dt.timestamp())
                 except ValueError:
-                    pass
+                    try:
+                        dt = datetime.strptime(value, '%Y-%m-%d')
+                        return int(dt.timestamp())
+                    except ValueError:
+                        try:
+                            return int(value)
+                        except ValueError:
+                            pass
         
         return value
 
     @field_validator('end_date', mode='before')
     @classmethod
-    def validate_end_date(cls, value: Any) -> int | None:
+    def validate_end_date(cls, value: Any) -> int | str | None:
         """验证并转换结束时间"""
         if value is None or value == '':
             return None
@@ -92,14 +101,45 @@ class LeavesModel(BaseModel):
             return value
         
         if isinstance(value, str):
+            # 尝试解析日期时间字符串为时间戳
             try:
                 dt = datetime.fromisoformat(value)
                 return int(dt.timestamp())
             except ValueError:
                 try:
-                    return int(value)
+                    dt = datetime.strptime(value, '%Y-%m-%d %H:%M:%S')
+                    return int(dt.timestamp())
                 except ValueError:
-                    pass
+                    try:
+                        dt = datetime.strptime(value, '%Y-%m-%d')
+                        return int(dt.timestamp())
+                    except ValueError:
+                        try:
+                            return int(value)
+                        except ValueError:
+                            pass
+        
+        return value
+
+    @field_validator('create_time', 'update_time', 'delete_time', 'check_time', mode='before')
+    @classmethod
+    def validate_time_fields(cls, value: Any) -> int | str | None:
+        """验证并转换时间字段"""
+        if value is None or value == '':
+            return None
+        
+        # 如果已经是格式化后的字符串（包含'-'或':'），直接返回
+        if isinstance(value, str) and ('-' in value or ':' in value):
+            return value
+        
+        if isinstance(value, int):
+            return value
+        
+        if isinstance(value, str):
+            try:
+                return int(value)
+            except ValueError:
+                pass
         
         return value
 

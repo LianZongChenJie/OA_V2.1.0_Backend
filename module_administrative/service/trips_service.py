@@ -19,6 +19,7 @@ from module_administrative.entity.vo.trips_vo import (
 )
 from utils.common_util import CamelCaseUtil
 from utils.log_util import logger
+from utils.time_format_util import timestamp_to_datetime
 
 
 class TripsService:
@@ -260,6 +261,71 @@ class TripsService:
         :return: 出差 id 对应的信息
         """
         trips = await TripsDao.get_trips_detail_by_id(query_db, trips_id)
-        result = TripsModel(**CamelCaseUtil.transform_result(trips)) if trips else TripsModel()
-
+        if not trips:
+            return TripsModel()
+        
+        result_dict = CamelCaseUtil.transform_result(trips)
+        
+        create_time = result_dict.get('createTime')
+        if create_time and isinstance(create_time, (int, float)) and create_time > 0:
+            if create_time > 1e12:
+                create_time_seconds = create_time / 1000
+            else:
+                create_time_seconds = create_time
+            result_dict['createTime'] = datetime.fromtimestamp(create_time_seconds).strftime('%Y-%m-%d %H:%M:%S')
+        else:
+            result_dict['createTime'] = ''
+        
+        start_date = result_dict.get('startDate')
+        if start_date and isinstance(start_date, (int, float)) and start_date > 0:
+            if start_date > 1e12:
+                start_date_seconds = start_date / 1000
+            else:
+                start_date_seconds = start_date
+            result_dict['startDate'] = datetime.fromtimestamp(start_date_seconds).strftime('%Y-%m-%d')
+        else:
+            result_dict['startDate'] = ''
+        
+        end_date = result_dict.get('endDate')
+        if end_date and isinstance(end_date, (int, float)) and end_date > 0:
+            if end_date > 1e12:
+                end_date_seconds = end_date / 1000
+            else:
+                end_date_seconds = end_date
+            result_dict['endDate'] = datetime.fromtimestamp(end_date_seconds).strftime('%Y-%m-%d')
+        else:
+            result_dict['endDate'] = ''
+        
+        admin_id = result_dict.get('adminId')
+        if admin_id and isinstance(admin_id, int) and admin_id > 0:
+            try:
+                admin_user = await query_db.execute(
+                    select(SysUser.nick_name, SysUser.user_name).where(SysUser.user_id == admin_id)
+                )
+                user_info = admin_user.first()
+                if user_info:
+                    result_dict['adminName'] = user_info.nick_name or user_info.user_name
+                else:
+                    result_dict['adminName'] = ''
+            except Exception as e:
+                logger.error(f"查询创建人失败: {e}")
+                result_dict['adminName'] = ''
+        else:
+            result_dict['adminName'] = ''
+        
+        did = result_dict.get('did')
+        if did and isinstance(did, int) and did > 0:
+            try:
+                dept = await query_db.execute(
+                    select(SysDept.dept_name).where(SysDept.dept_id == did)
+                )
+                dept_info = dept.scalar_one_or_none()
+                result_dict['deptName'] = dept_info if dept_info else ''
+            except Exception as e:
+                logger.error(f"查询部门失败: {e}")
+                result_dict['deptName'] = ''
+        else:
+            result_dict['deptName'] = ''
+        
+        result = TripsModel(**result_dict)
         return result

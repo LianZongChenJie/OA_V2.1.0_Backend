@@ -20,6 +20,7 @@ from module_administrative.entity.vo.leaves_vo import (
 )
 from utils.common_util import CamelCaseUtil
 from utils.log_util import logger
+from utils.time_format_util import timestamp_to_datetime
 
 
 class LeavesService:
@@ -93,7 +94,7 @@ class LeavesService:
                         start_date_seconds = start_date / 1000
                     else:
                         start_date_seconds = start_date
-                    item['startDate'] = datetime.fromtimestamp(start_date_seconds).strftime('%Y-%m-%d')
+                    item['startDate'] = datetime.fromtimestamp(start_date_seconds).strftime('%Y-%m-%d %H:%M:%S')
                 except Exception as e:
                     logger.error(f"开始时间格式化失败: {e}")
                     item['startDate'] = ''
@@ -107,7 +108,7 @@ class LeavesService:
                         end_date_seconds = end_date / 1000
                     else:
                         end_date_seconds = end_date
-                    item['endDate'] = datetime.fromtimestamp(end_date_seconds).strftime('%Y-%m-%d')
+                    item['endDate'] = datetime.fromtimestamp(end_date_seconds).strftime('%Y-%m-%d %H:%M:%S')
                 except Exception as e:
                     logger.error(f"结束时间格式化失败: {e}")
                     item['endDate'] = ''
@@ -167,10 +168,30 @@ class LeavesService:
         try:
             current_time = int(datetime.now().timestamp())
             
+            start_date_value = page_object.start_date
+            if isinstance(start_date_value, str) and ('-' in start_date_value or ':' in start_date_value):
+                try:
+                    dt = datetime.fromisoformat(start_date_value)
+                    start_date_value = int(dt.timestamp())
+                except ValueError:
+                    start_date_value = 0
+            elif not start_date_value:
+                start_date_value = 0
+            
+            end_date_value = page_object.end_date
+            if isinstance(end_date_value, str) and ('-' in end_date_value or ':' in end_date_value):
+                try:
+                    dt = datetime.fromisoformat(end_date_value)
+                    end_date_value = int(dt.timestamp())
+                except ValueError:
+                    end_date_value = 0
+            elif not end_date_value:
+                end_date_value = 0
+            
             leaves_dict = {
                 'types': page_object.types,
-                'start_date': page_object.start_date if page_object.start_date else 0,
-                'end_date': page_object.end_date if page_object.end_date else 0,
+                'start_date': start_date_value,
+                'end_date': end_date_value,
                 'start_span': page_object.start_span if page_object.start_span is not None else 0,
                 'end_span': page_object.end_span if page_object.end_span is not None else 0,
                 'duration': page_object.duration if page_object.duration is not None else 0.0,
@@ -270,6 +291,71 @@ class LeavesService:
         :return: 请假 id 对应的信息
         """
         leaves = await LeavesDao.get_leaves_detail_by_id(query_db, leaves_id)
-        result = LeavesModel(**CamelCaseUtil.transform_result(leaves)) if leaves else LeavesModel()
-
+        if not leaves:
+            return LeavesModel()
+        
+        result_dict = CamelCaseUtil.transform_result(leaves)
+        
+        types_map = {1: '事假', 2: '年假', 3: '调休假', 4: '病假', 5: '婚假', 6: '丧假', 7: '产假', 8: '陪产假', 9: '其他'}
+        types_val = result_dict.get('types')
+        result_dict['typesStr'] = types_map.get(types_val, '') if types_val else ''
+        
+        create_time = result_dict.get('createTime')
+        if create_time and isinstance(create_time, (int, float)) and create_time > 0:
+            result_dict['createTime'] = timestamp_to_datetime(create_time, '%Y-%m-%d %H:%M:%S')
+        else:
+            result_dict['createTime'] = ''
+        
+        start_date = result_dict.get('startDate')
+        if start_date and isinstance(start_date, (int, float)) and start_date > 0:
+            if start_date > 1e12:
+                start_date_seconds = start_date / 1000
+            else:
+                start_date_seconds = start_date
+            result_dict['startDate'] = datetime.fromtimestamp(start_date_seconds).strftime('%Y-%m-%d %H:%M:%S')
+        else:
+            result_dict['startDate'] = ''
+        
+        end_date = result_dict.get('endDate')
+        if end_date and isinstance(end_date, (int, float)) and end_date > 0:
+            if end_date > 1e12:
+                end_date_seconds = end_date / 1000
+            else:
+                end_date_seconds = end_date
+            result_dict['endDate'] = datetime.fromtimestamp(end_date_seconds).strftime('%Y-%m-%d %H:%M:%S')
+        else:
+            result_dict['endDate'] = ''
+        
+        admin_id = result_dict.get('adminId')
+        if admin_id and isinstance(admin_id, int) and admin_id > 0:
+            try:
+                admin_user = await query_db.execute(
+                    select(SysUser.nick_name, SysUser.user_name).where(SysUser.user_id == admin_id)
+                )
+                user_info = admin_user.first()
+                if user_info:
+                    result_dict['adminName'] = user_info.nick_name or user_info.user_name
+                else:
+                    result_dict['adminName'] = ''
+            except Exception as e:
+                logger.error(f"查询创建人失败: {e}")
+                result_dict['adminName'] = ''
+        else:
+            result_dict['adminName'] = ''
+        
+        did = result_dict.get('did')
+        if did and isinstance(did, int) and did > 0:
+            try:
+                dept = await query_db.execute(
+                    select(SysDept.dept_name).where(SysDept.dept_id == did)
+                )
+                dept_info = dept.scalar_one_or_none()
+                result_dict['deptName'] = dept_info if dept_info else ''
+            except Exception as e:
+                logger.error(f"查询部门失败: {e}")
+                result_dict['deptName'] = ''
+        else:
+            result_dict['deptName'] = ''
+        
+        result = LeavesModel(**result_dict)
         return result
