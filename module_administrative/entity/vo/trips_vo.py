@@ -38,6 +38,7 @@ class TripsModel(BaseModel):
 
     admin_name: str | None = Field(default=None, description='创建人姓名')
     dept_name: str | None = Field(default=None, description='部门名称')
+    check_name: str | None = Field(default=None, description='当前审批人姓名')
     records: list[dict] | None = Field(default=None, description='审批记录')
 
     @field_validator('start_date', mode='before')

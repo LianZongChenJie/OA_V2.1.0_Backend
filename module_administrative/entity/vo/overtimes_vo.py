@@ -34,6 +34,10 @@ class OvertimesModel(BaseModel):
     create_time: Union[int, str, None] = Field(default=None, description='创建时间')
     update_time: Union[int, str, None] = Field(default=None, description='更新时间')
     delete_time: Union[int, str, None] = Field(default=None, description='删除时间')
+    
+    admin_name: str | None = Field(default=None, description='创建人姓名')
+    dept_name: str | None = Field(default=None, description='部门名称')
+    check_name: str | None = Field(default=None, description='当前审批人姓名')
     records: list[dict] | None = Field(default=None, description='审批记录')
 
     @field_validator('start_date', mode='before')

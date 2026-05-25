@@ -40,7 +40,7 @@ class LeavesModel(BaseModel):
     types_str: str | None = Field(default=None, description='请假类型字符串')
     admin_name: str | None = Field(default=None, description='创建人姓名')
     dept_name: str | None = Field(default=None, description='部门名称')
-    records: list[dict] | None = Field(default=None, description='审批记录')
+    check_name: str | None = Field(default=None, description='当前审批人姓名')
     records: list[dict] | None = Field(default=None, description='审批记录')
 
     @field_validator('types', mode='before')

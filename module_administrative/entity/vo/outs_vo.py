@@ -17,8 +17,8 @@ class OutsModel(BaseModel):
     id: int | None = Field(default=None, description='外出 ID')
     start_date: int | str | None = Field(default=None, description='开始日期')
     end_date: int | str | None = Field(default=None, description='结束日期')
-    start_span: Literal[1, 2] | None = Field(default=None, description='时间段:1上午,2下午')
-    end_span: Literal[1, 2] | None = Field(default=None, description='时间段:1上午,2下午')
+    start_span: Literal[0, 1, 2] | None = Field(default=None, description='时间段:0未设置,1上午,2下午')
+    end_span: Literal[0, 1, 2] | None = Field(default=None, description='时间段:0未设置,1上午,2下午')
     duration: Decimal | float | None = Field(default=None, description='时长(工作日)')
     reason: str | None = Field(default=None, description='外出原因')
     file_ids: str | None = Field(default=None, description='附件 ids')
@@ -38,6 +38,7 @@ class OutsModel(BaseModel):
 
     admin_name: str | None = Field(default=None, description='创建人姓名')
     dept_name: str | None = Field(default=None, description='部门名称')
+    check_name: str | None = Field(default=None, description='当前审批人姓名')
     records: list[dict] | None = Field(default=None, description='审批记录')
 
     @field_validator('start_date', mode='before')

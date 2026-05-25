@@ -85,7 +85,7 @@ class OutsService:
                         start_date_seconds = start_date / 1000
                     else:
                         start_date_seconds = start_date
-                    item['startDate'] = datetime.fromtimestamp(start_date_seconds).strftime('%Y-%m-%d')
+                    item['startDate'] = datetime.fromtimestamp(start_date_seconds).strftime('%Y-%m-%d %H:%M:%S')
                 except Exception as e:
                     logger.error(f"开始时间格式化失败: {e}")
                     item['startDate'] = ''
@@ -99,7 +99,7 @@ class OutsService:
                         end_date_seconds = end_date / 1000
                     else:
                         end_date_seconds = end_date
-                    item['endDate'] = datetime.fromtimestamp(end_date_seconds).strftime('%Y-%m-%d')
+                    item['endDate'] = datetime.fromtimestamp(end_date_seconds).strftime('%Y-%m-%d %H:%M:%S')
                 except Exception as e:
                     logger.error(f"结束时间格式化失败: {e}")
                     item['endDate'] = ''
@@ -136,6 +136,25 @@ class OutsService:
                     item['deptName'] = ''
             else:
                 item['deptName'] = ''
+            
+            # 获取当前审批人姓名
+            check_uids = item.get('checkUids')
+            if check_uids and isinstance(check_uids, str) and check_uids.strip():
+                try:
+                    uid_list = [int(uid.strip()) for uid in check_uids.split(',') if uid.strip().isdigit()]
+                    if uid_list:
+                        users_result = await query_db.execute(
+                            select(SysUser.nick_name, SysUser.user_name).where(SysUser.user_id.in_(uid_list))
+                        )
+                        users = users_result.all()
+                        item['checkName'] = ','.join([u.nick_name or u.user_name for u in users])
+                    else:
+                        item['checkName'] = ''
+                except Exception as e:
+                    logger.error(f"查询审批人失败: {e}")
+                    item['checkName'] = ''
+            else:
+                item['checkName'] = ''
 
         return outs_list
 
@@ -376,6 +395,25 @@ class OutsService:
                 result_dict['deptName'] = ''
         else:
             result_dict['deptName'] = ''
+        
+        # 获取当前审批人姓名
+        check_uids = result_dict.get('checkUids')
+        if check_uids and isinstance(check_uids, str) and check_uids.strip():
+            try:
+                uid_list = [int(uid.strip()) for uid in check_uids.split(',') if uid.strip().isdigit()]
+                if uid_list:
+                    users_result = await query_db.execute(
+                        select(SysUser.nick_name, SysUser.user_name).where(SysUser.user_id.in_(uid_list))
+                    )
+                    users = users_result.all()
+                    result_dict['checkName'] = ','.join([u.nick_name or u.user_name for u in users])
+                else:
+                    result_dict['checkName'] = ''
+            except Exception as e:
+                logger.error(f"查询审批人失败: {e}")
+                result_dict['checkName'] = ''
+        else:
+            result_dict['checkName'] = ''
         
         # 获取审批记录
         flow_id = result_dict.get('checkFlowId')

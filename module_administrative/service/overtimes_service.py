@@ -3,9 +3,12 @@ from decimal import Decimal
 from typing import Any
 
 from fastapi import Request
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from common.constant import CommonConstant
+from module_admin.entity.do.user_do import SysUser
+from module_admin.entity.do.dept_do import SysDept
 from common.vo import CrudResponseModel, PageModel
 from exceptions.exception import ServiceException
 from module_administrative.dao.overtimes_dao import OvertimesDao
@@ -45,6 +48,78 @@ class OvertimesService:
             transformed_rows = []
             for row in overtimes_list_result.rows:
                 transformed_dict = CamelCaseUtil.transform_result(row)
+                
+                # 格式化时间
+                create_time = transformed_dict.get('createTime')
+                if create_time and isinstance(create_time, (int, float)) and create_time > 0:
+                    if create_time > 1e12:
+                        create_time_seconds = create_time / 1000
+                    else:
+                        create_time_seconds = create_time
+                    transformed_dict['createTime'] = datetime.fromtimestamp(create_time_seconds).strftime('%Y-%m-%d %H:%M:%S')
+                else:
+                    transformed_dict['createTime'] = ''
+                
+                start_date = transformed_dict.get('startDate')
+                if start_date and isinstance(start_date, (int, float)) and start_date > 0:
+                    if start_date > 1e12:
+                        start_date_seconds = start_date / 1000
+                    else:
+                        start_date_seconds = start_date
+                    transformed_dict['startDate'] = datetime.fromtimestamp(start_date_seconds).strftime('%Y-%m-%d %H:%M:%S')
+                else:
+                    transformed_dict['startDate'] = ''
+                
+                end_date = transformed_dict.get('endDate')
+                if end_date and isinstance(end_date, (int, float)) and end_date > 0:
+                    if end_date > 1e12:
+                        end_date_seconds = end_date / 1000
+                    else:
+                        end_date_seconds = end_date
+                    transformed_dict['endDate'] = datetime.fromtimestamp(end_date_seconds).strftime('%Y-%m-%d %H:%M:%S')
+                else:
+                    transformed_dict['endDate'] = ''
+                
+                # 获取创建人姓名
+                admin_id = transformed_dict.get('adminId')
+                if admin_id and isinstance(admin_id, int) and admin_id > 0:
+                    admin_user = await query_db.execute(
+                        select(SysUser.nick_name, SysUser.user_name).where(SysUser.user_id == admin_id)
+                    )
+                    user_info = admin_user.first()
+                    if user_info:
+                        transformed_dict['adminName'] = user_info.nick_name or user_info.user_name
+                    else:
+                        transformed_dict['adminName'] = ''
+                else:
+                    transformed_dict['adminName'] = ''
+                
+                # 获取部门名称
+                did = transformed_dict.get('did')
+                if did and isinstance(did, int) and did > 0:
+                    dept = await query_db.execute(
+                        select(SysDept.dept_name).where(SysDept.dept_id == did)
+                    )
+                    dept_info = dept.scalar_one_or_none()
+                    transformed_dict['deptName'] = dept_info if dept_info else ''
+                else:
+                    transformed_dict['deptName'] = ''
+                
+                # 获取当前审批人姓名
+                check_uids = transformed_dict.get('checkUids')
+                if check_uids and isinstance(check_uids, str) and check_uids.strip():
+                    uid_list = [int(uid.strip()) for uid in check_uids.split(',') if uid.strip().isdigit()]
+                    if uid_list:
+                        users_result = await query_db.execute(
+                            select(SysUser.nick_name, SysUser.user_name).where(SysUser.user_id.in_(uid_list))
+                        )
+                        users = users_result.all()
+                        transformed_dict['checkName'] = ','.join([u.nick_name or u.user_name for u in users])
+                    else:
+                        transformed_dict['checkName'] = ''
+                else:
+                    transformed_dict['checkName'] = ''
+                
                 transformed_rows.append(transformed_dict)
 
             overtimes_list_result.rows = transformed_rows
@@ -263,6 +338,58 @@ class OvertimesService:
                 overtimes_dict['deleteTime'] = datetime.fromtimestamp(delete_time_seconds).strftime('%Y-%m-%d %H:%M:%S')
             else:
                 overtimes_dict['deleteTime'] = ''
+            
+            # 获取创建人姓名
+            admin_id = overtimes_dict.get('adminId')
+            if admin_id and isinstance(admin_id, int) and admin_id > 0:
+                try:
+                    admin_user = await query_db.execute(
+                        select(SysUser.nick_name, SysUser.user_name).where(SysUser.user_id == admin_id)
+                    )
+                    user_info = admin_user.first()
+                    if user_info:
+                        overtimes_dict['adminName'] = user_info.nick_name or user_info.user_name
+                    else:
+                        overtimes_dict['adminName'] = ''
+                except Exception as e:
+                    logger.error(f"查询创建人失败: {e}")
+                    overtimes_dict['adminName'] = ''
+            else:
+                overtimes_dict['adminName'] = ''
+            
+            # 获取部门名称
+            did = overtimes_dict.get('did')
+            if did and isinstance(did, int) and did > 0:
+                try:
+                    dept = await query_db.execute(
+                        select(SysDept.dept_name).where(SysDept.dept_id == did)
+                    )
+                    dept_info = dept.scalar_one_or_none()
+                    overtimes_dict['deptName'] = dept_info if dept_info else ''
+                except Exception as e:
+                    logger.error(f"查询部门失败: {e}")
+                    overtimes_dict['deptName'] = ''
+            else:
+                overtimes_dict['deptName'] = ''
+            
+            # 获取当前审批人姓名
+            check_uids = overtimes_dict.get('checkUids')
+            if check_uids and isinstance(check_uids, str) and check_uids.strip():
+                try:
+                    uid_list = [int(uid.strip()) for uid in check_uids.split(',') if uid.strip().isdigit()]
+                    if uid_list:
+                        users_result = await query_db.execute(
+                            select(SysUser.nick_name, SysUser.user_name).where(SysUser.user_id.in_(uid_list))
+                        )
+                        users = users_result.all()
+                        overtimes_dict['checkName'] = ','.join([u.nick_name or u.user_name for u in users])
+                    else:
+                        overtimes_dict['checkName'] = ''
+                except Exception as e:
+                    logger.error(f"查询审批人失败: {e}")
+                    overtimes_dict['checkName'] = ''
+            else:
+                overtimes_dict['checkName'] = ''
             
             # 获取审批记录
             flow_id = overtimes_dict.get('checkFlowId')
