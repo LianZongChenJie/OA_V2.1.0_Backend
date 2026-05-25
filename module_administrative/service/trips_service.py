@@ -17,6 +17,7 @@ from module_administrative.entity.vo.trips_vo import (
     TripsModel,
     TripsPageQueryModel,
 )
+from module_personnel.dao.flow_record_dao import FlowRecordDao
 from utils.common_util import CamelCaseUtil
 from utils.log_util import logger
 from utils.time_format_util import timestamp_to_datetime
@@ -85,7 +86,7 @@ class TripsService:
                         start_date_seconds = start_date / 1000
                     else:
                         start_date_seconds = start_date
-                    item['startDate'] = datetime.fromtimestamp(start_date_seconds).strftime('%Y-%m-%d')
+                    item['startDate'] = datetime.fromtimestamp(start_date_seconds).strftime('%Y-%m-%d %H:%M:%S')
                 except Exception as e:
                     logger.error(f"开始时间格式化失败: {e}")
                     item['startDate'] = ''
@@ -99,7 +100,7 @@ class TripsService:
                         end_date_seconds = end_date / 1000
                     else:
                         end_date_seconds = end_date
-                    item['endDate'] = datetime.fromtimestamp(end_date_seconds).strftime('%Y-%m-%d')
+                    item['endDate'] = datetime.fromtimestamp(end_date_seconds).strftime('%Y-%m-%d %H:%M:%S')
                 except Exception as e:
                     logger.error(f"结束时间格式化失败: {e}")
                     item['endDate'] = ''
@@ -158,10 +159,32 @@ class TripsService:
 
         try:
             current_time = int(datetime.now().timestamp())
+            
+            # 处理 start_date
+            start_date_value = page_object.start_date
+            if isinstance(start_date_value, str) and ('-' in start_date_value or ':' in start_date_value):
+                try:
+                    dt = datetime.fromisoformat(start_date_value)
+                    start_date_value = int(dt.timestamp())
+                except ValueError:
+                    start_date_value = 0
+            elif not start_date_value:
+                start_date_value = 0
+            
+            # 处理 end_date
+            end_date_value = page_object.end_date
+            if isinstance(end_date_value, str) and ('-' in end_date_value or ':' in end_date_value):
+                try:
+                    dt = datetime.fromisoformat(end_date_value)
+                    end_date_value = int(dt.timestamp())
+                except ValueError:
+                    end_date_value = 0
+            elif not end_date_value:
+                end_date_value = 0
 
             trips_dict = {
-                'start_date': page_object.start_date if page_object.start_date else 0,
-                'end_date': page_object.end_date if page_object.end_date else 0,
+                'start_date': start_date_value,
+                'end_date': end_date_value,
                 'start_span': page_object.start_span if page_object.start_span is not None else 0,
                 'end_span': page_object.end_span if page_object.end_span is not None else 0,
                 'duration': page_object.duration if page_object.duration is not None else 0.0,
@@ -282,7 +305,7 @@ class TripsService:
                 start_date_seconds = start_date / 1000
             else:
                 start_date_seconds = start_date
-            result_dict['startDate'] = datetime.fromtimestamp(start_date_seconds).strftime('%Y-%m-%d')
+            result_dict['startDate'] = datetime.fromtimestamp(start_date_seconds).strftime('%Y-%m-%d %H:%M:%S')
         else:
             result_dict['startDate'] = ''
         
@@ -292,7 +315,7 @@ class TripsService:
                 end_date_seconds = end_date / 1000
             else:
                 end_date_seconds = end_date
-            result_dict['endDate'] = datetime.fromtimestamp(end_date_seconds).strftime('%Y-%m-%d')
+            result_dict['endDate'] = datetime.fromtimestamp(end_date_seconds).strftime('%Y-%m-%d %H:%M:%S')
         else:
             result_dict['endDate'] = ''
         
@@ -326,6 +349,43 @@ class TripsService:
                 result_dict['deptName'] = ''
         else:
             result_dict['deptName'] = ''
+        
+        # 格式化更新时间
+        update_time = result_dict.get('updateTime')
+        if update_time and isinstance(update_time, (int, float)) and update_time > 0:
+            if update_time > 1e12:
+                update_time_seconds = update_time / 1000
+            else:
+                update_time_seconds = update_time
+            result_dict['updateTime'] = datetime.fromtimestamp(update_time_seconds).strftime('%Y-%m-%d %H:%M:%S')
+        else:
+            result_dict['updateTime'] = ''
+        
+        # 格式化删除时间
+        delete_time = result_dict.get('deleteTime')
+        if delete_time and isinstance(delete_time, (int, float)) and delete_time > 0:
+            if delete_time > 1e12:
+                delete_time_seconds = delete_time / 1000
+            else:
+                delete_time_seconds = delete_time
+            result_dict['deleteTime'] = datetime.fromtimestamp(delete_time_seconds).strftime('%Y-%m-%d %H:%M:%S')
+        else:
+            result_dict['deleteTime'] = ''
+        
+        # 获取审批记录
+        flow_id = result_dict.get('checkFlowId')
+        if flow_id and isinstance(flow_id, int) and flow_id > 0:
+            try:
+                records = await FlowRecordDao.get_records_dict(db=query_db, action_id=trips_id, flow_id=flow_id)
+                # 将字段名转换为驼峰格式
+                if records:
+                    records = CamelCaseUtil.transform_result(records)
+                result_dict['records'] = records if records else []
+            except Exception as e:
+                logger.error(f"查询审批记录失败: {e}")
+                result_dict['records'] = []
+        else:
+            result_dict['records'] = []
         
         result = TripsModel(**result_dict)
         return result

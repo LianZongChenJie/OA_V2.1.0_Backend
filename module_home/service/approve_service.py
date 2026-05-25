@@ -11,6 +11,7 @@ from module_admin.entity.do.user_do import SysUser
 from module_admin.entity.do.dept_do import SysDept
 from module_home.dao.approve_dao import ApproveDao
 from module_home.entity.vo.approve_vo import ApprovePageQueryModel
+from utils.common_util import CamelCaseUtil
 
 
 class ApproveService:
@@ -174,6 +175,8 @@ class ApproveService:
         # 格式化数据
         if result['data']:
             result['data'] = await cls._format_approve_list(result['data'], query_db)
+            # 将字段名转换为驼峰格式
+            result['data'] = CamelCaseUtil.transform_result(result['data'])
 
         return result
 
@@ -208,6 +211,8 @@ class ApproveService:
         # 格式化数据
         if result['data']:
             result['data'] = await cls._format_approve_list(result['data'], query_db)
+            # 将字段名转换为驼峰格式
+            result['data'] = CamelCaseUtil.transform_result(result['data'])
 
         return result
 
@@ -238,5 +243,7 @@ class ApproveService:
         # 格式化数据
         if result['data']:
             result['data'] = await cls._format_approve_list(result['data'], query_db)
+            # 将字段名转换为驼峰格式
+            result['data'] = CamelCaseUtil.transform_result(result['data'])
 
         return result

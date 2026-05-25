@@ -11,6 +11,9 @@ from exceptions.exception import ServiceException
 from module_administrative.dao.leaves_dao import LeavesDao
 from module_admin.entity.do.user_do import SysUser
 from module_admin.entity.do.dept_do import SysDept
+from module_personnel.dao.flow_record_dao import FlowRecordDao
+from module_personnel.dao.flow_record_dao import FlowRecordDao
+from module_personnel.dao.flow_record_dao import FlowRecordDao
 from module_administrative.entity.vo.leaves_vo import (
     AddLeavesModel,
     DeleteLeavesModel,
@@ -240,6 +243,29 @@ class LeavesService:
                     exclude_unset=True,
                     exclude={'id', 'types_str', 'admin_name', 'dept_name', 'create_time', 'delete_time'}
                 )
+                
+                # 处理 start_date
+                start_date_value = edit_leaves.get('start_date')
+                if isinstance(start_date_value, str) and ('-' in start_date_value or ':' in start_date_value):
+                    try:
+                        dt = datetime.fromisoformat(start_date_value)
+                        edit_leaves['start_date'] = int(dt.timestamp())
+                    except ValueError:
+                        edit_leaves['start_date'] = 0
+                elif not start_date_value:
+                    edit_leaves['start_date'] = 0
+                
+                # 处理 end_date
+                end_date_value = edit_leaves.get('end_date')
+                if isinstance(end_date_value, str) and ('-' in end_date_value or ':' in end_date_value):
+                    try:
+                        dt = datetime.fromisoformat(end_date_value)
+                        edit_leaves['end_date'] = int(dt.timestamp())
+                    except ValueError:
+                        edit_leaves['end_date'] = 0
+                elif not end_date_value:
+                    edit_leaves['end_date'] = 0
+                
                 edit_leaves['update_time'] = int(datetime.now().timestamp())
                 await LeavesDao.edit_leaves_dao(query_db, page_object.id, edit_leaves)
                 await query_db.commit()
@@ -356,6 +382,21 @@ class LeavesService:
                 result_dict['deptName'] = ''
         else:
             result_dict['deptName'] = ''
+        
+        # 获取审批记录
+        flow_id = result_dict.get('checkFlowId')
+        if flow_id and isinstance(flow_id, int) and flow_id > 0:
+            try:
+                records = await FlowRecordDao.get_records_dict(db=query_db, action_id=leaves_id, flow_id=flow_id)
+                # 将字段名转换为驼峰格式
+                if records:
+                    records = CamelCaseUtil.transform_result(records)
+                result_dict['records'] = records if records else []
+            except Exception as e:
+                logger.error(f"查询审批记录失败: {e}")
+                result_dict['records'] = []
+        else:
+            result_dict['records'] = []
         
         result = LeavesModel(**result_dict)
         return result

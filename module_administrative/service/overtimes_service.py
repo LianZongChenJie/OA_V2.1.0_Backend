@@ -16,6 +16,7 @@ from module_administrative.entity.vo.overtimes_vo import (
     OvertimesModel,
     OvertimesPageQueryModel,
 )
+from module_personnel.dao.flow_record_dao import FlowRecordDao
 from utils.camel_converter import ModelConverter
 from utils.common_util import CamelCaseUtil
 
@@ -68,6 +69,30 @@ class OvertimesService:
             current_time = int(datetime.now().timestamp())
             overtimes_data = page_object.model_dump(exclude_unset=True)
 
+            # 处理 start_date
+            if 'start_date' in overtimes_data:
+                start_date_value = overtimes_data['start_date']
+                if isinstance(start_date_value, str) and ('-' in start_date_value or ':' in start_date_value):
+                    try:
+                        dt = datetime.fromisoformat(start_date_value)
+                        overtimes_data['start_date'] = int(dt.timestamp())
+                    except ValueError:
+                        overtimes_data['start_date'] = 0
+                elif not start_date_value:
+                    overtimes_data['start_date'] = 0
+            
+            # 处理 end_date
+            if 'end_date' in overtimes_data:
+                end_date_value = overtimes_data['end_date']
+                if isinstance(end_date_value, str) and ('-' in end_date_value or ':' in end_date_value):
+                    try:
+                        dt = datetime.fromisoformat(end_date_value)
+                        overtimes_data['end_date'] = int(dt.timestamp())
+                    except ValueError:
+                        overtimes_data['end_date'] = 0
+                elif not end_date_value:
+                    overtimes_data['end_date'] = 0
+
             # 验证结束时间不能小于开始时间
             if 'start_date' in overtimes_data and 'end_date' in overtimes_data:
                 if overtimes_data['end_date'] < overtimes_data['start_date']:
@@ -103,6 +128,30 @@ class OvertimesService:
 
         if overtimes_info.id:
             try:
+                # 处理 start_date
+                if 'start_date' in overtimes_data:
+                    start_date_value = overtimes_data['start_date']
+                    if isinstance(start_date_value, str) and ('-' in start_date_value or ':' in start_date_value):
+                        try:
+                            dt = datetime.fromisoformat(start_date_value)
+                            overtimes_data['start_date'] = int(dt.timestamp())
+                        except ValueError:
+                            overtimes_data['start_date'] = 0
+                    elif not start_date_value:
+                        overtimes_data['start_date'] = 0
+                
+                # 处理 end_date
+                if 'end_date' in overtimes_data:
+                    end_date_value = overtimes_data['end_date']
+                    if isinstance(end_date_value, str) and ('-' in end_date_value or ':' in end_date_value):
+                        try:
+                            dt = datetime.fromisoformat(end_date_value)
+                            overtimes_data['end_date'] = int(dt.timestamp())
+                        except ValueError:
+                            overtimes_data['end_date'] = 0
+                    elif not end_date_value:
+                        overtimes_data['end_date'] = 0
+
                 # 验证结束时间不能小于开始时间
                 if 'start_date' in overtimes_data and 'end_date' in overtimes_data:
                     if overtimes_data['end_date'] < overtimes_data['start_date']:
@@ -159,6 +208,76 @@ class OvertimesService:
 
         if result:
             overtimes_dict = CamelCaseUtil.transform_result(result)
+            
+            # 格式化开始日期
+            start_date = overtimes_dict.get('startDate')
+            if start_date and isinstance(start_date, (int, float)) and start_date > 0:
+                if start_date > 1e12:
+                    start_date_seconds = start_date / 1000
+                else:
+                    start_date_seconds = start_date
+                overtimes_dict['startDate'] = datetime.fromtimestamp(start_date_seconds).strftime('%Y-%m-%d %H:%M:%S')
+            else:
+                overtimes_dict['startDate'] = ''
+            
+            # 格式化结束日期
+            end_date = overtimes_dict.get('endDate')
+            if end_date and isinstance(end_date, (int, float)) and end_date > 0:
+                if end_date > 1e12:
+                    end_date_seconds = end_date / 1000
+                else:
+                    end_date_seconds = end_date
+                overtimes_dict['endDate'] = datetime.fromtimestamp(end_date_seconds).strftime('%Y-%m-%d %H:%M:%S')
+            else:
+                overtimes_dict['endDate'] = ''
+            
+            # 格式化创建时间
+            create_time = overtimes_dict.get('createTime')
+            if create_time and isinstance(create_time, (int, float)) and create_time > 0:
+                if create_time > 1e12:
+                    create_time_seconds = create_time / 1000
+                else:
+                    create_time_seconds = create_time
+                overtimes_dict['createTime'] = datetime.fromtimestamp(create_time_seconds).strftime('%Y-%m-%d %H:%M:%S')
+            else:
+                overtimes_dict['createTime'] = ''
+            
+            # 格式化更新时间
+            update_time = overtimes_dict.get('updateTime')
+            if update_time and isinstance(update_time, (int, float)) and update_time > 0:
+                if update_time > 1e12:
+                    update_time_seconds = update_time / 1000
+                else:
+                    update_time_seconds = update_time
+                overtimes_dict['updateTime'] = datetime.fromtimestamp(update_time_seconds).strftime('%Y-%m-%d %H:%M:%S')
+            else:
+                overtimes_dict['updateTime'] = ''
+            
+            # 格式化删除时间
+            delete_time = overtimes_dict.get('deleteTime')
+            if delete_time and isinstance(delete_time, (int, float)) and delete_time > 0:
+                if delete_time > 1e12:
+                    delete_time_seconds = delete_time / 1000
+                else:
+                    delete_time_seconds = delete_time
+                overtimes_dict['deleteTime'] = datetime.fromtimestamp(delete_time_seconds).strftime('%Y-%m-%d %H:%M:%S')
+            else:
+                overtimes_dict['deleteTime'] = ''
+            
+            # 获取审批记录
+            flow_id = overtimes_dict.get('checkFlowId')
+            if flow_id and isinstance(flow_id, int) and flow_id > 0:
+                try:
+                    records = await FlowRecordDao.get_records_dict(db=query_db, action_id=overtimes_id, flow_id=flow_id)
+                    # 将字段名转换为驼峰格式
+                    if records:
+                        records = CamelCaseUtil.transform_result(records)
+                    overtimes_dict['records'] = records if records else []
+                except Exception as e:
+                    overtimes_dict['records'] = []
+            else:
+                overtimes_dict['records'] = []
+            
             return OvertimesModel(**overtimes_dict)
         else:
             raise ServiceException(message=f'加班记录 ID {overtimes_id} 不存在')

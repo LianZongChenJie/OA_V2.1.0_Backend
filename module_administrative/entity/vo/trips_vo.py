@@ -17,8 +17,8 @@ class TripsModel(BaseModel):
     id: int | None = Field(default=None, description='出差 ID')
     start_date: int | str | None = Field(default=None, description='开始日期')
     end_date: int | str | None = Field(default=None, description='结束日期')
-    start_span: Literal[1, 2] | None = Field(default=None, description='时间段:1上午,2下午')
-    end_span: Literal[1, 2] | None = Field(default=None, description='时间段:1上午,2下午')
+    start_span: Literal[0, 1, 2] | None = Field(default=None, description='时间段:0未设置,1上午,2下午')
+    end_span: Literal[0, 1, 2] | None = Field(default=None, description='时间段:0未设置,1上午,2下午')
     duration: Decimal | float | None = Field(default=None, description='时长(工作日)')
     reason: str | None = Field(default=None, description='出差原因')
     file_ids: str | None = Field(default=None, description='附件 ids')
@@ -38,6 +38,7 @@ class TripsModel(BaseModel):
 
     admin_name: str | None = Field(default=None, description='创建人姓名')
     dept_name: str | None = Field(default=None, description='部门名称')
+    records: list[dict] | None = Field(default=None, description='审批记录')
 
     @field_validator('start_date', mode='before')
     @classmethod
@@ -46,8 +47,8 @@ class TripsModel(BaseModel):
         if value is None or value == '':
             return None
         
-        # 如果已经是格式化后的字符串（包含'-'），直接返回
-        if isinstance(value, str) and '-' in value:
+        # 如果已经是格式化后的字符串（包含':'），直接返回
+        if isinstance(value, str) and ':' in value:
             return value
 
         if isinstance(value, int):
@@ -72,8 +73,8 @@ class TripsModel(BaseModel):
         if value is None or value == '':
             return None
         
-        # 如果已经是格式化后的字符串（包含'-'），直接返回
-        if isinstance(value, str) and '-' in value:
+        # 如果已经是格式化后的字符串（包含':'），直接返回
+        if isinstance(value, str) and ':' in value:
             return value
 
         if isinstance(value, int):

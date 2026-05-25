@@ -17,6 +17,7 @@ from module_administrative.entity.vo.outs_vo import (
     OutsModel,
     OutsPageQueryModel,
 )
+from module_personnel.dao.flow_record_dao import FlowRecordDao
 from utils.common_util import CamelCaseUtil
 from utils.log_util import logger
 
@@ -157,10 +158,32 @@ class OutsService:
 
         try:
             current_time = int(datetime.now().timestamp())
+            
+            # 处理 start_date
+            start_date_value = page_object.start_date
+            if isinstance(start_date_value, str) and ('-' in start_date_value or ':' in start_date_value):
+                try:
+                    dt = datetime.fromisoformat(start_date_value)
+                    start_date_value = int(dt.timestamp())
+                except ValueError:
+                    start_date_value = 0
+            elif not start_date_value:
+                start_date_value = 0
+            
+            # 处理 end_date
+            end_date_value = page_object.end_date
+            if isinstance(end_date_value, str) and ('-' in end_date_value or ':' in end_date_value):
+                try:
+                    dt = datetime.fromisoformat(end_date_value)
+                    end_date_value = int(dt.timestamp())
+                except ValueError:
+                    end_date_value = 0
+            elif not end_date_value:
+                end_date_value = 0
 
             outs_dict = {
-                'start_date': page_object.start_date if page_object.start_date else 0,
-                'end_date': page_object.end_date if page_object.end_date else 0,
+                'start_date': start_date_value,
+                'end_date': end_date_value,
                 'start_span': page_object.start_span if page_object.start_span is not None else 0,
                 'end_span': page_object.end_span if page_object.end_span is not None else 0,
                 'duration': page_object.duration if page_object.duration is not None else 0.0,
@@ -209,6 +232,29 @@ class OutsService:
                     exclude_unset=True,
                     exclude={'id', 'admin_name', 'dept_name', 'create_time', 'delete_time'}
                 )
+                
+                # 处理 start_date
+                start_date_value = edit_outs.get('start_date')
+                if isinstance(start_date_value, str) and ('-' in start_date_value or ':' in start_date_value):
+                    try:
+                        dt = datetime.fromisoformat(start_date_value)
+                        edit_outs['start_date'] = int(dt.timestamp())
+                    except ValueError:
+                        edit_outs['start_date'] = 0
+                elif not start_date_value:
+                    edit_outs['start_date'] = 0
+                
+                # 处理 end_date
+                end_date_value = edit_outs.get('end_date')
+                if isinstance(end_date_value, str) and ('-' in end_date_value or ':' in end_date_value):
+                    try:
+                        dt = datetime.fromisoformat(end_date_value)
+                        edit_outs['end_date'] = int(dt.timestamp())
+                    except ValueError:
+                        edit_outs['end_date'] = 0
+                elif not end_date_value:
+                    edit_outs['end_date'] = 0
+                
                 edit_outs['update_time'] = int(datetime.now().timestamp())
                 await OutsDao.edit_outs_dao(query_db, page_object.id, edit_outs)
                 await query_db.commit()
@@ -260,6 +306,91 @@ class OutsService:
         :return: 外出 id 对应的信息
         """
         outs = await OutsDao.get_outs_detail_by_id(query_db, outs_id)
-        result = OutsModel(**CamelCaseUtil.transform_result(outs)) if outs else OutsModel()
-
+        if not outs:
+            return OutsModel()
+        
+        result_dict = CamelCaseUtil.transform_result(outs)
+        
+        # 格式化创建时间
+        create_time = result_dict.get('createTime')
+        if create_time and isinstance(create_time, (int, float)) and create_time > 0:
+            if create_time > 1e12:
+                create_time_seconds = create_time / 1000
+            else:
+                create_time_seconds = create_time
+            result_dict['createTime'] = datetime.fromtimestamp(create_time_seconds).strftime('%Y-%m-%d %H:%M:%S')
+        else:
+            result_dict['createTime'] = ''
+        
+        # 格式化开始日期
+        start_date = result_dict.get('startDate')
+        if start_date and isinstance(start_date, (int, float)) and start_date > 0:
+            if start_date > 1e12:
+                start_date_seconds = start_date / 1000
+            else:
+                start_date_seconds = start_date
+            result_dict['startDate'] = datetime.fromtimestamp(start_date_seconds).strftime('%Y-%m-%d %H:%M:%S')
+        else:
+            result_dict['startDate'] = ''
+        
+        # 格式化结束日期
+        end_date = result_dict.get('endDate')
+        if end_date and isinstance(end_date, (int, float)) and end_date > 0:
+            if end_date > 1e12:
+                end_date_seconds = end_date / 1000
+            else:
+                end_date_seconds = end_date
+            result_dict['endDate'] = datetime.fromtimestamp(end_date_seconds).strftime('%Y-%m-%d %H:%M:%S')
+        else:
+            result_dict['endDate'] = ''
+        
+        # 获取创建人姓名
+        admin_id = result_dict.get('adminId')
+        if admin_id and isinstance(admin_id, int) and admin_id > 0:
+            try:
+                admin_user = await query_db.execute(
+                    select(SysUser.nick_name, SysUser.user_name).where(SysUser.user_id == admin_id)
+                )
+                user_info = admin_user.first()
+                if user_info:
+                    result_dict['adminName'] = user_info.nick_name or user_info.user_name
+                else:
+                    result_dict['adminName'] = ''
+            except Exception as e:
+                logger.error(f"查询创建人失败: {e}")
+                result_dict['adminName'] = ''
+        else:
+            result_dict['adminName'] = ''
+        
+        # 获取部门名称
+        did = result_dict.get('did')
+        if did and isinstance(did, int) and did > 0:
+            try:
+                dept = await query_db.execute(
+                    select(SysDept.dept_name).where(SysDept.dept_id == did)
+                )
+                dept_info = dept.scalar_one_or_none()
+                result_dict['deptName'] = dept_info if dept_info else ''
+            except Exception as e:
+                logger.error(f"查询部门失败: {e}")
+                result_dict['deptName'] = ''
+        else:
+            result_dict['deptName'] = ''
+        
+        # 获取审批记录
+        flow_id = result_dict.get('checkFlowId')
+        if flow_id and isinstance(flow_id, int) and flow_id > 0:
+            try:
+                records = await FlowRecordDao.get_records_dict(db=query_db, action_id=outs_id, flow_id=flow_id)
+                # 将字段名转换为驼峰格式
+                if records:
+                    records = CamelCaseUtil.transform_result(records)
+                result_dict['records'] = records if records else []
+            except Exception as e:
+                logger.error(f"查询审批记录失败: {e}")
+                result_dict['records'] = []
+        else:
+            result_dict['records'] = []
+        
+        result = OutsModel(**result_dict)
         return result

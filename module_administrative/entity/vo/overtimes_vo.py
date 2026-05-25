@@ -34,15 +34,20 @@ class OvertimesModel(BaseModel):
     create_time: Union[int, str, None] = Field(default=None, description='创建时间')
     update_time: Union[int, str, None] = Field(default=None, description='更新时间')
     delete_time: Union[int, str, None] = Field(default=None, description='删除时间')
+    records: list[dict] | None = Field(default=None, description='审批记录')
 
     @field_validator('start_date', mode='before')
     @classmethod
-    def validate_start_date(cls, value: Any) -> int | None:
+    def validate_start_date(cls, value: Any) -> int | str | None:
         """
         验证并转换开始日期字段，支持时间戳和日期字符串
         """
         if value is None or value == '':
             return None
+
+        # 如果已经是格式化后的字符串（包含':'），直接返回
+        if isinstance(value, str) and ':' in value:
+            return value
 
         if isinstance(value, int):
             return value
@@ -61,12 +66,16 @@ class OvertimesModel(BaseModel):
 
     @field_validator('end_date', mode='before')
     @classmethod
-    def validate_end_date(cls, value: Any) -> int | None:
+    def validate_end_date(cls, value: Any) -> int | str | None:
         """
         验证并转换结束日期字段，支持时间戳和日期字符串
         """
         if value is None or value == '':
             return None
+
+        # 如果已经是格式化后的字符串（包含':'），直接返回
+        if isinstance(value, str) and ':' in value:
+            return value
 
         if isinstance(value, int):
             return value

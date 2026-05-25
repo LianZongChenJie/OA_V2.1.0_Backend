@@ -29,19 +29,20 @@ class OutsModel(BaseModel):
     check_last_uid: str | None = Field(default=None, description='上一审批人')
     check_history_uids: str | None = Field(default=None, description='历史审批人 ID')
     check_copy_uids: str | None = Field(default=None, description='抄送人 ID')
-    check_time: int | None = Field(default=None, description='审核通过时间')
+    check_time: int | str | None = Field(default=None, description='审核通过时间')
     admin_id: int | None = Field(default=None, description='创建人ID')
     did: int | None = Field(default=None, description='创建人部门ID')
-    create_time: int | None = Field(default=None, description='创建时间')
-    update_time: int | None = Field(default=None, description='更新时间')
-    delete_time: int | None = Field(default=None, description='删除时间')
+    create_time: int | str | None = Field(default=None, description='创建时间')
+    update_time: int | str | None = Field(default=None, description='更新时间')
+    delete_time: int | str | None = Field(default=None, description='删除时间')
 
     admin_name: str | None = Field(default=None, description='创建人姓名')
     dept_name: str | None = Field(default=None, description='部门名称')
+    records: list[dict] | None = Field(default=None, description='审批记录')
 
     @field_validator('start_date', mode='before')
     @classmethod
-    def validate_start_date(cls, value: Any) -> int | None:
+    def validate_start_date(cls, value: Any) -> int | str | None:
         """验证并转换开始时间"""
         if value is None or value == '':
             return None
@@ -50,6 +51,9 @@ class OutsModel(BaseModel):
             return value
 
         if isinstance(value, str):
+            # 如果已经是格式化后的字符串（包含':'），直接返回
+            if ':' in value:
+                return value
             try:
                 dt = datetime.fromisoformat(value)
                 return int(dt.timestamp())
@@ -63,7 +67,7 @@ class OutsModel(BaseModel):
 
     @field_validator('end_date', mode='before')
     @classmethod
-    def validate_end_date(cls, value: Any) -> int | None:
+    def validate_end_date(cls, value: Any) -> int | str | None:
         """验证并转换结束时间"""
         if value is None or value == '':
             return None
@@ -72,6 +76,9 @@ class OutsModel(BaseModel):
             return value
 
         if isinstance(value, str):
+            # 如果已经是格式化后的字符串（包含':'），直接返回
+            if ':' in value:
+                return value
             try:
                 dt = datetime.fromisoformat(value)
                 return int(dt.timestamp())

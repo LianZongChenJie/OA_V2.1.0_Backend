@@ -40,6 +40,8 @@ class LeavesModel(BaseModel):
     types_str: str | None = Field(default=None, description='请假类型字符串')
     admin_name: str | None = Field(default=None, description='创建人姓名')
     dept_name: str | None = Field(default=None, description='部门名称')
+    records: list[dict] | None = Field(default=None, description='审批记录')
+    records: list[dict] | None = Field(default=None, description='审批记录')
 
     @field_validator('types', mode='before')
     @classmethod
@@ -70,6 +72,9 @@ class LeavesModel(BaseModel):
             return value
         
         if isinstance(value, str):
+            # 如果已经是格式化后的字符串（包含':'），直接返回
+            if ':' in value:
+                return value
             # 尝试解析日期时间字符串为时间戳
             try:
                 dt = datetime.fromisoformat(value)
@@ -101,6 +106,9 @@ class LeavesModel(BaseModel):
             return value
         
         if isinstance(value, str):
+            # 如果已经是格式化后的字符串（包含':'），直接返回
+            if ':' in value:
+                return value
             # 尝试解析日期时间字符串为时间戳
             try:
                 dt = datetime.fromisoformat(value)
