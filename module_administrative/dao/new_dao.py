@@ -1,6 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update, asc
-from sqlalchemy.sql import ColumnElement, func
+from sqlalchemy import select, update, desc
+from sqlalchemy.sql import ColumnElement
 from common.vo import PageModel
 from module_admin.entity.do.user_do import SysUser
 from utils.page_util import PageUtil
@@ -35,7 +35,7 @@ class NewsDao:
             query = query.where(*conditions)
 
         # 排序
-        query = query.order_by(asc(OaNews.sort))
+        query = query.order_by(desc(OaNews.sort))
 
         # 分页查询
         page_list = await PageUtil.paginate_dict(

@@ -41,7 +41,7 @@ class NoteDao:
             query = query.where(*conditions)
 
         # 排序
-        query = query.order_by(desc(OaNote.create_time))
+        query = query.order_by(desc(OaNote.sort))
 
         # 分页查询
         page_list = await PageUtil.paginate_dict(
