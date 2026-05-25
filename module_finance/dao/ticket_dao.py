@@ -7,7 +7,8 @@ from module_admin.entity.do.customer_do import OaCustomer
 from module_admin.entity.do.dept_do import SysDept
 from module_admin.entity.do.user_do import SysUser
 from utils.page_util import PageUtil
-from module_finance.entity.vo.ticket_vo import OaTicketBaseModel, OaTicketPageQueryModel, OaTicketPaymentBaseModel
+from module_finance.entity.vo.ticket_vo import OaTicketBaseModel, OaTicketPageQueryModel, OaTicketPaymentBaseModel, \
+    OaTicketPaymentPageQueryModel
 from module_finance.entity.do.ticket_do import OaTicket,OaTicketPayment
 from typing import Any
 from datetime import datetime
@@ -279,7 +280,7 @@ class TicketDao:
         return count
 
     @classmethod
-    async def ticket_get_payment_list(cls, db: AsyncSession, query_object: OaTicketBaseModel, data_scope_sql: ColumnElement,
+    async def ticket_get_payment_list(cls, db: AsyncSession, query_object: OaTicketPaymentPageQueryModel, data_scope_sql: ColumnElement,
                             is_page: bool = False) -> PageModel | list[list[dict[str, Any]]]:
         query = (select(OaTicketPayment,
                        OaTicket.code.label('ticket_code'),
@@ -296,6 +297,9 @@ class TicketDao:
                  .where(
                     OaTicketPayment.status == 1,
                     OaTicketPayment.ticket_id == query_object.ticket_id if query_object.ticket_id else True,
+                    OaTicket.invoice_type !=0 if query_object.tab == 0 else True,
+                    OaTicket.invoice_type == 0 if query_object.tab == 1 else True,
+                    OaTicket.admin_id == query_object.admin_id if query_object.admin_id else True,
                     # OaTicket.id == query_object.id if query_object.id else True,
                     # OaTicket.code.like(f'%{query_object.code}%') if query_object.code else True,
                     # OaTicket.invoice_title.like(f'%{query_object.invoice_title}%') if query_object.invoice_title else True,

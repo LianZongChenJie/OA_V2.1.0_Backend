@@ -21,7 +21,7 @@ from module_personnel.dao.file_dao import FileDAO
 from module_personnel.dao.flow_record_dao import FlowRecordDao
 from module_personnel.entity.vo.flow_record_vo import OaFlowRecordBaseModel
 from utils.camel_converter import ModelConverter
-from utils.timeformat import format_timestamp
+from utils.timeformat import format_timestamp, format_date
 from module_basicdata.check_after.check_after import CheckAfter
 
 from utils.log_util import logger
@@ -287,6 +287,7 @@ class CheckService:
                     template_params = {}
                     template_params['from_user'] = ','.join(await UserDao.get_nick_name_by_user_id(db, [user_id]))
                     template_params['create_time'] = format_timestamp(detail['create_time'])
+                    template_params['date'] = format_date(int(datetime.now().timestamp()))
 
                 if check_status == 3:
                     data.pop('check_uids')
@@ -297,6 +298,7 @@ class CheckService:
                     template_params = {}
                     template_params['from_user'] = ','.join(await UserDao.get_nick_name_by_user_id(db, [user_id]))
                     template_params['create_time'] = format_timestamp(detail['create_time'])
+                    template_params['date'] = format_date(int(datetime.now().timestamp()))
 
                 await MessageService.send_template_message(db, template_id, data, template_params)
                 # 记录操作日志

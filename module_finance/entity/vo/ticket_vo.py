@@ -121,6 +121,7 @@ class OaTicketPaymentQueryModel(OaTicketPaymentBaseModel):
     """收票查询VO"""
     begin_time: str | None = Field(None, description='查询时间开始时间')
     end_time: str | None = Field(None, description='查询时间结束时间')
+    tab: int | None = Field(None, description="tab标识，0有发票付款，1无发票付款")
 
 class OaTicketPaymentPageQueryModel(OaTicketPaymentQueryModel):
 
