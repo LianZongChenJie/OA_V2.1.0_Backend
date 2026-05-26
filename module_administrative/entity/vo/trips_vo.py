@@ -132,6 +132,9 @@ class TripsPageQueryModel(TripsModel):
     page_num: int = Field(default=1, description='当前页码')
     page_size: int = Field(default=10, description='每页记录数')
     keywords: str | None = Field(default=None, description='搜索关键词')
+    tab: int | None = Field(default=None, description='标签页：0全部，1待审核，2审核中，3已通过，4已拒绝')
+    check_status: int | None = Field(default=None, alias='checkStatus', description='审核状态筛选')
+    admin_id: int | None = Field(default=None, alias='adminId', description='创建人ID筛选')
 
 
 class AddTripsModel(TripsModel):

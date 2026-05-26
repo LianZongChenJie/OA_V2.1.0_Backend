@@ -35,3 +35,4 @@ class ProjectCatePageQueryModel(OaProjectCateBaseModel):
     """项目类别分页查询VO"""
     page_num: int | None = Field(None, description='页码')
     page_size: int | None = Field(None, description='页大小')
+    keywords: str | None = Field(default=None, description='搜索关键词')

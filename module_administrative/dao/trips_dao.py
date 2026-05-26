@@ -46,15 +46,39 @@ class TripsDao:
         :param is_page: 是否开启分页
         :return: 出差列表信息对象
         """
-        query = select(OaTrips).where(
-            OaTrips.delete_time == 0,
-            OaTrips.admin_id == user_id
-        )
+        query = select(OaTrips).where(OaTrips.delete_time == 0)
+
+        # 根据 tab 标签页筛选
+        if query_object.tab is not None:
+            if query_object.tab == 1:
+                # 我申请的：查询当前用户创建的记录
+                query = query.where(OaTrips.admin_id == user_id)
+            elif query_object.tab == 2:
+                # 待我审批：查询当前用户是审批人，且状态为审核中的记录
+                query = query.where(
+                    OaTrips.check_uids.like(f'%{user_id}%'),
+                    OaTrips.check_status == 1
+                )
+            elif query_object.tab == 3:
+                # 我已审批：查询当前用户在历史审批人中，且状态为已通过
+                query = query.where(
+                    OaTrips.check_history_uids.like(f'%{user_id}%'),
+                    OaTrips.check_status == 2
+                )
+        else:
+            # 默认查询我申请的
+            query = query.where(OaTrips.admin_id == user_id)
 
         if query_object.keywords:
             query = query.where(
                 OaTrips.reason.like(f'%{query_object.keywords}%')
             )
+
+        if query_object.check_status is not None:
+            query = query.where(OaTrips.check_status == query_object.check_status)
+
+        if query_object.admin_id is not None and query_object.admin_id > 0:
+            query = query.where(OaTrips.admin_id == query_object.admin_id)
 
         query = query.order_by(OaTrips.create_time.desc()).distinct()
 

@@ -31,17 +31,18 @@ class OvertimesService:
 
     @classmethod
     async def get_overtimes_list_services(
-            cls, query_db: AsyncSession, query_object: OvertimesPageQueryModel, is_page: bool = False
+            cls, query_db: AsyncSession, query_object: OvertimesPageQueryModel, user_id: int, is_page: bool = False
     ) -> PageModel | list[dict[str, Any]]:
         """
         获取加班记录列表信息 service
 
         :param query_db: orm 对象
         :param query_object: 查询参数对象
+        :param user_id: 当前用户 ID
         :param is_page: 是否开启分页
         :return: 加班记录列表信息对象
         """
-        overtimes_list_result = await OvertimesDao.get_overtimes_list(query_db, query_object, is_page)
+        overtimes_list_result = await OvertimesDao.get_overtimes_list(query_db, query_object, user_id, is_page)
 
         # 如果返回的是分页结果，需要转换 rows 中的数据
         if hasattr(overtimes_list_result, 'rows'):
@@ -142,7 +143,10 @@ class OvertimesService:
         """
         try:
             current_time = int(datetime.now().timestamp())
-            overtimes_data = page_object.model_dump(exclude_unset=True)
+            overtimes_data = page_object.model_dump(
+                exclude_unset=True,
+                exclude={'admin_name', 'dept_name', 'check_name', 'records'}
+            )
 
             # 处理 start_date
             if 'start_date' in overtimes_data:
@@ -198,11 +202,13 @@ class OvertimesService:
         :param page_object: 编辑加班记录对象
         :return: 编辑加班记录校验结果
         """
-        overtimes_data = page_object.model_dump(exclude_unset=True)
-        overtimes_info = await cls.overtimes_detail_services(query_db, page_object.id)
-
-        if overtimes_info.id:
+        if page_object.id:
             try:
+                overtimes_data = page_object.model_dump(
+                    exclude_unset=True,
+                    exclude={'id', 'admin_name', 'dept_name', 'check_name', 'records', 'create_time', 'delete_time'}
+                )
+                
                 # 处理 start_date
                 if 'start_date' in overtimes_data:
                     start_date_value = overtimes_data['start_date']
@@ -234,7 +240,7 @@ class OvertimesService:
 
                 overtimes_data['update_time'] = int(datetime.now().timestamp())
 
-                await OvertimesDao.edit_overtimes_dao(query_db, overtimes_data)
+                await OvertimesDao.edit_overtimes_dao(query_db, page_object.id, overtimes_data)
                 await query_db.commit()
                 return CrudResponseModel(is_success=True, message='更新成功')
             except Exception as e:

@@ -15,7 +15,13 @@ class WorkCateDao:
         query = (select(OaWorkCate)
                  .where(
             data_scope_sql,
-        ).order_by(asc(OaWorkCate.create_time)))
+        ))
+        
+        # 关键词搜索
+        if query_object.keywords:
+            query = query.where(OaWorkCate.title.like(f'%{query_object.keywords}%'))
+        
+        query = query.order_by(asc(OaWorkCate.create_time))
         page_list: PageModel | list[list[dict[str, Any]]] = await PageUtil.paginate(
             db, query, query_object.page_num, query_object.page_size, is_page
         )

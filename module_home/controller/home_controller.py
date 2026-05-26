@@ -96,8 +96,10 @@ async def get_overtimes_list(
         request: Request,
         overtimes_page_query: Annotated[OvertimesPageQueryModel, Query()],
         query_db: Annotated[AsyncSession, DBSessionDependency()],
+        current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
 ) -> Response:
-    result = await OvertimesService.get_overtimes_list_services(query_db, overtimes_page_query, is_page=True)
+    user_id = current_user.user.user_id if current_user.user and current_user.user.user_id else 0
+    result = await OvertimesService.get_overtimes_list_services(query_db, overtimes_page_query, user_id, is_page=True)
     logger.info('获取加班分页列表成功')
 
     return ResponseUtil.success(model_content=result)

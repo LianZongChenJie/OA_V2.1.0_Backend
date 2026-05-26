@@ -46,10 +46,28 @@ class LeavesDao:
         :param is_page: 是否开启分页
         :return: 请假列表信息对象
         """
-        query = select(OaLeaves).where(
-            OaLeaves.delete_time == 0,
-            OaLeaves.admin_id == user_id
-        )
+        query = select(OaLeaves).where(OaLeaves.delete_time == 0)
+
+        # 根据 tab 标签页筛选
+        if query_object.tab is not None:
+            if query_object.tab == 1:
+                # 我申请的：查询当前用户创建的记录
+                query = query.where(OaLeaves.admin_id == user_id)
+            elif query_object.tab == 2:
+                # 待我审批：查询当前用户是审批人，且状态为审核中的记录
+                query = query.where(
+                    OaLeaves.check_uids.like(f'%{user_id}%'),
+                    OaLeaves.check_status == 1
+                )
+            elif query_object.tab == 3:
+                # 我已审批：查询当前用户在历史审批人中，且状态为已通过
+                query = query.where(
+                    OaLeaves.check_history_uids.like(f'%{user_id}%'),
+                    OaLeaves.check_status == 2
+                )
+        else:
+            # 默认查询我申请的
+            query = query.where(OaLeaves.admin_id == user_id)
 
         if query_object.keywords:
             query = query.where(
@@ -58,6 +76,12 @@ class LeavesDao:
 
         if query_object.types:
             query = query.where(OaLeaves.types == query_object.types)
+
+        if query_object.check_status is not None:
+            query = query.where(OaLeaves.check_status == query_object.check_status)
+
+        if query_object.admin_id is not None and query_object.admin_id > 0:
+            query = query.where(OaLeaves.admin_id == query_object.admin_id)
 
         query = query.order_by(OaLeaves.create_time.desc()).distinct()
 

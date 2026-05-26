@@ -252,6 +252,29 @@ class TripsService:
                     exclude_unset=True,
                     exclude={'id', 'admin_name', 'dept_name', 'create_time', 'delete_time'}
                 )
+                
+                # 处理 start_date
+                start_date_value = edit_trips.get('start_date')
+                if isinstance(start_date_value, str) and ('-' in start_date_value or ':' in start_date_value):
+                    try:
+                        dt = datetime.fromisoformat(start_date_value)
+                        edit_trips['start_date'] = int(dt.timestamp())
+                    except ValueError:
+                        edit_trips['start_date'] = 0
+                elif not start_date_value:
+                    edit_trips['start_date'] = 0
+                
+                # 处理 end_date
+                end_date_value = edit_trips.get('end_date')
+                if isinstance(end_date_value, str) and ('-' in end_date_value or ':' in end_date_value):
+                    try:
+                        dt = datetime.fromisoformat(end_date_value)
+                        edit_trips['end_date'] = int(dt.timestamp())
+                    except ValueError:
+                        edit_trips['end_date'] = 0
+                elif not end_date_value:
+                    edit_trips['end_date'] = 0
+                
                 edit_trips['update_time'] = int(datetime.now().timestamp())
                 await TripsDao.edit_trips_dao(query_db, page_object.id, edit_trips)
                 await query_db.commit()

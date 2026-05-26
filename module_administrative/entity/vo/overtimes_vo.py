@@ -146,7 +146,9 @@ class OvertimesPageQueryModel(OvertimesQueryModel):
     begin_time: str | None = Field(default=None, description='开始时间')
     end_time: str | None = Field(default=None, description='结束时间')
     keywords: str | None = Field(default=None, description='搜索关键词')
-
+    tab: int | None = Field(default=None, description='标签页：0全部，1待审核，2审核中，3已通过，4已拒绝')
+    check_status: int | None = Field(default=None, alias='checkStatus', description='审核状态筛选')
+    admin_id: int | None = Field(default=None, alias='adminId', description='创建人ID筛选')
 
 class AddOvertimesModel(OvertimesModel):
     """

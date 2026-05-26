@@ -15,7 +15,13 @@ class CustomerGradleDao:
         query = (select(OaCustomerGrade)
                  .where(
             data_scope_sql,
-        ).order_by(OaCustomerGrade.create_time.asc()))
+        ))
+        
+        # 关键词搜索
+        if query_object.keywords:
+            query = query.where(OaCustomerGrade.title.like(f'%{query_object.keywords}%'))
+        
+        query = query.order_by(OaCustomerGrade.create_time.asc())
         page_list: PageModel | list[list[dict[str, Any]]] = await PageUtil.paginate(
             db, query, query_object.page_num, query_object.page_size, is_page
         )
