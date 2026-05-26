@@ -257,7 +257,11 @@ class TicketDao:
 
     @classmethod
     async def get_ticket_count(cls, db: AsyncSession, user_id: int):
-        query = select(func.count()).select_from(OaTicket).where(OaTicket.admin_id == user_id, OaTicket.open_status == 1, OaTicket.delete_time == 0)
+        query = select(func.count()).select_from(OaTicket).where(
+            OaTicket.admin_id == user_id, 
+            OaTicket.open_status != 2,  # 排除已作废的
+            OaTicket.delete_time == 0
+        )
         result = await db.execute(query)
         return result.scalar()
 

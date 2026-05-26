@@ -292,7 +292,11 @@ class InvoiceDao:
         }
     @classmethod
     async def get_invoice_count(cls, db: AsyncSession, user_id: int):
-        query = select(func.count()).select_from(OaInvoice).where(OaInvoice.admin_id == user_id, OaInvoice.open_status == 1, OaInvoice.delete_time == 0)
+        query = select(func.count()).select_from(OaInvoice).where(
+            OaInvoice.admin_id == user_id, 
+            OaInvoice.open_status != 2,  # 排除已作废的
+            OaInvoice.delete_time == 0
+        )
         count = await db.execute(query)
         return count.scalar()
 

@@ -193,9 +193,13 @@ class ExpenseDao:
     @classmethod
     async def get_count(cls, query_db: AsyncSession, user_id: int):
         """
-        获取首页我的报销开票等数据统计信息
+        获取首页我的报销数据统计信息
         """
-        query = select(func.count()).select_from(OaExpense).where(OaExpense.admin_id == user_id, OaExpense.delete_time == 0, OaExpense.check_status == 2)
+        query = select(func.count()).select_from(OaExpense).where(
+            OaExpense.admin_id == user_id, 
+            OaExpense.delete_time == 0, 
+            OaExpense.check_status != 3  # 排除审核不通过的
+        )
         count = await query_db.execute(query)
         return count.scalar()
 

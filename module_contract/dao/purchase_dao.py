@@ -493,15 +493,23 @@ class PurchaseDao:
     @classmethod
     async def get_purchase_count(cls, db: AsyncSession, user_id:int):
         """
-        获取用户合同统计信息
+        获取用户采购合同统计信息
 
-        :param user_id:
+        :param user_id: 用户ID
         :param db: orm 对象
-        :param customer_id: 客户 ID
-        :param exclude_id: 排除的合同 ID（编辑时使用）
-        :return: True 表示已存在，False 表示不存在
+        :return: 采购合同数量
         """
-        query = select(func.count()).select_from(OaPurchase).where(OaPurchase.sign_uid == user_id, OaPurchase.delete_time == 0, OaPurchase.check_status == 2)
+        from sqlalchemy import or_
+        
+        query = select(func.count()).select_from(OaPurchase).where(
+            OaPurchase.delete_time == 0, 
+            OaPurchase.check_status != 3,  # 排除审核不通过的
+            or_(
+                OaPurchase.admin_id == user_id,  # 我创建的
+                OaPurchase.sign_uid == user_id,  # 我是签订人的
+                func.find_in_set(str(user_id), OaPurchase.share_ids)  # 共享给我的
+            )
+        )
         result = await db.execute(query)
         count = result.scalar()
         return count
