@@ -222,11 +222,17 @@ class ContractService:
 
         # 只提取数据库表存在的字段，排除扩展字段
         valid_fields = {c.name for c in OaContract.__table__.columns}
-        contract_data = {
-            k: getattr(contract_info, k)
-            for k in valid_fields
-            if hasattr(contract_info, k)
-        }
+        contract_data = {}
+        for k in valid_fields:
+            if hasattr(contract_info, k):
+                value = getattr(contract_info, k)
+                # 将可能为字符串的数值字段转换为整数
+                if k in ['check_flow_id', 'archive_time', 'stop_time', 'void_time', 'archive_uid', 'stop_uid', 'void_uid']:
+                    try:
+                        value = int(value) if value is not None else 0
+                    except (ValueError, TypeError):
+                        value = 0
+                contract_data[k] = value
 
         # 添加扩展字段（从 DAO 层返回的结果中获取）
         contract_data['cate_title'] = contract_result.get('cate_title')
@@ -239,12 +245,20 @@ class ContractService:
         contract_data['check_status_name'] = contract_result.get('check_status_name')
 
         # 添加审批记录
-        flow_id = getattr(contract_info, 'check_flow_id', None)
-        if flow_id and flow_id > 0:
+        flow_id = contract_data.get('check_flow_id', 0)
+        if flow_id is not None and int(flow_id) > 0:
             records_raw = await FlowRecordDao.get_records_dict(query_db, contract_id, flow_id)
             if records_raw:
                 records = []
                 for rec in records_raw:
+                    check_time = rec.get('check_time')
+                    # 确保check_time是整数类型
+                    if check_time:
+                        try:
+                            check_time = int(check_time)
+                        except (ValueError, TypeError):
+                            check_time = None
+                    
                     record_dict = {
                         'id': rec.get('id'),
                         'actionId': rec.get('action_id'),
@@ -254,7 +268,7 @@ class ContractService:
                         'checkUid': rec.get('check_uid'),
                         'checkUser': rec.get('check_user'),
                         'checkTime': rec.get('check_time'),
-                        'checkTimeStr': timestamp_to_datetime(rec.get('check_time'), '%Y-%m-%d %H:%M:%S') if rec.get('check_time') else None,
+                        'checkTimeStr': timestamp_to_datetime(check_time, '%Y-%m-%d %H:%M:%S') if check_time else None,
                         'checkStatus': rec.get('check_status'),
                         'checkStatusStr': cls._get_check_status_text(rec.get('check_status')),
                         'content': rec.get('content', ''),
@@ -345,14 +359,14 @@ class ContractService:
                 raise ServiceException(message='销售合同不存在')
             
             # 检查是否已经归档
-            if contract_info.archive_time and contract_info.archive_time > 0:
+            if contract_info.archive_time and int(contract_info.archive_time) > 0:
                 raise ServiceException(message='该合同已归档，无需重复操作')
             
             # 检查是否已中止或作废
-            if contract_info.stop_time and contract_info.stop_time > 0:
+            if contract_info.stop_time and int(contract_info.stop_time) > 0:
                 raise ServiceException(message='该合同已中止，无法归档')
             
-            if contract_info.void_time and contract_info.void_time > 0:
+            if contract_info.void_time and int(contract_info.void_time) > 0:
                 raise ServiceException(message='该合同已作废，无法归档')
             
             # 执行归档
