@@ -76,7 +76,7 @@ class DashboardDao:
         days: int = 30
     ) -> int:
         """
-        获取快到期的销售合同数量
+        获取快到期的销售合同数量（与销售合同列表权限一致）
 
         :param query_db: 数据库会话
         :param current_user_id: 当前用户ID
@@ -89,23 +89,16 @@ class DashboardDao:
         now_timestamp = int(today_start.timestamp())
         future_timestamp = int((datetime.now() + timedelta(days=days)).timestamp())
 
-        # 构建权限条件
-        permission_conditions = [
-            OaContract.admin_id == current_user_id,
-            OaContract.prepared_uid == current_user_id,
-            OaContract.sign_uid == current_user_id,
-            OaContract.keeper_uid == current_user_id,
-        ]
-
-        if department_ids:
-            permission_conditions.append(OaContract.did.in_(department_ids))
-
+        # 与销售合同列表保持一致的查询逻辑
+        # 基础条件：未删除、审核通过、未归档、未中止、未作废
         query = (
             select(func.count(OaContract.id))
             .where(OaContract.delete_time == 0)
             .where(OaContract.check_status == 2)
+            .where(OaContract.archive_time == 0)
+            .where(OaContract.stop_time == 0)
+            .where(OaContract.void_time == 0)
             .where(OaContract.end_time.between(now_timestamp, future_timestamp))
-            .where(or_(*permission_conditions))
         )
 
         result = await query_db.execute(query)
@@ -120,7 +113,7 @@ class DashboardDao:
         days: int = 30
     ) -> int:
         """
-        获取快到期的采购合同数量
+        获取快到期的采购合同数量（与采购合同列表权限一致）
 
         :param query_db: 数据库会话
         :param current_user_id: 当前用户ID
@@ -133,23 +126,16 @@ class DashboardDao:
         now_timestamp = int(today_start.timestamp())
         future_timestamp = int((datetime.now() + timedelta(days=days)).timestamp())
 
-        # 构建权限条件
-        permission_conditions = [
-            OaPurchase.admin_id == current_user_id,
-            OaPurchase.prepared_uid == current_user_id,
-            OaPurchase.sign_uid == current_user_id,
-            OaPurchase.keeper_uid == current_user_id,
-        ]
-
-        if department_ids:
-            permission_conditions.append(OaPurchase.did.in_(department_ids))
-
+        # 与采购合同列表保持一致的查询逻辑
+        # 基础条件：未删除、审核通过、未归档、未中止、未作废
         query = (
             select(func.count(OaPurchase.id))
             .where(OaPurchase.delete_time == 0)
             .where(OaPurchase.check_status == 2)
+            .where(OaPurchase.archive_time == 0)
+            .where(OaPurchase.stop_time == 0)
+            .where(OaPurchase.void_time == 0)
             .where(OaPurchase.end_time.between(now_timestamp, future_timestamp))
-            .where(or_(*permission_conditions))
         )
 
         result = await query_db.execute(query)
@@ -160,28 +146,73 @@ class DashboardDao:
         cls,
         query_db: AsyncSession,
         current_user_id: int,
-        days: int = 3
+        days: int = 3,
+        is_admin: bool = False,
+        auth_dids: str = '',
+        son_dids: str = ''
     ) -> int:
         """
-        获取快到期的项目数量
+        获取快到期的项目数量（与项目列表权限一致）
 
         :param query_db: 数据库会话
         :param current_user_id: 当前用户ID
         :param days: 天数，默认3天
+        :param is_admin: 是否为超级管理员
+        :param auth_dids: 可见部门数据
+        :param son_dids: 可见子部门数据
         :return: 数量
         """
+        from sqlalchemy import text
+        
         now = datetime.now()
         today_start = datetime(now.year, now.month, now.day, 0, 0, 0)
         now_timestamp = int(today_start.timestamp())
         future_timestamp = int((datetime.now() + timedelta(days=days)).timestamp())
 
-        query = (
-            select(func.count(OaProject.id))
-            .where(OaProject.delete_time == 0)
-            .where(OaProject.end_time.between(now_timestamp, future_timestamp))
-        )
-
-        result = await query_db.execute(query)
+        params = {
+            'now_timestamp': now_timestamp,
+            'future_timestamp': future_timestamp,
+            'user_id': current_user_id
+        }
+        
+        # 基础条件
+        conditions = ["p.delete_time = 0", "p.end_time BETWEEN :now_timestamp AND :future_timestamp"]
+        
+        # 数据权限过滤（与项目列表完全一致）
+        if not is_admin:
+            permission_conditions = [
+                "p.admin_id = :user_id",
+                "p.director_uid = :user_id",
+            ]
+            
+            # 项目成员权限（通过 oa_project_user 表）
+            permission_conditions.append("EXISTS (SELECT 1 FROM oa_project_user pu WHERE pu.project_id = p.id AND pu.uid = :user_id AND pu.delete_time = 0)")
+            
+            # 部门权限
+            if auth_dids or son_dids:
+                dept_ids = set()
+                if auth_dids:
+                    dept_ids.update([int(d.strip()) for d in auth_dids.split(',') if d.strip()])
+                if son_dids:
+                    dept_ids.update([int(d.strip()) for d in son_dids.split(',') if d.strip()])
+                
+                if dept_ids:
+                    permission_conditions.append("p.did IN :dept_ids")
+                    params['dept_ids'] = tuple(dept_ids)
+            
+            if permission_conditions:
+                conditions.append("(" + " OR ".join(permission_conditions) + ")")
+        
+        where_clause = " AND ".join(conditions)
+        
+        # 执行查询
+        sql = text(f"""
+            SELECT COUNT(*) as count
+            FROM oa_project p
+            WHERE {where_clause}
+        """)
+        
+        result = await query_db.execute(sql, params)
         return result.scalar() or 0
 
     @classmethod

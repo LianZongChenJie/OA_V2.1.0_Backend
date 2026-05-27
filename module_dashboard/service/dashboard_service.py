@@ -1,15 +1,13 @@
-# module_dashboard/service/dashboard_service.py
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import List
 
 from module_dashboard.dao.dashboard_dao import DashboardDao
-from module_dashboard.entity.vo.dashboard_vo import (
-    UrgentItemModel,
-)
+from module_dashboard.entity.vo.dashboard_vo import UrgentItemModel
 
 
 class DashboardService:
-    """首页仪表盘服务层"""
+    """
+    首页仪表盘服务层
+    """
 
     @classmethod
     async def get_urgent_items_service(
@@ -18,7 +16,10 @@ class DashboardService:
         current_user_id: int,
         department_ids: list[int] | None = None,
         contract_delay_days: int = 30,
-        project_delay_days: int = 3
+        project_delay_days: int = 3,
+        is_admin: bool = False,
+        auth_dids: str = '',
+        son_dids: str = ''
     ) -> list[UrgentItemModel]:
         """
         获取首页紧急事项统计
@@ -28,6 +29,9 @@ class DashboardService:
         :param department_ids: 部门ID列表
         :param contract_delay_days: 合同到期提醒天数，默认30天
         :param project_delay_days: 项目/任务到期提醒天数，默认3天
+        :param is_admin: 是否为超级管理员
+        :param auth_dids: 可见部门数据
+        :param son_dids: 可见子部门数据
         :return: 紧急事项统计结果列表
         """
 
@@ -84,7 +88,10 @@ class DashboardService:
         expiring_project_count = await DashboardDao.get_expiring_project_count(
             query_db,
             current_user_id,
-            project_delay_days
+            project_delay_days,
+            is_admin,
+            auth_dids,
+            son_dids
         )
         result.append(UrgentItemModel(
             name='快到期的项目',

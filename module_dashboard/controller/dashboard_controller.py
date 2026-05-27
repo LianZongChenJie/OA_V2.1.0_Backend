@@ -41,11 +41,13 @@ async def get_urgent_items(
       - 快到期的项目（3天内）
       - 快到期的任务（3天内）
     """
-    # TODO: 根据实际需求获取用户的部门ID列表
-    # 这里暂时传None，后续可以根据实际业务逻辑获取
+    # 从当前用户获取权限信息
     department_ids = None
+    is_admin = current_user.user.admin or False
+    auth_dids = current_user.user.auth_dids or ''
+    son_dids = current_user.user.son_dids or ''
 
-    # TODO: 从配置中读取到期提醒天数
+    # 从配置中读取到期提醒天数
     contract_delay_days = 30  # 合同到期提醒天数
     project_delay_days = 3    # 项目/任务到期提醒天数
 
@@ -54,7 +56,10 @@ async def get_urgent_items(
         current_user.user.user_id,
         department_ids,
         contract_delay_days,
-        project_delay_days
+        project_delay_days,
+        is_admin,
+        auth_dids,
+        son_dids
     )
 
     return ResponseUtil.success(data=result)
