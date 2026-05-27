@@ -388,137 +388,148 @@ class PurchaseService:
     @classmethod
     async def purchase_detail_services(cls, query_db: AsyncSession, purchase_id: int) -> dict:
         """
-        获取采购合同详细信息 service（使用原生 SQL 查询）
+        获取采购合同详细信息 service（使用 ORM 查询，与销售合同保持一致）
 
         :param query_db: orm 对象
         :param purchase_id: 采购合同 ID
         :return: 采购合同详细信息字典
         """
-        from sqlalchemy import text
-        
-        # 使用原生 SQL 查询，直接关联所有需要的表
-        sql = text("""
-            SELECT 
-                p.id,
-                p.pid,
-                p.code,
-                p.name,
-                p.cate_id AS cateId,
-                p.types,
-                p.subject_id AS subjectId,
-                p.supplier_id AS supplierId,
-                p.supplier,
-                p.contact_name AS contactName,
-                p.contact_mobile AS contactMobile,
-                p.contact_address AS contactAddress,
-                p.start_time AS startTime,
-                p.end_time AS endTime,
-                p.admin_id AS adminId,
-                p.prepared_uid AS preparedUid,
-                p.sign_uid AS signUid,
-                p.keeper_uid AS keeperUid,
-                p.share_ids AS shareIds,
-                p.file_ids AS fileIds,
-                p.seal_ids AS sealIds,
-                p.sign_time AS signTime,
-                p.did,
-                p.cost,
-                p.content,
-                p.stop_uid AS stopUid,
-                p.stop_time AS stopTime,
-                p.stop_remark AS stopRemark,
-                p.void_uid AS voidUid,
-                p.void_time AS voidTime,
-                p.void_remark AS voidRemark,
-                p.archive_uid AS archiveUid,
-                p.archive_time AS archiveTime,
-                p.remark,
-                p.create_time AS createTime,
-                p.update_time AS updateTime,
-                p.delete_time AS deleteTime,
-                p.check_status AS checkStatus,
-                p.check_flow_id AS checkFlowId,
-                p.check_step_sort AS checkStepSort,
-                p.check_uids AS checkUids,
-                p.check_last_uid AS checkLastUid,
-                p.check_history_uids AS checkHistoryUids,
-                p.check_copy_uids AS checkCopyUids,
-                p.check_time AS checkTime,
-                cc.title AS cateName,
-                u1.nick_name AS adminName,
-                u1.user_name AS adminUserName,
-                u2.nick_name AS preparedName,
-                u2.user_name AS preparedUserName,
-                u3.nick_name AS signName,
-                u3.user_name AS signUserName,
-                u4.nick_name AS keeperName,
-                u4.user_name AS keeperUserName,
-                d.dept_name AS deptName
-            FROM oa_purchase p
-            LEFT JOIN oa_contract_cate cc ON p.cate_id = cc.id
-            LEFT JOIN sys_user u1 ON p.admin_id = u1.user_id
-            LEFT JOIN sys_user u2 ON p.prepared_uid = u2.user_id
-            LEFT JOIN sys_user u3 ON p.sign_uid = u3.user_id
-            LEFT JOIN sys_user u4 ON p.keeper_uid = u4.user_id
-            LEFT JOIN sys_dept d ON p.did = d.dept_id
-            WHERE p.id = :purchase_id AND p.delete_time = 0
-        """)
-        
-        result = await query_db.execute(sql, {'purchase_id': purchase_id})
-        row = result.mappings().first()
-        
-        if not row:
-            return {}
-        
-        # 转换为字典
-        purchase_data = dict(row)
-        
-        # 格式化时间字段
-        from datetime import datetime as dt
-        
-        def format_timestamp_to_str(timestamp_value):
-            """将时间戳转换为日期时间字符串"""
-            if not timestamp_value or timestamp_value == 0:
-                return ''
-            try:
-                return dt.fromtimestamp(int(timestamp_value)).strftime('%Y-%m-%d %H:%M:%S')
-            except Exception:
-                return ''
-        
-        # 格式化所有时间字段
-        time_fields = ['startTime', 'endTime', 'signTime', 'createTime', 'updateTime', 
-                      'stopTime', 'voidTime', 'archiveTime', 'checkTime']
-        
-        for field in time_fields:
-            if field in purchase_data:
-                purchase_data[field] = format_timestamp_to_str(purchase_data[field])
-        
-        # 处理用户名称（优先使用 nick_name，其次 user_name）
-        purchase_data['adminName'] = purchase_data.get('adminName') or purchase_data.get('adminUserName') or ''
-        purchase_data['preparedName'] = purchase_data.get('preparedName') or purchase_data.get('preparedUserName') or ''
-        purchase_data['signName'] = purchase_data.get('signName') or purchase_data.get('signUserName') or ''
-        purchase_data['keeperName'] = purchase_data.get('keeperName') or purchase_data.get('keeperUserName') or ''
-        
-        # 添加客户字段别名（与列表保持一致）
-        purchase_data['customerId'] = purchase_data.get('supplierId')
-        purchase_data['customer'] = purchase_data.get('supplier')
-        
-        # 移除中间字段
-        purchase_data.pop('adminUserName', None)
-        purchase_data.pop('preparedUserName', None)
-        purchase_data.pop('signUserName', None)
-        purchase_data.pop('keeperUserName', None)
-        
-        # 添加审批记录
         from module_personnel.dao.flow_record_dao import FlowRecordDao
         from utils.time_format_util import timestamp_to_datetime
         
-        flow_id = purchase_data.get('checkFlowId')
+        # 使用 ORM 查询获取采购合同信息
+        from module_contract.dao.purchase_dao import PurchaseDao
+        from module_contract.entity.do.purchase_do import OaPurchase
+        from sqlalchemy import select
+        
+        query = select(OaPurchase).where(
+            OaPurchase.id == purchase_id,
+            OaPurchase.delete_time == 0
+        )
+        result = await query_db.execute(query)
+        purchase_info = result.scalar_one_or_none()
+        
+        if not purchase_info:
+            return {}
+        
+        # 构建返回数据
+        purchase_data = {}
+        
+        # 只提取数据库表存在的字段
+        valid_fields = {c.name for c in OaPurchase.__table__.columns}
+        for k in valid_fields:
+            if hasattr(purchase_info, k):
+                value = getattr(purchase_info, k)
+                # 将可能为字符串的数值字段转换为整数
+                if k in ['check_flow_id', 'archive_time', 'stop_time', 'void_time', 
+                         'archive_uid', 'stop_uid', 'void_uid', 'check_time',
+                         'create_time', 'update_time', 'delete_time', 'sign_time',
+                         'start_time', 'end_time']:
+                    try:
+                        value = int(value) if value is not None else 0
+                    except (ValueError, TypeError):
+                        value = 0
+                purchase_data[k] = value
+        
+        # 转换为驼峰命名
+        from utils.camel_converter import to_camel
+        purchase_data_camel = {}
+        for key, value in purchase_data.items():
+            camel_key = to_camel(key)
+            purchase_data_camel[camel_key] = value
+        
+        # 查询关联信息
+        # 1. 分类名称
+        if purchase_info.cate_id and purchase_info.cate_id > 0:
+            from module_admin.dao.contract_cate_dao import ContractCateDao
+            try:
+                cate_info = await ContractCateDao.get_contract_cate_detail_by_id(query_db, purchase_info.cate_id)
+                if cate_info:
+                    purchase_data_camel['cateName'] = cate_info.title
+            except Exception as e:
+                logger.error(f'查询采购合同分类名称失败: {e}')
+        
+        # 2. 创建人姓名
+        if purchase_info.admin_id and purchase_info.admin_id > 0:
+            from module_admin.dao.user_dao import UserDao
+            admin_result = await UserDao.get_user_by_id(query_db, purchase_info.admin_id)
+            if admin_result and admin_result.get('user_basic_info'):
+                admin_info = admin_result['user_basic_info']
+                purchase_data_camel['adminName'] = admin_info.nick_name or admin_info.user_name
+        
+        # 3. 制定人姓名
+        if purchase_info.prepared_uid and purchase_info.prepared_uid > 0:
+            from module_admin.dao.user_dao import UserDao
+            prepared_result = await UserDao.get_user_by_id(query_db, purchase_info.prepared_uid)
+            if prepared_result and prepared_result.get('user_basic_info'):
+                prepared_info = prepared_result['user_basic_info']
+                purchase_data_camel['preparedName'] = prepared_info.nick_name or prepared_info.user_name
+        
+        # 4. 签订人姓名
+        if purchase_info.sign_uid and purchase_info.sign_uid > 0:
+            from module_admin.dao.user_dao import UserDao
+            sign_result = await UserDao.get_user_by_id(query_db, purchase_info.sign_uid)
+            if sign_result and sign_result.get('user_basic_info'):
+                sign_info = sign_result['user_basic_info']
+                purchase_data_camel['signName'] = sign_info.nick_name or sign_info.user_name
+        
+        # 5. 保管人姓名
+        if purchase_info.keeper_uid and purchase_info.keeper_uid > 0:
+            from module_admin.dao.user_dao import UserDao
+            keeper_result = await UserDao.get_user_by_id(query_db, purchase_info.keeper_uid)
+            if keeper_result and keeper_result.get('user_basic_info'):
+                keeper_info = keeper_result['user_basic_info']
+                purchase_data_camel['keeperName'] = keeper_info.nick_name or keeper_info.user_name
+        
+        # 6. 部门名称
+        if purchase_info.did and purchase_info.did > 0:
+            from module_admin.dao.dept_dao import DeptDao
+            dept_info = await DeptDao.get_dept_detail_by_id(query_db, purchase_info.did)
+            if dept_info:
+                purchase_data_camel['deptName'] = dept_info.dept_name
+        
+        # 添加客户字段别名
+        purchase_data_camel['customerId'] = purchase_data_camel.get('supplierId')
+        purchase_data_camel['customer'] = purchase_data_camel.get('supplier')
+        
+        # 格式化时间字段（直接在原字段上格式化，不添加Str后缀）
+        # 日期字段：startTime, endTime, signTime
+        for field in ['startTime', 'endTime', 'signTime']:
+            val = purchase_data_camel.get(field)
+            if val and int(val) > 0:
+                purchase_data_camel[field] = timestamp_to_datetime(int(val), '%Y-%m-%d')
+            else:
+                purchase_data_camel[field] = None
+        
+        # 日期时间字段：createTime, updateTime, stopTime, voidTime, archiveTime, checkTime
+        for field in ['createTime', 'updateTime', 'stopTime', 'voidTime', 'archiveTime', 'checkTime']:
+            val = purchase_data_camel.get(field)
+            if val and int(val) > 0:
+                purchase_data_camel[field] = timestamp_to_datetime(int(val), '%Y-%m-%d %H:%M:%S')
+            else:
+                purchase_data_camel[field] = None
+        
+        # 添加审批记录
+        flow_id = purchase_data_camel.get('checkFlowId', 0)
+        if flow_id is not None:
+            try:
+                flow_id = int(flow_id)
+            except (ValueError, TypeError):
+                flow_id = 0
+        
         if flow_id and flow_id > 0:
             records_raw = await FlowRecordDao.get_records_dict(query_db, purchase_id, flow_id)
             if records_raw:
                 records = []
                 for rec in records_raw:
+                    check_time = rec.get('check_time')
+                    # 确保check_time是整数类型
+                    if check_time:
+                        try:
+                            check_time = int(check_time)
+                        except (ValueError, TypeError):
+                            check_time = None
+                    
                     record_dict = {
                         'id': rec.get('id'),
                         'actionId': rec.get('action_id'),
@@ -528,20 +539,20 @@ class PurchaseService:
                         'checkUid': rec.get('check_uid'),
                         'checkUser': rec.get('check_user'),
                         'checkTime': rec.get('check_time'),
-                        'checkTimeStr': timestamp_to_datetime(rec.get('check_time'), '%Y-%m-%d %H:%M:%S') if rec.get('check_time') else None,
+                        'checkTimeStr': timestamp_to_datetime(check_time, '%Y-%m-%d %H:%M:%S') if check_time else None,
                         'checkStatus': rec.get('check_status'),
-                        'checkStatusStr': PurchaseService._get_check_status_text(rec.get('check_status')),
+                        'checkStatusStr': cls._get_check_status_text(rec.get('check_status')),
                         'content': rec.get('content', ''),
                         'checkFiles': rec.get('check_files', '')
                     }
                     records.append(record_dict)
-                purchase_data['records'] = records
+                purchase_data_camel['records'] = records
             else:
-                purchase_data['records'] = []
+                purchase_data_camel['records'] = []
         else:
-            purchase_data['records'] = []
+            purchase_data_camel['records'] = []
         
-        return purchase_data
+        return purchase_data_camel
 
     @staticmethod
     def _get_check_status_text(check_status: int | None) -> str:
