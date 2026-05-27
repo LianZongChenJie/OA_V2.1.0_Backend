@@ -260,6 +260,16 @@ class ProjectService:
                         except (ValueError, TypeError):
                             edit_project[field] = 0
 
+                # 处理 contract_id：如果未填写则设为 0
+                if 'contract_id' in edit_project:
+                    if edit_project['contract_id'] is None or edit_project['contract_id'] == '':
+                        edit_project['contract_id'] = 0
+                    elif isinstance(edit_project['contract_id'], str):
+                        try:
+                            edit_project['contract_id'] = int(edit_project['contract_id'])
+                        except (ValueError, TypeError):
+                            edit_project['contract_id'] = 0
+
                 project_info = await ProjectDao.get_project_detail_by_id(query_db, page_object.id)
                 if project_info and project_info.get('project_info'):
                     edit_project['update_time'] = int(datetime.now().timestamp())
