@@ -210,6 +210,16 @@ class ContractDao:
         if query_object.end_time_end is not None:
             conditions.append(OaContract.end_time <= query_object.end_time_end)
 
+        # 支持 startTime 和 endTime 参数（查询结束时间在查询范围内的合同，与首页统计保持一致）
+        if query_object.start_time is not None:
+            conditions.append(OaContract.end_time >= query_object.start_time)
+        if query_object.end_time is not None:
+            # 结束时间需要包含当天全天，设置为 23:59:59
+            from datetime import datetime, timedelta
+            end_date = datetime.fromtimestamp(query_object.end_time)
+            end_of_day = end_date.replace(hour=23, minute=59, second=59)
+            conditions.append(OaContract.end_time <= int(end_of_day.timestamp()))
+
         if query_object.tab == 0:
             if query_object.sign_uid is not None:
                 conditions.append(OaContract.sign_uid == query_object.sign_uid)

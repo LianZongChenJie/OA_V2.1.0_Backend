@@ -1,6 +1,6 @@
 from typing import Any
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from common.vo import PageModel
@@ -74,6 +74,22 @@ class PurchaseDao:
             conditions.append(OaPurchase.end_time >= query_object.end_time_start)
         if query_object.end_time_end is not None:
             conditions.append(OaPurchase.end_time <= query_object.end_time_end)
+
+        # 支持 startTime 和 endTime 参数（查询结束时间在查询范围内的合同，与首页统计保持一致）
+        if query_object.start_time is not None:
+            conditions.append(OaPurchase.end_time >= query_object.start_time)
+        if query_object.end_time is not None:
+            # 结束时间需要包含当天全天，设置为 23:59:59
+            from datetime import datetime, timedelta
+            end_date = datetime.fromtimestamp(query_object.end_time)
+            end_of_day = end_date.replace(hour=23, minute=59, second=59)
+            conditions.append(OaPurchase.end_time <= int(end_of_day.timestamp()))
+
+        # 支持 startTime 和 endTime 参数（与首页快到期采购合同查询逻辑一致）
+        # 逻辑：end_time between startTime and endTime（结束时间在查询范围内）
+        if query_object.start_time is not None and query_object.end_time is not None:
+            logger.info(f"采购合同时间范围查询 - startTime: {query_object.start_time}, endTime: {query_object.end_time}")
+            conditions.append(OaPurchase.end_time.between(query_object.start_time, query_object.end_time))
 
         if query_object.tab == 0:
             if query_object.sign_uid is not None:

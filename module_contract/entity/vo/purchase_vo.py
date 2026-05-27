@@ -143,12 +143,14 @@ class PurchasePageQueryModel(BaseModel):
     sign_time_end: str | int | None = Field(default=None, alias='signTimeEnd', description='签订结束时间')
     end_time_start: str | int | None = Field(default=None, alias='endTimeStart', description='结束开始时间')
     end_time_end: str | int | None = Field(default=None, alias='endTimeEnd', description='结束结束时间')
+    start_time: str | int | None = Field(default=None, alias='startTime', description='合同开始时间（用于范围查询）')
+    end_time: str | int | None = Field(default=None, alias='endTime', description='合同结束时间（用于范围查询）')
     sign_uid: int | None = Field(default=None, alias='signUid', description='签订人 ID 筛选')
     archive_status: int | None = Field(default=0, description='归档状态：0 正常，1 已归档')
     stop_status: int | None = Field(default=0, description='中止状态：0 正常，1 已中止')
     void_status: int | None = Field(default=0, description='作废状态：0 正常，1 已作废')
 
-    @field_validator('sign_time_start', 'sign_time_end', 'end_time_start', 'end_time_end', mode='before')
+    @field_validator('sign_time_start', 'sign_time_end', 'end_time_start', 'end_time_end', 'start_time', 'end_time', mode='before')
     @classmethod
     def validate_query_time_fields(cls, value: Any) -> int | None:
         """
