@@ -28,7 +28,10 @@ class DashboardDao:
         :return: 数量
         """
         now = datetime.now()
+        today_start = datetime(now.year, now.month, now.day, 0, 0, 0)
+        now_timestamp = int(today_start.timestamp())
         future_time = now + timedelta(hours=hours)
+        future_timestamp = int(future_time.timestamp())
 
         query = (
             select(func.count(OaProjectTender.id))
@@ -54,7 +57,6 @@ class DashboardDao:
         :param hours: 小时数，默认72小时
         :return: 数量
         """
-        # 当前实现：统计需要缴纳保证金但未缴纳的记录
         query = (
             select(func.count(OaProjectTender.id))
             .where(OaProjectTender.delete_time == 0)
@@ -82,7 +84,9 @@ class DashboardDao:
         :param days: 天数，默认30天
         :return: 数量
         """
-        now_timestamp = int(datetime.now().timestamp())
+        now = datetime.now()
+        today_start = datetime(now.year, now.month, now.day, 0, 0, 0)
+        now_timestamp = int(today_start.timestamp())
         future_timestamp = int((datetime.now() + timedelta(days=days)).timestamp())
 
         # 构建权限条件
@@ -100,7 +104,7 @@ class DashboardDao:
             select(func.count(OaContract.id))
             .where(OaContract.delete_time == 0)
             .where(OaContract.check_status == 2)
-            .where(OaContract.end_time < future_timestamp)
+            .where(OaContract.end_time.between(now_timestamp, future_timestamp))
             .where(or_(*permission_conditions))
         )
 
@@ -124,7 +128,9 @@ class DashboardDao:
         :param days: 天数，默认30天
         :return: 数量
         """
-        now_timestamp = int(datetime.now().timestamp())
+        now = datetime.now()
+        today_start = datetime(now.year, now.month, now.day, 0, 0, 0)
+        now_timestamp = int(today_start.timestamp())
         future_timestamp = int((datetime.now() + timedelta(days=days)).timestamp())
 
         # 构建权限条件
@@ -142,7 +148,7 @@ class DashboardDao:
             select(func.count(OaPurchase.id))
             .where(OaPurchase.delete_time == 0)
             .where(OaPurchase.check_status == 2)
-            .where(OaPurchase.end_time < future_timestamp)
+            .where(OaPurchase.end_time.between(now_timestamp, future_timestamp))
             .where(or_(*permission_conditions))
         )
 
@@ -164,27 +170,15 @@ class DashboardDao:
         :param days: 天数，默认3天
         :return: 数量
         """
-        now_timestamp = int(datetime.now().timestamp())
+        now = datetime.now()
+        today_start = datetime(now.year, now.month, now.day, 0, 0, 0)
+        now_timestamp = int(today_start.timestamp())
         future_timestamp = int((datetime.now() + timedelta(days=days)).timestamp())
-
-        # 获取用户参与的项目ID列表
-        project_query = (
-            select(OaProjectUser.project_id)
-            .where(OaProjectUser.uid == current_user_id)
-            .where(OaProjectUser.delete_time == 0)
-        )
-        project_result = await query_db.execute(project_query)
-        project_ids = [row[0] for row in project_result.fetchall()]
-
-        if not project_ids:
-            return 0
 
         query = (
             select(func.count(OaProject.id))
             .where(OaProject.delete_time == 0)
-            .where(OaProject.status < 3)
-            .where(OaProject.end_time < future_timestamp)
-            .where(OaProject.id.in_(project_ids))
+            .where(OaProject.end_time.between(now_timestamp, future_timestamp))
         )
 
         result = await query_db.execute(query)
@@ -205,17 +199,10 @@ class DashboardDao:
         :param days: 天数，默认3天
         :return: 数量
         """
-        now_timestamp = int(datetime.now().timestamp())
+        now = datetime.now()
+        today_start = datetime(now.year, now.month, now.day, 0, 0, 0)
+        now_timestamp = int(today_start.timestamp())
         future_timestamp = int((datetime.now() + timedelta(days=days)).timestamp())
-
-        # 获取用户参与的项目ID列表
-        project_query = (
-            select(OaProjectUser.project_id)
-            .where(OaProjectUser.uid == current_user_id)
-            .where(OaProjectUser.delete_time == 0)
-        )
-        project_result = await query_db.execute(project_query)
-        project_ids = [row[0] for row in project_result.fetchall()]
 
         # 构建任务查询条件
         task_conditions = [
@@ -223,14 +210,10 @@ class DashboardDao:
             OaProjectTask.admin_id == current_user_id,
         ]
 
-        if project_ids:
-            task_conditions.append(OaProjectTask.project_id.in_(project_ids))
-
         query = (
             select(func.count(OaProjectTask.id))
             .where(OaProjectTask.delete_time == 0)
-            .where(OaProjectTask.status < 3)
-            .where(OaProjectTask.end_time < future_timestamp)
+            .where(OaProjectTask.end_time.between(now_timestamp, future_timestamp))
             .where(or_(*task_conditions))
         )
 
