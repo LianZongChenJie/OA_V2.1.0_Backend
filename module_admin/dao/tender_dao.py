@@ -53,15 +53,16 @@ class TenderDao:
                     query = query.where(OaProjectTender.tender_leader.like(f'%{query_object.tender_leader.strip()}%'))
             
             # 处理枚举字段查询 - 确保值为 '是' 或 '否'
-            if query_object.is_tender_submitted:
+            if query_object.is_tender_submitted and query_object.is_tender_submitted.strip():
+                is_tender_submitted_value = query_object.is_tender_submitted.strip()
                 valid_values = ['是', '否']
-                if query_object.is_tender_submitted in valid_values:
-                    query = query.where(OaProjectTender.is_tender_submitted == query_object.is_tender_submitted)
+                if is_tender_submitted_value in valid_values:
+                    query = query.where(OaProjectTender.is_tender_submitted == is_tender_submitted_value)
                 else:
-                    logger.warning(f'无效的is_tender_submitted值: {query_object.is_tender_submitted}，跳过该条件')
+                    logger.warning(f'无效的is_tender_submitted值: {is_tender_submitted_value}，跳过该条件')
             
             if query_object.bid_result and query_object.bid_result.strip():
-                query = query.where(OaProjectTender.bid_result.like(f'%{query_object.bid_result.strip()}%'))
+                query = query.where(OaProjectTender.bid_result == query_object.bid_result.strip())
 
             # 开标日期条件处理（使用 begin_time 和 end_time 参数）
             if query_object.begin_time and query_object.end_time:
