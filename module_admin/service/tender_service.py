@@ -3,6 +3,7 @@ import logging
 from typing import Any, List
 from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 import pandas as pd
 from io import BytesIO
 from fastapi import UploadFile
@@ -11,6 +12,7 @@ from openpyxl.styles import PatternFill, Font
 from utils.file_util import allowed_file, generate_file_path, generate_file_path_without_id, save_upload_file, ALLOWED_EXTENSIONS, get_file_ext
 from common.vo import PageModel, CrudResponseModel
 from module_admin.dao.tender_dao import TenderDao
+from module_admin.entity.do.user_do import SysUser
 from module_admin.entity.vo.tender_vo import (
     TenderPageQueryModel, AddTenderModel, EditTenderModel, DeleteTenderModel,
     AddTenderAttachmentModel, DeleteTenderAttachmentModel, TenderImportTempModel,
@@ -349,6 +351,7 @@ class TenderService:
                 'is_deposit_refunded': '是否退回保证金(是/否)',
                 'bid_result': '中标结果(待开标/中标/未中标/流标/未投标)',
                 'bid_service_fee': '中标服务费(数字，元)',
+                'remark': '备注',
                 'sort': '排序(数字)'
             }
 
@@ -377,9 +380,10 @@ class TenderService:
                     'deposit_account_name': '北京XX科技有限公司',
                     'deposit_bank': '中国建设银行北京海淀支行',
                     'deposit_account_no': '6222081100001234567',
-                    'is_deposit_refunded': '否',
+                    'is_deposit_refunded': '是',
                     'bid_result': '中标',
-                    'bid_service_fee': '0',
+                    'bid_service_fee': '5000',
+                    'remark': '这是一个备注示例',
                     'sort': '1'
                 }
             ]
@@ -509,8 +513,25 @@ class TenderService:
                     add_model.month = import_model.month.strip()
                     add_model.customer_name = import_model.customer_name.strip()
                     add_model.project_name = import_model.project_name.strip()
-                    add_model.tender_leader_id = import_model.tender_leader_id.strip() or None if hasattr(import_model, 'tender_leader_id') else None
-                    add_model.tender_leader = import_model.tender_leader.strip() or None
+                    
+                    # 根据 tender_leader 姓名查询 user_id
+                    tender_leader_name = import_model.tender_leader.strip() if hasattr(import_model, 'tender_leader') and import_model.tender_leader.strip() else None
+                    if tender_leader_name:
+                        try:
+                            user_query = select(SysUser.user_id).where(
+                                SysUser.nick_name == tender_leader_name,
+                                SysUser.del_flag == '0'
+                            )
+                            user_result = await query_db.execute(user_query)
+                            user_id = user_result.scalar_one_or_none()
+                            if user_id:
+                                add_model.tender_leader_id = str(user_id)
+                            else:
+                                logger.warning(f"未找到负责人 '{tender_leader_name}' 对应的用户ID")
+                        except Exception as e:
+                            logger.error(f"查询负责人 '{tender_leader_name}' 的 user_id 失败: {str(e)}")
+                    
+                    add_model.tender_leader = tender_leader_name or None
                     add_model.tender_agency = import_model.tender_agency.strip() or None
                     add_model.project_cycle = import_model.project_cycle.strip() or None
                     add_model.project_cycle_num = int(import_model.project_cycle_num.strip()) if import_model.project_cycle_num.strip() else None
@@ -519,6 +540,7 @@ class TenderService:
                     add_model.deposit_bank = import_model.deposit_bank.strip() or None
                     add_model.deposit_account_no = import_model.deposit_account_no.strip() or None
                     add_model.bid_result = import_model.bid_result.strip() or None
+                    add_model.remark = import_model.remark.strip() or None
 
                     # 时间字段（转为字符串匹配VO模型）
                     add_model.create_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')

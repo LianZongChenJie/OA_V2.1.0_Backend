@@ -68,6 +68,7 @@ class TenderModel(BaseModel):
     bid_result: Optional[str] = Field(None, description='中标结果', max_length=20)
     bid_service_fee: Optional[float] = Field(None, description='中标服务费（元）')
     deposit_paid_time: Optional[str] = Field(None, description='投标保证金缴纳时间（YYYY-MM-DD HH:MM:SS）')
+    remark: Optional[str] = Field(None, description='备注')
     sort: Optional[int] = Field(None, description='排序')
     create_time: Optional[str] = Field(None, description='创建时间（YYYY-MM-DD HH:MM:SS）')
     update_time: Optional[str] = Field(None, description='更新时间（YYYY-MM-DD HH:MM:SS）')
@@ -173,6 +174,7 @@ class TenderImportTempModel(BaseModel):
     is_deposit_refunded: str = ''
     bid_result: str = ''
     bid_service_fee: str = ''
+    remark: str = ''
     sort: str = '0'
 
 # 响应模型
