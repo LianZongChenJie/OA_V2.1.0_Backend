@@ -37,7 +37,8 @@ async def get_count(
     :return:
     """
     user_id = current_user.user.user_id
-    result =  await MainService.get_count(query_db, user_id)
+    is_admin = current_user.user.admin or False
+    result = await MainService.get_count(query_db, user_id, is_admin)
     return ResponseUtil.success(data=result)
 
 @main_controller.get(

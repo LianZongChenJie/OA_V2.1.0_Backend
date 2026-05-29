@@ -32,19 +32,36 @@ class PurchaseDao:
         :param is_page: 是否开启分页
         :return: 采购合同列表信息对象
         """
+        from sqlalchemy import or_
+
+        # 基础条件：未删除
         conditions = [OaPurchase.delete_time == 0]
 
-        # 添加索引友好的状态条件
+        # 根据状态标志设置不同的查询条件
         if hasattr(query_object, 'archive_status') and query_object.archive_status == 1:
+            # 已归档合同
             conditions.append(OaPurchase.archive_time > 0)
         elif hasattr(query_object, 'stop_status') and query_object.stop_status == 1:
+            # 已中止合同
             conditions.append(OaPurchase.stop_time > 0)
         elif hasattr(query_object, 'void_status') and query_object.void_status == 1:
+            # 已作废合同
             conditions.append(OaPurchase.void_time > 0)
         else:
+            # 正常合同：未归档、未中止、未作废
             conditions.append(OaPurchase.archive_time == 0)
             conditions.append(OaPurchase.stop_time == 0)
             conditions.append(OaPurchase.void_time == 0)
+
+        # 如果不是超级管理员，添加用户权限过滤条件
+        if not is_admin:
+            conditions.append(
+                or_(
+                    OaPurchase.admin_id == user_id,
+                    OaPurchase.sign_uid == user_id,
+                    func.find_in_set(str(user_id), OaPurchase.share_ids)
+                )
+            )
 
         # 关键词搜索优化：避免前导 % 影响索引
         if query_object.keywords:
@@ -507,11 +524,12 @@ class PurchaseDao:
 
 # -----------------------首页统计功能------------------------
     @classmethod
-    async def get_purchase_count(cls, db: AsyncSession, user_id:int):
+    async def get_purchase_count(cls, db: AsyncSession, user_id:int, is_admin: bool = False):
         """
         获取用户采购合同统计信息
 
         :param user_id: 用户ID
+        :param is_admin: 是否为超级管理员
         :param db: orm 对象
         :return: 采购合同数量
         """
@@ -519,13 +537,20 @@ class PurchaseDao:
         
         query = select(func.count()).select_from(OaPurchase).where(
             OaPurchase.delete_time == 0, 
-            OaPurchase.check_status != 3,  # 排除审核不通过的
-            or_(
-                OaPurchase.admin_id == user_id,  # 我创建的
-                OaPurchase.sign_uid == user_id,  # 我是签订人的
-                func.find_in_set(str(user_id), OaPurchase.share_ids)  # 共享给我的
-            )
+            OaPurchase.archive_time == 0,  # 排除归档的
+            OaPurchase.check_status != 3  # 排除审核不通过的
         )
+        
+        # 如果不是超级管理员，添加用户权限过滤条件
+        if not is_admin:
+            query = query.where(
+                or_(
+                    OaPurchase.admin_id == user_id,  # 我创建的
+                    OaPurchase.sign_uid == user_id,  # 我是签订人的
+                    func.find_in_set(str(user_id), OaPurchase.share_ids)  # 共享给我的
+                )
+            )
+        
         result = await db.execute(query)
         count = result.scalar()
         return count

@@ -162,6 +162,8 @@ class ContractDao:
         """
         from utils.timeformat import format_date
 
+        from sqlalchemy import or_
+
         # 基础条件：未删除
         conditions = [OaContract.delete_time == 0]
 
@@ -180,6 +182,16 @@ class ContractDao:
             conditions.append(OaContract.archive_time == 0)
             conditions.append(OaContract.stop_time == 0)
             conditions.append(OaContract.void_time == 0)
+
+        # 如果不是超级管理员，添加用户权限过滤条件
+        if not is_admin:
+            conditions.append(
+                or_(
+                    OaContract.admin_id == user_id,
+                    OaContract.sign_uid == user_id,
+                    func.find_in_set(str(user_id), OaContract.share_ids)
+                )
+            )
 
         # 关键词搜索
         if query_object.keywords:
@@ -709,11 +721,12 @@ class ContractDao:
 
 
     @classmethod
-    async def get_contract_count(cls, db: AsyncSession, user_id:int):
+    async def get_contract_count(cls, db: AsyncSession, user_id:int, is_admin: bool = False):
         """
         获取用户销售合同统计信息
 
         :param user_id: 用户ID
+        :param is_admin: 是否为超级管理员
         :param db: orm 对象
         :return: 合同数量
         """
@@ -721,13 +734,20 @@ class ContractDao:
         
         query = select(func.count()).select_from(OaContract).where(
             OaContract.delete_time == 0, 
-            OaContract.check_status != 3,  # 排除审核不通过的
-            or_(
-                OaContract.admin_id == user_id,  # 我创建的
-                OaContract.sign_uid == user_id,  # 我是签订人的
-                func.find_in_set(str(user_id), OaContract.share_ids)  # 共享给我的
-            )
+            OaContract.archive_time == 0,  # 排除归档的
+            OaContract.check_status != 3  # 排除审核不通过的
         )
+        
+        # 如果不是超级管理员，添加用户权限过滤条件
+        if not is_admin:
+            query = query.where(
+                or_(
+                    OaContract.admin_id == user_id,  # 我创建的
+                    OaContract.sign_uid == user_id,  # 我是签订人的
+                    func.find_in_set(str(user_id), OaContract.share_ids)  # 共享给我的
+                )
+            )
+        
         result = await db.execute(query)
         count = result.scalar()
         return count

@@ -24,14 +24,14 @@ from utils.timeformat import format_timestamp
 class MainService:
     @classmethod
     async def get_count(cls, query_db: \
-            AsyncSession, user_id: int) -> dict:
+            AsyncSession, user_id: int, is_admin: bool = False) -> dict:
         try:
             expense = await ExpenseDao.get_count(query_db, user_id)
             invoice = await InvoiceDao.get_invoice_count(query_db, user_id)
             ticket = await TicketDao.get_ticket_count(query_db, user_id)
             customer = await CustomerDao.get_customer_count(query_db)
-            contract = await ContractDao.get_contract_count(query_db, user_id)
-            purchase = await PurchaseDao.get_purchase_count(query_db, user_id)
+            contract = await ContractDao.get_contract_count(query_db, user_id, is_admin)
+            purchase = await PurchaseDao.get_purchase_count(query_db, user_id, is_admin)
             project = await ProjectDao.get_project_count(query_db, user_id)
             project_task = await ProjectTaskDao.get_project_task_count(query_db, user_id, status=3)
             return CountBaseModel(expense=expense, invoice=invoice, ticket=ticket,
@@ -129,8 +129,3 @@ class MainService:
         result = await OperationLogDao.get_year_log(query_db)
 
         return result
-
-
-
-
-
