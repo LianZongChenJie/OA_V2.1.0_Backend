@@ -38,7 +38,9 @@ async def get_page_list(
     current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
 ) -> Response:
     user_id = current_user.user.user_id
-    result = await TicketService.get_page_list_service(query_db,query_object,data_scope_sql,user_id,True)
+    is_admin = current_user.user.admin or False
+    query_object.admin_id = user_id
+    result = await TicketService.get_page_list_service(query_db,query_object,data_scope_sql,user_id,is_admin,True)
     return ResponseUtil.success(model_content=result)
 
 @finance_invoice_controller.get(

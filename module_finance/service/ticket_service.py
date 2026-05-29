@@ -18,10 +18,10 @@ from utils.timeformat import int_time
 class TicketService:
     @classmethod
     async def get_page_list_service(cls, query_db: AsyncSession, query_object: OaTicketPageQueryModel,
-                                    data_scope_sql: ColumnElement,user_id:int, is_page: bool = False) -> PageModel[
+                                    data_scope_sql: ColumnElement,user_id:int, is_admin: bool = False, is_page: bool = False) -> PageModel[
                                                                                                  OaTicketBaseModel] | \
                                                                                              list[dict[str, Any]]:
-        query_list = await TicketDao.get_page_list(query_db, query_object, data_scope_sql, user_id, is_page)
+        query_list = await TicketDao.get_page_list(query_db, query_object, data_scope_sql, user_id, is_admin, is_page)
         if is_page:
             row_list = []
             for row in query_list.rows:

@@ -28,7 +28,7 @@ class MainService:
         try:
             expense = await ExpenseDao.get_count(query_db, user_id)
             invoice = await InvoiceDao.get_invoice_count(query_db, user_id)
-            ticket = await TicketDao.get_ticket_count(query_db, user_id)
+            ticket = await TicketDao.get_ticket_count(query_db, user_id, is_admin)
             customer = await CustomerDao.get_customer_count(query_db)
             contract = await ContractDao.get_contract_count(query_db, user_id, is_admin)
             purchase = await PurchaseDao.get_purchase_count(query_db, user_id, is_admin)

@@ -1,3 +1,4 @@
+from module_admin.entity.do.supplier_do import OaSupplier
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, desc
 from sqlalchemy.orm import aliased
@@ -16,21 +17,21 @@ from datetime import datetime
 class TicketDao:
     @classmethod
     async def get_page_list(cls, db: AsyncSession, query_object: OaTicketPageQueryModel,
-                            data_scope_sql: ColumnElement, user_id: int,
+                            data_scope_sql: ColumnElement, user_id: int, is_admin: bool = False,
                             is_page: bool = False) -> PageModel | list[list[dict[str, Any]]]:
 
         # 构建基础查询
-        customer = aliased(OaCustomer, name='customer')
+        supplier = aliased(OaSupplier, name='supplier')
         admin = aliased(SysUser, name='admin')
         dept = aliased(SysDept, name='dept')
         check = aliased(SysUser, name='check')
         query = (select(OaTicket,
-                       customer.name.label('customer_name'),
+                       supplier.title.label('customer_name'),
                        admin.nick_name.label('admin_name'),
                        dept.dept_name.label('dept_name'),
                        func.group_concat(check.nick_name, ',').label('check_name'),
                        )
-                 .join(customer, customer.id == OaTicket.supplier_id, isouter=True)
+                 .join(supplier, supplier.id == OaTicket.supplier_id, isouter=True)
                  .join(admin, admin.user_id == OaTicket.admin_id, isouter=True)
                  .join(dept, dept.dept_id == OaTicket.did, isouter=True)
                  .join(check, func.find_in_set(check.user_id, OaTicket.check_uids), isouter=True)
@@ -51,50 +52,48 @@ class TicketDao:
             end_timestamp = int(datetime.strptime(query_object.end_time, "%Y-%m-%d %H:%M:%S").timestamp())
             conditions.append(OaTicket.check_time.between(start_timestamp, end_timestamp))
 
-        # 根据不同的查询条件添加特定条件
-        if query_object.admin_id:
-            conditions.append(OaTicket.admin_id == query_object.admin_id)
+        # 超级管理员可以查看所有数据，不需要添加用户权限过滤
+        if not is_admin:
+            # 根据不同的查询条件添加特定条件
+            if query_object.tab == 1:
+                conditions.append(OaTicket.admin_id == user_id)
+            elif query_object.tab == 2:
+                conditions.append(func.find_in_set(str(user_id), OaTicket.check_uids) > 0)
+            elif query_object.tab == 3:
+                conditions.append(func.find_in_set(str(user_id), OaTicket.check_history_uids) > 0)
+            elif query_object.tab == 4:
+                conditions.append(func.find_in_set(str(user_id), OaTicket.check_copy_uids) > 0)
+            elif query_object.tab == 5:
+                conditions.append(OaTicket.pay_status == 2)
+            elif query_object.tab == 0:
+                or_conditions = []
+                or_conditions.append(OaTicket.admin_id == user_id)
+                or_conditions.append(func.find_in_set(str(user_id), OaTicket.check_uids) > 0)
+                or_conditions.append(func.find_in_set(str(user_id), OaTicket.check_copy_uids) > 0)
+                or_conditions.append(func.find_in_set(str(user_id), OaTicket.check_history_uids) > 0)
+                if or_conditions:
+                    conditions.append(or_(*or_conditions))
 
-        if query_object.tab == 1:
-            conditions.append(OaTicket.admin_id == user_id)
-        if query_object.tab == 2:
-            conditions.append(func.find_in_set(str(user_id), OaTicket.check_uids) > 0)
-        if query_object.tab == 3:
-            conditions.append(func.find_in_set(str(user_id), OaTicket.check_history_uids) > 0)
-        if query_object.tab == 4:
-            conditions.append(func.find_in_set(str(user_id), OaTicket.check_copy_uids) > 0)
-        if query_object.tab == 5:
-            conditions.append(OaTicket.pay_status == 2)
+            # 处理其他查询条件（与 tab 条件独立）
+            if query_object.check_uids and query_object.tab not in [0, 1, 2, 3, 4, 5]:
+                conditions.append(func.find_in_set(query_object.check_uids, OaTicket.check_uids) > 0)
 
-        elif query_object.check_uids:
-            conditions.append(func.find_in_set(query_object.check_uids, OaTicket.check_uids) > 0)
+            if query_object.check_history_uids and query_object.tab not in [0, 1, 2, 3, 4, 5]:
+                conditions.append(
+                    func.find_in_set(query_object.check_history_uids, OaTicket.check_history_uids) > 0)
 
-        elif query_object.check_history_uids:
-            conditions.append(
-                func.find_in_set(query_object.check_history_uids, OaTicket.check_history_uids) > 0)
-
-        elif query_object.check_copy_uids:
-            conditions.append(func.find_in_set(query_object.check_copy_uids, OaTicket.check_copy_uids) > 0)
-
-        elif query_object.invoice_type:
+            if query_object.check_copy_uids and query_object.tab not in [0, 1, 2, 3, 4, 5]:
+                conditions.append(func.find_in_set(query_object.check_copy_uids, OaTicket.check_copy_uids) > 0)
+        
+        # 处理发票类型条件（所有用户都需要）
+        if query_object.invoice_type:
             conditions.append(OaTicket.invoice_type == query_object.invoice_type)
 
-        elif query_object.is_ticket == 1:
+        if query_object.is_ticket == 1:
             conditions.append(OaTicket.invoice_type != 0)
         elif query_object.is_ticket == 0:
             conditions.append(OaTicket.invoice_type == 0)
 
-        else:
-            # 没有特定条件时，使用 OR 组合
-            or_conditions = []
-            if query_object.tab == 0:
-                or_conditions.append(OaTicket.admin_id == query_object.admin_id)
-                or_conditions.append(func.find_in_set(query_object.check_uids, OaTicket.check_uids) > 0)
-                or_conditions.append(func.find_in_set(query_object.check_copy_uids, OaTicket.check_copy_uids) > 0)
-                or_conditions.append(func.find_in_set(query_object.check_history_uids, OaTicket.check_history_uids) > 0)
-
-            if or_conditions:
-                conditions.append(or_(*or_conditions))
         # 添加数据权限条件
         if data_scope_sql is not None:
             conditions.append(data_scope_sql)
@@ -146,17 +145,17 @@ class TicketDao:
 
     @classmethod
     async def get_info_by_id(cls, db: AsyncSession, id: int):
-        customer = aliased(OaCustomer, name='customer')
+        supplier = aliased(OaSupplier, name='supplier')
         admin = aliased(SysUser, name='admin')
         dept = aliased(SysDept, name='dept')
         check = aliased(SysUser, name='check')
         query = (select(OaTicket,
-                        customer.name.label('customer_name'),
+                        supplier.title.label('customer_name'),
                         admin.user_name.label('admin_name'),
                         dept.dept_name.label('dept_name'),
                         check.user_name.label('check_name'),
                         )
-                 .join(customer, customer.id == OaTicket.supplier_id, isouter=True)
+                 .join(supplier, supplier.id == OaTicket.supplier_id, isouter=True)
                  .join(admin, admin.user_id == OaTicket.admin_id, isouter=True)
                  .join(dept, dept.dept_id == OaTicket.did, isouter=True)
                  .join(check, func.find_in_set(check.user_id, OaTicket.check_uids), isouter=True)
@@ -256,12 +255,36 @@ class TicketDao:
         return result.scalar()
 
     @classmethod
-    async def get_ticket_count(cls, db: AsyncSession, user_id: int):
-        query = select(func.count()).select_from(OaTicket).where(
-            OaTicket.admin_id == user_id, 
-            OaTicket.open_status != 2,  # 排除已作废的
-            OaTicket.delete_time == 0
-        )
+    async def get_ticket_count(cls, db: AsyncSession, user_id: int, is_admin: bool = False):
+        """
+        获取用户收票统计信息（与列表查询逻辑保持一致）
+
+        :param db: orm 对象
+        :param user_id: 用户ID
+        :param is_admin: 是否超级管理员
+        :return: 收票数量
+        """
+        from sqlalchemy import or_
+        
+        # 构建条件列表（与列表查询 get_page_list 逻辑保持一致）
+        conditions = [OaTicket.delete_time == 0]
+        
+        # isTicket=1 的逻辑：只统计发票类型不为0的收票（收票列表默认过滤）
+        conditions.append(OaTicket.invoice_type != 0)
+        
+        # 超级管理员可以查看所有数据，不需要添加用户权限过滤
+        if not is_admin:
+            # tab=0 的逻辑：我创建的 OR 我是审核人的 OR 我是抄送人 OR 我是已审核人的
+            conditions.append(
+                or_(
+                    OaTicket.admin_id == user_id,
+                    func.find_in_set(str(user_id), OaTicket.check_uids) > 0,
+                    func.find_in_set(str(user_id), OaTicket.check_copy_uids) > 0,
+                    func.find_in_set(str(user_id), OaTicket.check_history_uids) > 0
+                )
+            )
+        
+        query = select(func.count()).select_from(OaTicket).where(*conditions)
         result = await db.execute(query)
         return result.scalar()
 
