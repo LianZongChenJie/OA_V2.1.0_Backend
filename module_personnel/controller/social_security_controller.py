@@ -137,7 +137,7 @@ async def get_user_page_list(
     query_object: Annotated[OaSocialSecurityUserPageQueryModel, Query()],
 ) -> Response:
     result = await SocialSecurityService.get_user_page_list_service(query_db, query_object, True)
-    return ResponseUtil.success(model_content=result)
+    return ResponseUtil.success(dict_content=result)
 
 @social_security_controller.post(
     "/user/add",
@@ -217,9 +217,9 @@ async def update_user(
         return ResponseUtil.failure(msg=result.message)
 
 @social_security_controller.delete(
-    "/user/remove/{id}",
+    "/user/remove",
     summary='删除用户社保关联信息',
-    description='用于删除用户社保关联信息（减员）',
+    description='用于删除用户社保关联信息（减员），支持批量删除',
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('personnel:social_security:user:remove')],
 )
@@ -227,9 +227,12 @@ async def update_user(
 async def remove_user(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
-    id: Annotated[int, Path(description='关联记录ID')],
+    socialId: Annotated[int, Body(description='社保信息ID')],
+    userIds: Annotated[str, Body(description='用户ID列表（逗号分隔，如：1,2,3）')],
 ) -> Response:
-    result = await SocialSecurityService.remove_user_service(query_db, id)
+    # 解析逗号分隔的用户ID字符串
+    user_ids = [int(u.strip()) for u in userIds.split(',') if u.strip()]
+    result = await SocialSecurityService.remove_user_service(query_db, socialId, user_ids)
     if result.is_success:
         return ResponseUtil.success(msg=result.message)
     else:

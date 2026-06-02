@@ -159,44 +159,82 @@ class SocialSecurityService:
 
     @classmethod
     async def get_user_page_list_service(cls, query_db: AsyncSession, query_object: OaSocialSecurityUserPageQueryModel,
-                                        is_page: bool = True) -> PageModel[OaSocialSecurityUserBaseModel] | list[dict[str, Any]]:
+                                        is_page: bool = True) -> dict | list[dict[str, Any]]:
         """获取社保关联人员分页列表服务"""
         query_list = await SocialSecurityUserDao.get_user_page_list(query_db, query_object, is_page)
         if is_page:
             # 处理 rows 中的数据
+            processed_rows = []
             if hasattr(query_list, 'rows') and query_list.rows:
-                processed_rows = []
                 for item in query_list.rows:
+                    # 尝试多种方式获取数据
                     if isinstance(item, dict):
-                        processed_rows.append(item)
+                        row_dict = item
+                    elif hasattr(item, '_asdict'):
+                        # Row 对象使用 _asdict() 方法
+                        row_dict = item._asdict()
+                    elif hasattr(item, '_mapping'):
+                        row_dict = dict(item._mapping)
+                    elif hasattr(item, '__dict__'):
+                        row_dict = item.__dict__
                     else:
-                        # 使用 _mapping 转换
-                        try:
-                            processed_rows.append(dict(item._mapping))
-                        except Exception:
-                            processed_rows.append(item.__dict__ if hasattr(item, '__dict__') else {})
-                
-                # 创建 PageModel，使用驼峰命名
-                result_list = PageModel[OaSocialSecurityUserBaseModel](
-                    rows=processed_rows,
-                    total=query_list.total if hasattr(query_list, 'total') else 0,
-                    pageNum=query_list.pageNum if hasattr(query_list, 'pageNum') else query_object.page_num,
-                    pageSize=query_list.pageSize if hasattr(query_list, 'pageSize') else query_object.page_size,
-                    hasNext=query_list.hasNext if hasattr(query_list, 'hasNext') else False
-                )
-            else:
-                result_list = query_list
+                        row_dict = {}
+                    
+                    # 转换为驼峰命名并处理 entryTime
+                    processed_rows.append({
+                        'id': row_dict.get('id'),
+                        'socialId': row_dict.get('social_id') or row_dict.get('socialId'),
+                        'userId': row_dict.get('user_id') or row_dict.get('userId'),
+                        'userName': row_dict.get('user_name') or row_dict.get('userName'),
+                        'entryTime': row_dict.get('entry_time') or row_dict.get('entryTime'),
+                        'entryTimeStr': row_dict.get('entry_time') or row_dict.get('entryTime'),
+                        'departmentName': row_dict.get('department_name') or row_dict.get('departmentName'),
+                        'city': row_dict.get('city'),
+                        'projectName': row_dict.get('project_name') or row_dict.get('projectName'),
+                        'status': row_dict.get('status'),
+                        'createTime': row_dict.get('create_time') or row_dict.get('createTime'),
+                        'updateTime': row_dict.get('update_time') or row_dict.get('updateTime'),
+                        'deleteTime': row_dict.get('delete_time') or row_dict.get('deleteTime')
+                    })
+            
+            # 直接返回字典格式，避免Pydantic验证
+            result_list = {
+                'rows': processed_rows,
+                'total': query_list.total if hasattr(query_list, 'total') else 0,
+                'pageNum': query_list.pageNum if hasattr(query_list, 'pageNum') else query_object.page_num,
+                'pageSize': query_list.pageSize if hasattr(query_list, 'pageSize') else query_object.page_size,
+                'hasNext': query_list.hasNext if hasattr(query_list, 'hasNext') else False
+            }
         else:
             result_list = []
             if query_list:
                 for item in query_list:
                     if isinstance(item, dict):
-                        result_list.append(item)
+                        row_dict = item
+                    elif hasattr(item, '_asdict'):
+                        row_dict = item._asdict()
+                    elif hasattr(item, '_mapping'):
+                        row_dict = dict(item._mapping)
+                    elif hasattr(item, '__dict__'):
+                        row_dict = item.__dict__
                     else:
-                        try:
-                            result_list.append(dict(item._mapping))
-                        except Exception:
-                            result_list.append(item.__dict__ if hasattr(item, '__dict__') else {})
+                        row_dict = {}
+                    
+                    result_list.append({
+                        'id': row_dict.get('id'),
+                        'socialId': row_dict.get('social_id') or row_dict.get('socialId'),
+                        'userId': row_dict.get('user_id') or row_dict.get('userId'),
+                        'userName': row_dict.get('user_name') or row_dict.get('userName'),
+                        'entryTime': row_dict.get('entry_time') or row_dict.get('entryTime'),
+                        'entryTimeStr': row_dict.get('entry_time') or row_dict.get('entryTime'),
+                        'departmentName': row_dict.get('department_name') or row_dict.get('departmentName'),
+                        'city': row_dict.get('city'),
+                        'projectName': row_dict.get('project_name') or row_dict.get('projectName'),
+                        'status': row_dict.get('status'),
+                        'createTime': row_dict.get('create_time') or row_dict.get('createTime'),
+                        'updateTime': row_dict.get('update_time') or row_dict.get('updateTime'),
+                        'deleteTime': row_dict.get('delete_time') or row_dict.get('deleteTime')
+                    })
         return result_list
 
     @classmethod
@@ -242,13 +280,39 @@ class SocialSecurityService:
             raise ServiceException(message=f"修改失败: {str(e)}")
 
     @classmethod
-    async def remove_user_service(cls, query_db: AsyncSession, id: int) -> CrudResponseModel:
-        """删除单个用户社保关联信息服务"""
+    async def remove_user_service(cls, query_db: AsyncSession, social_id: int, user_ids: List[int]) -> CrudResponseModel:
+        """删除用户社保关联信息服务（支持批量删除）"""
         try:
-            removed_count = await SocialSecurityUserDao.remove_user(query_db, id)
+            from module_personnel.entity.do.social_security_do import OaSocialSecurityUser
+            from sqlalchemy import update
+            from sqlalchemy.sql import and_
+            from datetime import datetime
+            
+            current_time = int(datetime.now().timestamp())
+            
+            # 直接在 Service 层执行批量更新，避免多次 commit
+            result = await query_db.execute(
+                update(OaSocialSecurityUser)
+                .values(status=0, update_time=current_time, delete_time=current_time)
+                .where(
+                    and_(
+                        OaSocialSecurityUser.social_id == social_id,
+                        OaSocialSecurityUser.user_id.in_(user_ids),
+                        OaSocialSecurityUser.delete_time == 0,
+                        OaSocialSecurityUser.status == 1
+                    )
+                )
+            )
+            
+            await query_db.commit()
+            removed_count = result.rowcount
+            
             if removed_count == 0:
-                return CrudResponseModel(is_success=False, message='未找到该关联记录或已减员')
-            return CrudResponseModel(is_success=True, message='减员成功')
+                return CrudResponseModel(is_success=False, message='未找到任何关联记录或已全部减员')
+            elif removed_count == len(user_ids):
+                return CrudResponseModel(is_success=True, message=f'成功减员{removed_count}名人员')
+            else:
+                return CrudResponseModel(is_success=True, message=f'成功减员{removed_count}名人员，{len(user_ids)-removed_count}条记录未找到或已减员')
         except Exception as e:
             await query_db.rollback()
             raise ServiceException(message=f"减员失败: {str(e)}")
