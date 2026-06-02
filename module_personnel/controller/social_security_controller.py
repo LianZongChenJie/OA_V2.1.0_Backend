@@ -141,20 +141,22 @@ async def get_user_page_list(
 
 @social_security_controller.post(
     "/user/add",
-    summary='单个添加社保关联人员',
-    description='用于单个添加社保关联人员',
+    summary='添加社保关联人员',
+    description='用于添加社保关联人员，支持单个或批量添加（userId传入逗号分隔的ID字符串）',
     response_model=None,
     dependencies=[UserInterfaceAuthDependency('personnel:social_security:user:add')],
 )
-@Log(title='社保关联人员-单个添加', business_type=BusinessType.INSERT)
+@Log(title='社保关联人员-添加', business_type=BusinessType.INSERT)
 async def add_user(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
     socialId: Annotated[int, Body(description='社保信息ID')],
-    userId: Annotated[int, Body(description='员工ID')],
+    userId: Annotated[str, Body(description='员工ID（支持逗号分隔，如：3,14）')],
     current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
 ) -> Response:
-    result = await SocialSecurityService.add_user_service(query_db, socialId, userId, current_user.user.user_id)
+    # 解析逗号分隔的用户ID字符串
+    user_ids = [int(u.strip()) for u in userId.split(',') if u.strip()]
+    result = await SocialSecurityService.add_user_service(query_db, socialId, user_ids, current_user.user.user_id)
     if result.is_success:
         return ResponseUtil.success(msg=result.message)
     else:
@@ -270,4 +272,19 @@ async def get_expiring_reminder(
     days: Annotated[int, Query(description='天数，默认3天')] = 3,
 ) -> Response:
     result = await SocialSecurityService.get_expiring_reminder_service(query_db, days)
+    return ResponseUtil.success(data=result)
+
+@social_security_controller.get(
+    "/reminder/expiring/count",
+    summary='获取社保到期预警数量',
+    description='根据当前日期计算，查询指定天数内即将到期的社保数量',
+    response_model=None,
+    dependencies=[UserInterfaceAuthDependency('personnel:social_security:reminder')],
+)
+async def get_expiring_count(
+    request: Request,
+    query_db: Annotated[AsyncSession, DBSessionDependency()],
+    days: Annotated[int, Query(description='预警天数，默认3天')] = 3,
+) -> Response:
+    result = await SocialSecurityService.get_expiring_count_service(query_db, days)
     return ResponseUtil.success(data=result)

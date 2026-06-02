@@ -59,6 +59,22 @@ class SocialSecurityDao:
                 )
             )
 
+        # 负责人筛选
+        if query_object.manager:
+            conditions.append(OaSocialSecurity.manager.like(f'%{query_object.manager}%'))
+
+        # 负责人ID筛选（精确匹配）
+        if query_object.manager_id:
+            conditions.append(OaSocialSecurity.manager_id == query_object.manager_id)
+
+        # 城市筛选
+        if query_object.city:
+            conditions.append(OaSocialSecurity.city.like(f'%{query_object.city}%'))
+
+        # 项目名称筛选
+        if query_object.project_name:
+            conditions.append(OaSocialSecurity.project_name.like(f'%{query_object.project_name}%'))
+
         # 添加数据权限条件
         if data_scope_sql is not None:
             conditions.append(data_scope_sql)
@@ -491,17 +507,56 @@ class SocialSecurityUserDao:
         return added_count
 
     @classmethod
-    async def get_expiring_social_securities(cls, db: AsyncSession, days: int = 3) -> List[dict]:
+    async def get_expiring_count(cls, db: AsyncSession, days: int = 3) -> int:
+        """获取即将到期的社保数量（用于预警统计）"""
+        from datetime import timedelta
+
+        today = datetime.now().day
+
+        # 计算即将到期的日期范围（考虑跨月情况）
+        expiring_days = []
+        for d in range(days + 1):
+            expiring_days.append((today + d - 1) % 31 + 1)
+
+        # 查询即将到期的社保数量
+        query = select(func.count(OaSocialSecurity.id)).where(
+            and_(
+                OaSocialSecurity.status == 1,
+                OaSocialSecurity.delete_time == 0,
+                OaSocialSecurity.social_date.in_(expiring_days)
+            )
+        )
+
+        result = await db.execute(query)
+        count = result.scalar()
+        return count or 0
+
+    @classmethod
+    async def get_expiring_social_securities(cls, db: AsyncSession, days: int = 3, manager: str = None, manager_id: int = None) -> List[dict]:
         """获取即将到期的社保信息（用于工作台提醒）"""
         from datetime import timedelta
 
         today = datetime.now().day
-        future_day = (datetime.now() + timedelta(days=days)).day
 
         # 计算即将到期的日期范围
         expiring_days = []
         for d in range(days + 1):
             expiring_days.append((today + d - 1) % 31 + 1)
+
+        # 构建条件列表
+        conditions = [
+            OaSocialSecurity.status == 1,
+            OaSocialSecurity.delete_time == 0,
+            OaSocialSecurity.social_date.in_(expiring_days),
+            OaSocialSecurityUser.status == 1,
+            OaSocialSecurityUser.delete_time == 0
+        ]
+
+        # 添加负责人筛选条件
+        if manager:
+            conditions.append(OaSocialSecurity.manager.like(f'%{manager}%'))
+        if manager_id:
+            conditions.append(OaSocialSecurity.manager_id == manager_id)
 
         # 查询即将到期的社保信息
         query = (
@@ -511,15 +566,7 @@ class SocialSecurityUserDao:
             )
             .outerjoin(OaSocialSecurityUser, OaSocialSecurity.id == OaSocialSecurityUser.social_id)
             .outerjoin(SysUser, OaSocialSecurityUser.user_id == SysUser.user_id)
-            .where(
-                and_(
-                    OaSocialSecurity.status == 1,
-                    OaSocialSecurity.delete_time == 0,
-                    OaSocialSecurity.social_date.in_(expiring_days),
-                    OaSocialSecurityUser.status == 1,
-                    OaSocialSecurityUser.delete_time == 0
-                )
-            )
+            .where(and_(*conditions))
             .group_by(OaSocialSecurity.id)
         )
 
@@ -534,10 +581,10 @@ class SocialSecurityUserDao:
             expiring_list.append({
                 'id': social_info.id,
                 'city': social_info.city,
-                'project_name': social_info.project_name,
-                'social_date': social_info.social_date,
-                'related_users': related_users,
-                'create_time': social_info.create_time
+                'projectName': social_info.project_name,
+                'socialDate': social_info.social_date,
+                'relatedUsers': related_users,
+                'createTime': social_info.create_time
             })
 
         return expiring_list

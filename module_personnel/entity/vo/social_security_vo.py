@@ -69,6 +69,10 @@ class OaSocialSecurityPageQueryModel(OaSocialSecurityBaseModel):
     page_size: Optional[int] = Field(default=10, description='页大小')
     keywords: Optional[str] = Field(default=None, description='关键词搜索')
     status: Optional[int] = Field(default=None, description='状态筛选')
+    manager: Optional[str] = Field(default=None, description='负责人筛选')
+    manager_id: Optional[int] = Field(default=None, description='负责人ID筛选')
+    city: Optional[str] = Field(default=None, description='城市筛选')
+    project_name: Optional[str] = Field(default=None, description='项目名称筛选')
 
 
 class OaSocialSecurityUserBaseModel(BaseModel):

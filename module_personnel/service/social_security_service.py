@@ -56,8 +56,23 @@ class SocialSecurityService:
                 update_data = model.model_dump(exclude={"id", "update_time", "create_by", "create_by_id", "related_users", "social_date_str", "create_time_str", "social_date"}, exclude_none=True)
                 await SocialSecurityDao.update(query_db, model)
                 
-                # 处理关联人员
+                # 处理关联人员 - 先删除旧的关联记录，再添加新的
                 if model.related_users:
+                    # 获取当前已关联的用户ID
+                    existing_users = await SocialSecurityUserDao.get_users_by_social_id(query_db, model.id)
+                    existing_user_ids = [user.get('user_id') for user in existing_users]
+                    
+                    # 物理删除旧的关联记录
+                    from module_personnel.entity.do.social_security_do import OaSocialSecurityUser
+                    from sqlalchemy import delete
+                    
+                    await query_db.execute(
+                        delete(OaSocialSecurityUser)
+                        .where(OaSocialSecurityUser.social_id == model.id)
+                    )
+                    await query_db.commit()
+                    
+                    # 添加新的关联用户
                     user_ids = [int(u.strip()) for u in model.related_users.split(',') if u.strip()]
                     await SocialSecurityUserDao.batch_add_users(query_db, model.id, user_ids, model.create_by_id or 0)
                 
@@ -238,11 +253,13 @@ class SocialSecurityService:
         return result_list
 
     @classmethod
-    async def add_user_service(cls, query_db: AsyncSession, social_id: int, user_id: int, admin_id: int) -> CrudResponseModel:
-        """单个添加社保关联人员服务"""
+    async def add_user_service(cls, query_db: AsyncSession, social_id: int, user_ids: List[int], admin_id: int) -> CrudResponseModel:
+        """添加社保关联人员服务（支持单个或批量添加）"""
         try:
-            success, message = await SocialSecurityUserDao.add_user(query_db, social_id, user_id, admin_id)
-            return CrudResponseModel(is_success=success, message=message)
+            added_count = await SocialSecurityUserDao.batch_add_users(query_db, social_id, user_ids, admin_id)
+            if added_count == 0:
+                return CrudResponseModel(is_success=False, message='未添加任何人员，可能已全部存在')
+            return CrudResponseModel(is_success=True, message=f'成功添加{added_count}名人员')
         except Exception as e:
             await query_db.rollback()
             raise ServiceException(message=f"添加人员失败: {str(e)}")
@@ -345,3 +362,12 @@ class SocialSecurityService:
             return expiring_list
         except Exception as e:
             raise ServiceException(message=f"获取提醒失败: {str(e)}")
+
+    @classmethod
+    async def get_expiring_count_service(cls, query_db: AsyncSession, days: int = 3) -> dict:
+        """获取即将到期的社保数量服务（用于预警统计）"""
+        try:
+            count = await SocialSecurityUserDao.get_expiring_count(query_db, days)
+            return {'expiringCount': count, 'days': days}
+        except Exception as e:
+            raise ServiceException(message=f"获取预警数量失败: {str(e)}")
