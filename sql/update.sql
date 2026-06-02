@@ -292,5 +292,100 @@ ON CONVERT(u.nick_name USING utf8mb4) COLLATE utf8mb4_unicode_ci =
 WHERE t.tender_leader IS NOT NULL;
 --项目周期字段
 ALTER TABLE oa_project_tender ADD project_cycle_num int NULL COMMENT '项目周期(X)月';
+--统一账号标识是否已购字典
+update oa_website_account set has_uk='N' where TRIM(has_uk)='无';
+update oa_website_account set has_uk='Y' where TRIM(has_uk)='已购';
+--社保相关表数据
+-- 根据不同的城市/部门创建社保记录
+-- 这里假设根据用户的 work_location（工作地点）或 did（部门）来分组创建社保记录
+
+INSERT INTO `oa_social_security` (`city`, `project_name`, `social_date`, `status`, `create_time`, `update_time`, `delete_time`)
+SELECT DISTINCT
+    CASE u.work_location
+        WHEN 1 THEN '北京'
+        WHEN 2 THEN '上海'
+        WHEN 3 THEN '广州'
+        WHEN 4 THEN '深圳'
+        WHEN 5 THEN '杭州'
+        WHEN 6 THEN '成都'
+        WHEN 7 THEN '武汉'
+        WHEN 8 THEN '南京'
+        WHEN 9 THEN '西安'
+        WHEN 10 THEN '重庆'
+        ELSE '其他城市'
+        END AS city,
+    CONCAT(CASE u.work_location
+               WHEN 1 THEN '北京'
+               WHEN 2 THEN '上海'
+               WHEN 3 THEN '广州'
+               WHEN 4 THEN '深圳'
+               WHEN 5 THEN '杭州'
+               WHEN 6 THEN '成都'
+               WHEN 7 THEN '武汉'
+               WHEN 8 THEN '南京'
+               WHEN 9 THEN '西安'
+               WHEN 10 THEN '重庆'
+               ELSE '其他'
+               END, '社保项目') AS project_name,
+    UNIX_TIMESTAMP(DATE_ADD(NOW(), INTERVAL 30 DAY)) AS social_date,
+    1 AS status,
+    UNIX_TIMESTAMP() AS create_time,
+    UNIX_TIMESTAMP() AS update_time,
+    0 AS delete_time
+FROM sys_user u
+WHERE u.del_flag = '0'
+  AND u.admin_status = 1
+  AND u.work_location > 0;
+
+-- 如果 work_location 字段没有数据，可以根据部门或其他字段来创建
+-- 或者创建一个默认的社保记录
+INSERT INTO `oa_social_security` (`city`, `project_name`, `social_date`, `status`, `create_time`, `update_time`, `delete_time`)
+VALUES
+    ('默认城市', '公司统一社保项目', UNIX_TIMESTAMP(DATE_ADD(NOW(), INTERVAL 30 DAY)), 1, UNIX_TIMESTAMP(), UNIX_TIMESTAMP(), 0)
+    ON DUPLICATE KEY UPDATE project_name = VALUES(project_name);
+
+
+
+
+
+-- 将所有在职员工关联到对应的社保记录
+INSERT INTO `oa_social_security_user` (`social_id`, `user_id`, `status`, `create_time`, `update_time`, `delete_time`)
+SELECT
+    ss.id AS social_id,
+    u.user_id AS user_id,
+    1 AS status,
+    UNIX_TIMESTAMP() AS create_time,
+    UNIX_TIMESTAMP() AS update_time,
+    0 AS delete_time
+FROM sys_user u
+         INNER JOIN oa_social_security ss ON (
+    -- 根据工作地点匹配社保记录
+    ss.city = CASE u.work_location
+                  WHEN 1 THEN '北京'
+                  WHEN 2 THEN '上海'
+                  WHEN 3 THEN '广州'
+                  WHEN 4 THEN '深圳'
+                  WHEN 5 THEN '杭州'
+                  WHEN 6 THEN '成都'
+                  WHEN 7 THEN '武汉'
+                  WHEN 8 THEN '南京'
+                  WHEN 9 THEN '西安'
+                  WHEN 10 THEN '重庆'
+                  ELSE '其他城市'
+        END
+        OR
+        -- 如果没有匹配到具体城市，则关联到默认社保记录
+    (u.work_location = 0 OR u.work_location IS NULL) AND ss.city = '默认城市'
+    )
+WHERE u.del_flag = '0'
+  AND u.admin_status = 1
+  AND ss.delete_time = 0
+  AND ss.status = 1
+  AND NOT EXISTS (
+    SELECT 1 FROM oa_social_security_user ssu
+    WHERE ssu.social_id = ss.id
+      AND ssu.user_id = u.user_id
+      AND ssu.delete_time = 0
+);
 
 
