@@ -117,6 +117,9 @@ async def add_system_user(
         )
     is_leader = add_user.is_leader
     delattr(add_user, 'is_leader')
+    # 如果密码为空，设置默认密码
+    if not add_user.password:
+        add_user.password = '123456'
     add_user.password = PwdUtil.get_password_hash(add_user.password)
     add_user.create_by = current_user.user.user_name
     add_user.create_time = datetime.now()

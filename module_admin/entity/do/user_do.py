@@ -87,6 +87,8 @@ class SysUser(Base):
     auth_dids = Column(String(500), nullable=True, server_default="''", comment='可见部门数据')
     son_dids = Column(String(500), nullable=True, server_default="''", comment='可见子部门数据')
     admin_status = Column(Integer, nullable=True, comment='员工状态：-1待入职,0禁止登录,1正常,2离职')
+    city = Column(String(255), nullable=True, server_default="''", comment='所在城市')
+    city_id = Column(String(255), nullable=True, server_default="''", comment='城市ID(多ID逗号分隔)')
 
 
 class SysUserRole(Base):

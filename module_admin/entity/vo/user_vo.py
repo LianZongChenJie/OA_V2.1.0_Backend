@@ -90,6 +90,8 @@ class UserModel(BaseModel):
     auth_dids: str | None = Field(default=None, description='可见部门数据')
     son_dids: str | None = Field(default=None, description='可见子部门数据')
     admin_status: int | None = Field(default=None, description='员工状态：-1待入职,0禁止登录,1正常,2离职')
+    city: str | None = Field(default=None, description='所在城市')
+    city_id: str | None = Field(default=None, description='城市ID(多ID逗号分隔)')
     is_leader: bool | None = Field(default=None, description='是否为部门领导领导：0否,1是')
     @model_validator(mode='after')
     def check_password(self) -> 'UserModel':
