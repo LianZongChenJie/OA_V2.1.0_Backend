@@ -269,9 +269,10 @@ async def import_users(
 async def get_expiring_reminder(
     request: Request,
     query_db: Annotated[AsyncSession, DBSessionDependency()],
+    current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
     days: Annotated[int, Query(description='天数，默认3天')] = 3,
 ) -> Response:
-    result = await SocialSecurityService.get_expiring_reminder_service(query_db, days)
+    result = await SocialSecurityService.get_expiring_reminder_service(query_db, days, current_user.user.user_id)
     return ResponseUtil.success(data=result)
 
 @social_security_controller.get(

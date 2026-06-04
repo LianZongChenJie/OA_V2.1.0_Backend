@@ -355,10 +355,10 @@ class SocialSecurityService:
             raise ServiceException(message=f"导入失败: {str(e)}")
 
     @classmethod
-    async def get_expiring_reminder_service(cls, query_db: AsyncSession, days: int = 3) -> List[dict]:
+    async def get_expiring_reminder_service(cls, query_db: AsyncSession, days: int = 3, manager_id: int = None) -> List[dict]:
         """获取社保到期提醒服务（用于工作台）"""
         try:
-            expiring_list = await SocialSecurityUserDao.get_expiring_social_securities(query_db, days)
+            expiring_list = await SocialSecurityUserDao.get_expiring_social_securities(query_db, days, manager_id=manager_id)
             return expiring_list
         except Exception as e:
             raise ServiceException(message=f"获取提醒失败: {str(e)}")

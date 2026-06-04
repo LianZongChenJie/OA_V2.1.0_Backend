@@ -2,7 +2,7 @@ import re
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, field_serializer, model_validator
 from pydantic.alias_generators import to_camel
 from pydantic_validation_decorator import Network, NotBlank, Size, Xss
 
@@ -28,6 +28,13 @@ class UserModel(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel, from_attributes=True)
 
     user_id: int | None = Field(default=None, description='用户ID')
+
+    @field_serializer('create_time', 'update_time', 'login_date', 'pwd_update_date', mode='plain')
+    def serialize_datetime(self, value: datetime | None) -> str | None:
+        """将datetime字段序列化为不带T的格式"""
+        if value is None:
+            return None
+        return value.strftime('%Y-%m-%d %H:%M:%S')
     dept_id: int | None = Field(default=None, description='部门ID')
     did: int | None = Field(default=None, description='岗位ID')
     pid: int | None = Field(default=None, description='部门ID')
