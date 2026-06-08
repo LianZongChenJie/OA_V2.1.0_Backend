@@ -234,17 +234,16 @@ class TenderService:
             # 更新投标基本信息
             await TenderDao.edit_tender_dao(query_db, page_object)
             
-            # 如果有附件，先删除原有附件（软删除），再新增新附件
+            # 先删除原有附件（软删除）- 无论是否有新附件都执行删除
+            existing_attachments = await TenderDao.get_tender_attachments(query_db, page_object.id)
+            if existing_attachments:
+                # 软删除现有附件
+                attachment_ids = [att.id for att in existing_attachments]
+                delete_time = int(datetime.now().timestamp())
+                await TenderDao.batch_delete_tender_attachments_dao(query_db, attachment_ids, delete_time)
+            
+            # 如果有新附件，新增新附件
             if page_object.attachments and len(page_object.attachments) > 0:
-                # 获取现有附件列表
-                existing_attachments = await TenderDao.get_tender_attachments(query_db, page_object.id)
-                if existing_attachments:
-                    # 软删除现有附件
-                    attachment_ids = [att.id for att in existing_attachments]
-                    delete_time = int(datetime.now().timestamp())
-                    await TenderDao.batch_delete_tender_attachments_dao(query_db, attachment_ids, delete_time)
-                
-                # 新增新附件
                 for attachment in page_object.attachments:
                     add_attachment_model = AddTenderAttachmentModel(
                         project_tender_id=page_object.id,
@@ -430,6 +429,91 @@ class TenderService:
         except Exception as e:
             logger.error(f"生成模板失败: {str(e)}", exc_info=True)
             raise ServiceException(message=f'生成模板失败：{str(e)}') from e
+
+    @classmethod
+    async def export_tender_services(
+            cls, query_db: AsyncSession, query_object: TenderPageQueryModel
+    ) -> BytesIO:
+        """
+        导出投标信息（按照搜索条件导出）
+        :param query_db: orm对象
+        :param query_object: 查询参数对象
+        :return: Excel文件流
+        """
+        try:
+            # 获取数据（不分页）
+            tender_list = await TenderDao.get_tender_list(query_db, query_object, is_page=False)
+            
+            # 定义导出字段映射
+            field_mapping = {
+                'month': '月份',
+                'customer_name': '客户名称',
+                'project_name': '项目名称',
+                'tender_leader': '投标负责人',
+                'purchase_date': '购买日期',
+                'tender_agency': '招标机构',
+                'project_cycle': '项目周期',
+                'shortlisted_countries': '入围家数',
+                'budget_amount': '预算金额(元)',
+                'bid_opening_date': '开标日期',
+                'is_tender_submitted': '是否投标',
+                'non_tender_reason': '未投原因',
+                'tender_document_fee': '标书款(元)',
+                'has_tender_invoice': '标书款发票',
+                'is_deposit_paid': '是否缴纳保证金',
+                'tender_deposit': '投标保证金(元)',
+                'deposit_account_name': '保证金账户名',
+                'deposit_bank': '保证金开户行',
+                'deposit_account_no': '保证金账号',
+                'is_deposit_refunded': '是否退回保证金',
+                'bid_result': '中标结果',
+                'bid_service_fee': '中标服务费(元)',
+                'remark': '备注',
+                'create_time': '创建时间'
+            }
+            
+            headers = list(field_mapping.keys())
+            header_names = list(field_mapping.values())
+            
+            # 构建导出数据
+            export_data = []
+            for tender in tender_list:
+                row = {}
+                for field in headers:
+                    value = getattr(tender, field, '')
+                    if value is None:
+                        row[field] = ''
+                    elif isinstance(value, (datetime)):
+                        row[field] = value.strftime('%Y-%m-%d %H:%M:%S')
+                    elif hasattr(value, 'strftime'):
+                        row[field] = value.strftime('%Y-%m-%d %H:%M:%S')
+                    else:
+                        row[field] = str(value)
+                export_data.append(row)
+            
+            # 构造DataFrame
+            df = pd.DataFrame(export_data, columns=headers)
+            
+            output = BytesIO()
+            with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                df.to_excel(writer, sheet_name='投标信息', index=False, header=header_names)
+                worksheet = writer.sheets['投标信息']
+                
+                # 样式设置
+                for cell in worksheet[1]:
+                    cell.font = Font(bold=True)
+                    cell.fill = PatternFill(start_color="D3D3D3", end_color="D3D3D3", fill_type="solid")
+                
+                # 列宽自适应
+                for col in worksheet.columns:
+                    max_length = max(len(str(cell.value)) for cell in col)
+                    worksheet.column_dimensions[col[0].column_letter].width = min(max_length + 2, 50)
+            
+            output.seek(0)
+            return output
+        except Exception as e:
+            logger.error(f"导出投标信息失败: {str(e)}", exc_info=True)
+            raise ServiceException(message=f'导出失败：{str(e)}') from e
 
     @classmethod
     async def import_tender_services(

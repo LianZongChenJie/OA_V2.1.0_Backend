@@ -151,6 +151,45 @@ async def get_tender_list(
         return ResponseUtil.error(msg=f'获取列表失败：{str(e)}')
 
 @tender_controller.get(
+    '/export',
+    summary='导出投标信息接口',
+    description='按照搜索条件导出投标信息到Excel',
+    dependencies=[UserInterfaceAuthDependency('tender:tender:export')],
+)
+async def export_tender(
+        request: Request,
+        tender_page_query: Annotated[TenderPageQueryModel, Query()],
+        query_db: Annotated[AsyncSession, DBSessionDependency()],
+) -> Response:
+    """导出投标信息（支持搜索条件过滤）"""
+    try:
+        logger.info(f'导出投标信息，搜索条件: {tender_page_query}')
+        
+        # 调用服务层导出方法
+        excel_file = await TenderService.export_tender_services(query_db, tender_page_query)
+        
+        filename = f'投标信息_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx'
+        encoded_filename = urllib.parse.quote(filename)
+
+        response = StreamingResponse(
+            excel_file,
+            media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        response.headers["Content-Disposition"] = f"attachment; filename*=UTF-8''{encoded_filename}"
+        response.headers["Content-Encoding"] = "identity"
+        response.headers["Content-Type"] = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+        logger.info(f'导出投标信息成功，文件名：{filename}')
+        return response
+    except ServiceException as e:
+        logger.error(f'导出投标信息失败：{e.message}')
+        return ResponseUtil.error(msg=e.message.encode('utf-8').decode('latin-1'))
+    except Exception as e:
+        error_msg = f'导出失败：{str(e)}'
+        logger.error(error_msg, exc_info=True)
+        return ResponseUtil.error(msg=error_msg.encode('utf-8').decode('latin-1'))
+
+@tender_controller.get(
     '/{tender_id}',
     summary='获取投标详情接口',
     description='用于获取投标详细信息',
