@@ -565,8 +565,9 @@ async def recommend_resume(
         # 如果提供了邮箱地址和附件路径，发送带附件的邮件
         if recommend_resume.email_url and recommend_resume.file_path:
             try:
-                email_subject = f'简历推荐 - {recommend_resume.project_name if recommend_resume.project_name else "未知项目"}'
-                email_content = f'您好，\n\n附件为推荐简历，请查收。\n\n推荐人：{recommend_resume.recommender_name if recommend_resume.recommender_name else "未知"}\n项目名称：{recommend_resume.project_name if recommend_resume.project_name else "未知"}'
+                project_display_name = recommend_resume.entry_project_name or recommend_resume.project_name or '未知项目'
+                email_subject = f'简历推荐 - {project_display_name}'
+                email_content = f'您好，\n\n附件为推荐简历，请查收。\n\n推荐人：{recommend_resume.recommender_name if recommend_resume.recommender_name else "未知"}\n项目名称：{project_display_name}'
                 # 拼接文件绝对路径（与下载接口保持一致）
                 absolute_file_path = os.path.join(UPLOAD_DIR, recommend_resume.file_path)
                 if not os.path.exists(absolute_file_path):

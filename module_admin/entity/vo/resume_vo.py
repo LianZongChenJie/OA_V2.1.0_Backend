@@ -178,6 +178,7 @@ class ResumeRecommendModel(BaseModel):
     remark: str | None = Field(default=None, description='备注')
     email_url: str | None = Field(default=None, description='收件人邮箱地址')
     file_path: str | None = Field(default=None, description='附件文件路径')
+    entry_project_name: str | None = Field(default=None, description='入场项目名称')
 
 
 class ResumeEmailTemplateModel(BaseModel):

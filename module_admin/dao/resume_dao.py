@@ -278,6 +278,8 @@ class ResumeDao:
             update_data['recommend_customer_id'] = page_object.customer_id
         if page_object.customer_name:
             update_data['recommend_customer_name'] = page_object.customer_name
+        if page_object.entry_project_name:
+            update_data['entry_project_name'] = page_object.entry_project_name
 
         await query_db.execute(
             update(ResumeInfo)
