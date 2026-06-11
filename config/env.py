@@ -107,6 +107,18 @@ class LogSettings(BaseSettings):
     log_worker_id: str = 'auto'
 
 
+class MailSettings(BaseSettings):
+    """
+    邮件配置
+    """
+
+    mail_smtp_server: str = 'smtp.yunyou.top'
+    mail_smtp_port: int = 465
+    mail_sender_email: str = 'zhaopin1@bjlianzong.com'
+    mail_sender_password: str = ''
+    mail_sender_name: str = 'OA系统'
+
+
 class GenSettings:
     """
     代码生成配置
@@ -222,6 +234,12 @@ class GetConfig:
         """
         return LogSettings()
 
+    def get_mail_config(self) -> MailSettings:
+        """
+        获取邮件配置
+        """
+        return MailSettings()
+
     def get_gen_config(self) -> GenSettings:
         """
         获取代码生成配置
@@ -283,6 +301,8 @@ DataBaseConfig = get_config.get_database_config()
 RedisConfig = get_config.get_redis_config()
 # 日志配置
 LogConfig = get_config.get_log_config()
+# 邮件配置
+MailConfig = get_config.get_mail_config()
 # 代码生成配置
 GenConfig = get_config.get_gen_config()
 # 上传配置
