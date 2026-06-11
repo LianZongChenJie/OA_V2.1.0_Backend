@@ -1420,3 +1420,43 @@ async def delete_email_template(
     except Exception as e:
         logger.error(f'删除邮件模板失败：{str(e)}', exc_info=True)
         return ResponseUtil.error(msg=f'删除失败：{str(e)}')
+
+@resume_controller.get(
+    '/template/download',
+    summary='下载简历模板接口',
+    description='用于下载简历模板文件',
+    dependencies=[UserInterfaceAuthDependency('resume:resume:download')],
+)
+async def download_resume_template(
+        request: Request,
+) -> Response:
+    """下载简历模板文件"""
+    try:
+        # 简历模板文件路径
+        template_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'resume_template', '简历模版.docx')
+
+        # 记录文件地址和下载地址
+        download_url = str(request.url)
+        logger.info(f'下载简历模板请求，文件地址：{template_path}，下载地址：{download_url}')
+
+        if not os.path.exists(template_path):
+            logger.error(f'简历模板文件不存在，路径：{template_path}')
+            return ResponseUtil.error(msg='简历模板文件不存在')
+
+        # 处理中文文件名编码
+        filename = '简历模版.docx'
+        encoded_filename = urllib.parse.quote(filename)
+
+        # 返回文件响应
+        response = FileResponse(
+            path=template_path,
+            media_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            filename=filename
+        )
+        response.headers["Content-Disposition"] = f"attachment; filename*=UTF-8''{encoded_filename}"
+
+        logger.info(f'下载简历模板成功，文件名：{filename}')
+        return response
+    except Exception as e:
+        logger.error(f'下载简历模板失败：{str(e)}', exc_info=True)
+        return ResponseUtil.error(msg=f'下载失败：{str(e)}')
