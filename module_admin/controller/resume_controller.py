@@ -45,6 +45,12 @@ class CurrentUserModel:
     user: object = None
 
 
+def _to_camel_key(key: str) -> str:
+    """将下划线命名转换为驼峰命名"""
+    parts = key.split('_')
+    return parts[0] + ''.join(word.capitalize() for word in parts[1:])
+
+
 @resume_controller.get(
     '/list',
     summary='获取简历分页列表接口',
@@ -71,49 +77,44 @@ async def get_resume_list(
             rows_data = resume_page_query_result.get('rows', [])
             processed_rows = []
             for item in rows_data:
-                if hasattr(item, 'model_dump'):
-                    # 使用 by_alias=True 确保驼峰命名
-                    row_dict = item.model_dump(by_alias=True)
+                if hasattr(item, 'keys') and hasattr(item, '__getitem__'):
+                    # 处理 dict 或 RowMapping 类型
+                    row_dict = dict(item)
+                    
+                    # 先处理嵌套的 ResumeInfo 对象，将其展平到同一级
+                    resume_info = None
+                    for key in ['ResumeInfo', 'resumeInfo', 'resume_info']:
+                        if key in row_dict:
+                            resume_info = row_dict.pop(key)
+                            break
+                    
+                    if resume_info:
+                        if hasattr(resume_info, 'keys') and hasattr(resume_info, '__getitem__'):
+                            resume_dict = dict(resume_info)
+                            row_dict.update(resume_dict)
+                        elif hasattr(resume_info, '__dict__'):
+                            resume_dict = {k: v for k, v in resume_info.__dict__.items() if not k.startswith('_')}
+                            row_dict.update(resume_dict)
+                    
                     # 处理时间字段，将 T 替换为空格
                     for key, value in row_dict.items():
                         if isinstance(value, str) and 'T' in value:
                             row_dict[key] = value.replace('T', ' ')
-                elif isinstance(item, dict):
-                    row_dict = item.copy()
-                    # 处理时间字段，将 T 替换为空格
-                    for key, value in row_dict.items():
-                        if isinstance(value, str) and 'T' in value:
-                            row_dict[key] = value.replace('T', ' ')
+                        elif hasattr(value, 'isoformat'):
+                            row_dict[key] = value.isoformat().replace('T', ' ')
+                    
+                    # 下划线转驼峰
+                    row_dict = {_to_camel_key(k): v for k, v in row_dict.items()}
                 else:
-                    row_dict = {}
-                    try:
-                        for key in item.__dict__:
-                            if not key.startswith('_'):
-                                value = getattr(item, key)
-                                # 将下划线命名转换为驼峰命名
-                                camel_key = ''.join(word.capitalize() if i > 0 else word 
-                                                   for i, word in enumerate(key.split('_')))
-                                if hasattr(value, 'isoformat'):
-                                    row_dict[camel_key] = value.isoformat().replace('T', ' ')
-                                else:
-                                    row_dict[camel_key] = value
-                    except:
-                        row_dict = {'error': '数据转换失败'}
+                    row_dict = {'error': '数据转换失败'}
                 processed_rows.append(row_dict)
             
-            page_info = {
-                'rows': processed_rows,
-                'total': resume_page_query_result.get('total', 0),
-                'pageNum': resume_page_query_result.get('pageNum', resume_page_query.page_num),
-                'pageSize': resume_page_query_result.get('pageSize', resume_page_query.page_size),
-                'hasNext': resume_page_query_result.get('hasNext', False)
-            }
             return ResponseUtil.success(
                 rows=processed_rows,
                 dict_content={
                     'total': resume_page_query_result.get('total', 0),
-                    'pageNum': resume_page_query_result.get('page_num', resume_page_query.page_num),
-                    'pageSize': resume_page_query_result.get('page_size', resume_page_query.page_size)
+                    'pageNum': resume_page_query_result.get('pageNum', resume_page_query.page_num),
+                    'pageSize': resume_page_query_result.get('pageSize', resume_page_query.page_size)
                 }
             )
         elif isinstance(resume_page_query_result, list):

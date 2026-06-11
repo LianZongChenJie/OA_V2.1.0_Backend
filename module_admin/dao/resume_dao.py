@@ -25,7 +25,26 @@ class ResumeDao:
         """
         获取简历列表
         """
-        query = select(ResumeInfo).where(ResumeInfo.delete_time == 0)
+        # 创建子查询获取每个简历最新的推荐记录
+        latest_recommend_subq = select(
+            ResumeRecommend.resume_id,
+            ResumeRecommend.project_name.label('project_name'),
+            ResumeRecommend.customer_name.label('customer_name'),
+            func.max(ResumeRecommend.recommend_time).label('latest_time')
+        ).where(ResumeRecommend.delete_time == 0)
+        latest_recommend_subq = latest_recommend_subq.group_by(ResumeRecommend.resume_id).subquery('latest_recommend')
+
+        # 创建最终查询，关联推荐记录
+        query = select(
+            ResumeInfo,
+            latest_recommend_subq.c.project_name,
+            latest_recommend_subq.c.customer_name
+        ).select_from(
+            ResumeInfo.__table__.outerjoin(
+                latest_recommend_subq,
+                ResumeInfo.id == latest_recommend_subq.c.resume_id
+            )
+        ).where(ResumeInfo.delete_time == 0)
 
         if query_object.name:
             query = query.filter(ResumeInfo.name.like(f'%{query_object.name}%'))
@@ -52,10 +71,10 @@ class ResumeDao:
         if is_page:
             total = await query_db.scalar(select(func.count()).select_from(query.subquery()))
             query = query.offset((query_object.page_num - 1) * query_object.page_size).limit(query_object.page_size)
-            result = (await query_db.execute(query)).scalars().all()
+            result = (await query_db.execute(query)).mappings().all()
             return result, total
         else:
-            result = (await query_db.execute(query)).scalars().all()
+            result = (await query_db.execute(query)).mappings().all()
             return result
 
     @classmethod
