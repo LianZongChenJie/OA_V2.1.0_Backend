@@ -145,6 +145,10 @@ class SealService:
             await SealDao.return_seal(query_db, seal_id)
             await query_db.commit()
             return CrudResponseModel(is_success=True, message='还章成功')
+        except ServiceException:
+            raise
         except Exception as e:
             await query_db.rollback()
+            import traceback
+            logger.error(f"还章失败：{traceback.format_exc()}")
             raise ServiceException(message=f"还章失败：{str(e)}")

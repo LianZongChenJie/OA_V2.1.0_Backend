@@ -7,6 +7,7 @@ from datetime import datetime
 #
 from module_finance.dao.ticket_dao import TicketDao
 from module_personnel.dao.department_change_dao import DepartmentChangeDao
+from module_administrative.dao.seal_dao import SealDao
 from utils.log_util import logger
 
 class CheckAfter:
@@ -29,6 +30,8 @@ class CheckAfter:
             await cls.update_invoice(db, id)
         elif check_table == "ticket":
             await cls.update_ticket(db, id)
+        elif check_table == "seal":
+            await cls.update_seal(db, id)
         # elif check_table == "department_change":
         #     await cls.update_department_change(db, id)
         else:
@@ -96,6 +99,22 @@ class CheckAfter:
        ticket.pay_time = int(datetime.now().timestamp())
        await TicketDao.update_by_entity(db, ticket)
        return
+
+    @classmethod
+    async def update_seal(cls, db:AsyncSession, id:int):
+        """
+        用章申请审核通过后，将用章状态改为在用
+        """
+        try:
+            seal_info = await SealDao.get_info_by_id(db, id)
+            if not seal_info:
+                logger.warning("用章申请不存在, id: %s", id)
+                return
+            await SealDao.update_seal_status(db, id, 1)
+            logger.info("用章申请审核通过，状态改为在用, id: %s", id)
+        except Exception as e:
+            logger.error("更新用章状态失败: %s", e)
+        return
 
     # @classmethod
     # async def update_department_change(cls, db:AsyncSession, id:int):

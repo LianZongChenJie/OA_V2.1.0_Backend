@@ -213,6 +213,7 @@ class SealDao:
             'check_history_uids': seal.check_history_uids,
             'check_copy_uids': seal.check_copy_uids,
             'check_time': seal.check_time,
+            'seal_status': seal.seal_status,
 
             # ========== 时间戳 ==========
             'create_time': seal.create_time,
@@ -277,7 +278,27 @@ class SealDao:
         return result.rowcount
 
     @classmethod
-    async def reject_change(cls, db: AsyncSession, data: OaSealBaseModel):
+    async def update_seal_status(cls, db: AsyncSession, seal_id: int, status: int):
+        """
+        更新用章状态
+
+        :param db: orm 对象
+        :param seal_id: 用章申请ID
+        :param status: 用章状态
+        :return: 影响的行数
+        """
+        try:
+            result = await db.execute(
+                update(OaSeal)
+                .values(seal_status=status)
+                .where(OaSeal.id == seal_id)
+            )
+        except Exception as e:
+            raise e
+        return result.rowcount
+
+    @classmethod
+    async def pass_change(cls, db: AsyncSession, data: OaSealBaseModel):
         try:
             result = await db.execute(
                 update(OaSeal)
@@ -329,8 +350,6 @@ class SealDao:
                 )
                 .where(OaSeal.id == seal_id)
             )
-            await db.commit()
         except Exception as e:
-            await db.rollback()
             raise e
         return result.rowcount

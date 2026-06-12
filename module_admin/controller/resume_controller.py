@@ -1519,7 +1519,7 @@ async def parse_resume(
             
             # 构建文件信息（驼峰命名）
             file_info = {
-                'name': parse_result.get('name'),
+                'userName': parse_result.get('name'),
                 'sex': parse_result.get('sex'),
                 'age': parse_result.get('age'),
                 'graduateSchool': parse_result.get('graduate_school'),
