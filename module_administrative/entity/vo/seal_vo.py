@@ -34,6 +34,7 @@ class OaSealBaseModel(BaseModel):
     check_history_uids: str | None = Field(None, description='历史审批人ID，如:1,2,3')
     check_copy_uids: str | None = Field(None, description='抄送人ID，如:1,2,3')
     check_time: int | None= Field(None, description='审核通过时间')
+    seal_status: int | None= Field(None, description='用章状态:--:0,在用:1,已还:2')
 
 
     # 关联字段

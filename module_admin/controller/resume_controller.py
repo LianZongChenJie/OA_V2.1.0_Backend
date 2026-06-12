@@ -4,7 +4,7 @@ import json
 from datetime import datetime
 from typing import Annotated
 
-from fastapi import Request, Response, Path, Query, Depends
+from fastapi import Request, Response, Path, Query, Depends, UploadFile, File
 from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, text
@@ -25,7 +25,8 @@ from module_admin.entity.vo.resume_vo import (
     DeleteResumeModel, InterviewResultModel, ConfirmEntryModel,
     ResumeRecommendModel, ResumeEmailTemplateModel, AddEmailTemplateModel,
     EditEmailTemplateModel, DeleteEmailTemplateModel, EntryProjectModel,
-    ResumeRecommendPageQueryModel, EmailTemplatePageQueryModel, ReleaseResumeModel
+    ResumeRecommendPageQueryModel, EmailTemplatePageQueryModel, ReleaseResumeModel,
+    ResumeParseResultModel
 )
 from module_admin.service.resume_service import ResumeService
 from module_email.service.mail_service import MailService
@@ -1462,3 +1463,83 @@ async def download_resume_template(
     except Exception as e:
         logger.error(f'下载简历模板失败：{str(e)}', exc_info=True)
         return ResponseUtil.error(msg=f'下载失败：{str(e)}')
+
+
+@resume_controller.post(
+    '/parse',
+    summary='上传并解析简历接口',
+    description='用于上传简历文件（Word/PDF）并解析其中的姓名、性别、年龄、毕业院校等信息',
+    response_model=ResponseBaseModel,
+)
+async def parse_resume(
+        request: Request,
+        file: UploadFile = File(description='简历文件（Word或PDF格式）'),
+) -> Response:
+    """上传并解析简历"""
+    try:
+        from utils.resume_parser import ResumeParser
+        import uuid
+        
+        # 验证文件类型
+        file_ext = file.filename.rsplit('.', 1)[-1].lower() if '.' in file.filename else ''
+        if file_ext not in ['docx', 'pdf']:
+            return ResponseUtil.error(msg='仅支持 Word(.docx) 和 PDF 格式的简历文件')
+        
+        # 读取上传的文件内容
+        file_content = await file.read()
+        file_size = len(file_content)
+        
+        # 保存到临时目录用于解析
+        temp_dir = os.path.join(UPLOAD_DIR, 'temp_parse')
+        os.makedirs(temp_dir, exist_ok=True)
+        temp_file_path = os.path.join(temp_dir, f'{uuid.uuid4()}.{file_ext}')
+        
+        with open(temp_file_path, 'wb') as f:
+            f.write(file_content)
+        
+        try:
+            # 根据文件类型解析简历
+            if file_ext == 'docx':
+                parse_result = ResumeParser.parse_word_resume(temp_file_path)
+            elif file_ext == 'pdf':
+                parse_result = ResumeParser.parse_pdf_resume(temp_file_path)
+            else:
+                return ResponseUtil.error(msg='不支持的文件格式')
+            
+            # 保存文件到永久存储目录
+            date_dir = datetime.now().strftime("%Y%m%d")
+            save_dir = os.path.join(UPLOAD_DIR, 'resume', date_dir)
+            os.makedirs(save_dir, exist_ok=True)
+            unique_filename = f'{uuid.uuid4()}.{file_ext}'
+            relative_path = os.path.join('resume', date_dir, unique_filename)
+            absolute_path = os.path.join(save_dir, unique_filename)
+            
+            with open(absolute_path, 'wb') as f:
+                f.write(file_content)
+            
+            # 构建文件信息（驼峰命名）
+            file_info = {
+                'name': parse_result.get('name'),
+                'sex': parse_result.get('sex'),
+                'age': parse_result.get('age'),
+                'graduateSchool': parse_result.get('graduate_school'),
+                'phone': parse_result.get('phone'),
+                'email': parse_result.get('email'),
+                'workYears': parse_result.get('work_years'),
+                'fileName': file.filename,
+                'filePath': relative_path,
+                'fileSize': file_size,
+                'fileExt': file_ext,
+                'fileMime': file.content_type or 'application/octet-stream',
+            }
+            
+            logger.info(f'简历解析成功，文件名：{file.filename}')
+            return ResponseUtil.success(data=file_info, msg='解析成功')
+        finally:
+            # 清理临时文件
+            if os.path.exists(temp_file_path):
+                os.remove(temp_file_path)
+                
+    except Exception as e:
+        logger.error(f'简历解析失败：{str(e)}', exc_info=True)
+        return ResponseUtil.error(msg=f'解析失败：{str(e)}')

@@ -30,6 +30,7 @@ class OaSeal(Base):
     check_history_uids = Column(String(500), nullable=False, default='', comment='历史审批人ID，如:1,2,3')
     check_copy_uids = Column(String(500), nullable=False, default='', comment='抄送人ID，如:1,2,3')
     check_time = Column(BigInteger, nullable=False, default=0, comment='审核通过时间')
+    seal_status = Column(SmallInteger, nullable=False, default=0, comment='用章状态:--:0,在用:1,已还:2')
 
     def to_dict(self):
         return {c.name: getattr(self, c.name) for c in self.__table__.columns}

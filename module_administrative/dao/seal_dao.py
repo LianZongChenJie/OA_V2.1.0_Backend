@@ -266,6 +266,7 @@ class SealDao:
                     check_status=2,
                     check_time=data.check_time,
                     content=data.content,
+                    seal_status=1,
                 )
                 .where(OaSeal.id == data.id)
             )
@@ -310,3 +311,26 @@ class SealDao:
         result = await db.execute(query)
         count = result.scalar()
         return count
+
+    @classmethod
+    async def return_seal(cls, db: AsyncSession, seal_id: int) -> int:
+        """
+        还章：将用章状态改为已还
+
+        :param db: orm 对象
+        :param seal_id: 用章申请ID
+        :return: 影响的行数
+        """
+        try:
+            result = await db.execute(
+                update(OaSeal)
+                .values(
+                    seal_status=2,
+                )
+                .where(OaSeal.id == seal_id)
+            )
+            await db.commit()
+        except Exception as e:
+            await db.rollback()
+            raise e
+        return result.rowcount

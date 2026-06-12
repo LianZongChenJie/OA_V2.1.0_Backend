@@ -123,3 +123,28 @@ class SealService:
         except Exception as e:
             await db.rollback()
             raise ServiceException(message="删除失败")
+
+    @classmethod
+    async def return_seal_service(cls, query_db: AsyncSession, seal_id: int) -> CrudResponseModel:
+        """
+        还章服务方法
+
+        :param query_db: orm对象
+        :param seal_id: 用章申请ID
+        :return: 操作结果
+        """
+        try:
+            seal_info = await SealDao.get_info_by_id(query_db, seal_id)
+            if not seal_info:
+                raise ServiceException(message='未找到该用章申请')
+            if seal_info.get('check_status') != 2:
+                raise ServiceException(message='该申请未审批通过，无法还章')
+            if seal_info.get('seal_status') != 1:
+                raise ServiceException(message='该印章当前不在使用中')
+
+            await SealDao.return_seal(query_db, seal_id)
+            await query_db.commit()
+            return CrudResponseModel(is_success=True, message='还章成功')
+        except Exception as e:
+            await query_db.rollback()
+            raise ServiceException(message=f"还章失败：{str(e)}")

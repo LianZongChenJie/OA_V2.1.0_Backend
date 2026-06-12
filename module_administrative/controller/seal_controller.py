@@ -103,3 +103,19 @@ async def delete_seal(
 ) -> Response:
     result =  await SealService.del_by_id(query_db, id)
     return ResponseUtil.success(msg=result.message)
+
+@administrative_seal_controller.put(
+    "/return/{id}",
+    summary='还章',
+    description='用于还章操作，将用章状态改为空闲',
+    response_model=None,
+    dependencies=[UserInterfaceAuthDependency('administration:seal:return')],
+)
+@Log(title="还章", business_type=BusinessType.UPDATE)
+async def return_seal(
+    request: Request,
+    query_db: Annotated[AsyncSession, DBSessionDependency()],
+    id: int,
+) -> Response:
+    result = await SealService.return_seal_service(query_db, id)
+    return ResponseUtil.success(msg=result.message)
