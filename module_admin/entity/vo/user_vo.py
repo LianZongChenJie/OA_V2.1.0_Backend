@@ -242,6 +242,8 @@ class UserPageQueryModel(UserQueryModel):
 
     page_num: int = Field(default=1, description='当前页码')
     page_size: int = Field(default=10, description='每页记录数')
+    order_by: str | None = Field(default='create_time', description='排序字段')
+    order_type: str | None = Field(default='asc', description='排序方式:asc正序,desc倒序')
 
 
 class AddUserModel(UserModel):

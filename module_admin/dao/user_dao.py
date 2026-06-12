@@ -328,10 +328,14 @@ class UserDao:
                 isouter=True,
             )
             .group_by(SysUser.user_id)  #SysDept.dept_id
-            .order_by(SysUser.dept_id)
-            .order_by(SysUser.user_id)
             .distinct()
         )
+        # 动态排序
+        order_field = getattr(SysUser, query_object.order_by, SysUser.create_time)
+        if query_object.order_type == 'desc':
+            query = query.order_by(order_field.desc())
+        else:
+            query = query.order_by(order_field.asc())
         user_list: PageModel | list[list[dict[str, Any]]] = await PageUtil.paginate(
             db, query, query_object.page_num, query_object.page_size, is_page
         )
