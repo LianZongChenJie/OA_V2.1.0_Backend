@@ -30,7 +30,6 @@ social_security_controller = APIRouterPro(
     summary='获取社保信息列表',
     description='用于获取社保信息列表',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('personnel:social_security:list')],
 )
 async def get_page_list(
     request: Request,
@@ -264,7 +263,6 @@ async def import_users(
     summary='获取即将到期的社保信息',
     description='用于工作台显示即将到期的社保信息',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('personnel:social_security:reminder')],
 )
 async def get_expiring_reminder(
     request: Request,
@@ -280,7 +278,6 @@ async def get_expiring_reminder(
     summary='获取社保到期预警数量',
     description='根据当前日期计算，查询指定天数内即将到期的社保数量',
     response_model=None,
-    dependencies=[UserInterfaceAuthDependency('personnel:social_security:reminder')],
 )
 async def get_expiring_count(
     request: Request,

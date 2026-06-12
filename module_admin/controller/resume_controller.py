@@ -57,7 +57,6 @@ def _to_camel_key(key: str) -> str:
     summary='获取简历分页列表接口',
     description='用于获取简历分页列表',
     response_model=PageResponseModel[ResumeModel],
-    dependencies=[UserInterfaceAuthDependency('resume:resume:list')],
 )
 async def get_resume_list(
         request: Request,
