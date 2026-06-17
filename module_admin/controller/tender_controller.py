@@ -170,14 +170,22 @@ async def export_tender(
         
         filename = f'投标信息_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx'
         encoded_filename = urllib.parse.quote(filename)
+        
+        # 获取文件大小
+        excel_file.seek(0, 2)  # 移动到文件末尾
+        file_size = excel_file.tell()
+        excel_file.seek(0)  # 重置到文件开头
 
         response = StreamingResponse(
             excel_file,
             media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         )
+        # 设置兼容Office的响应头
         response.headers["Content-Disposition"] = f"attachment; filename*=UTF-8''{encoded_filename}"
-        response.headers["Content-Encoding"] = "identity"
         response.headers["Content-Type"] = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        response.headers["Content-Length"] = str(file_size)
+        response.headers["Cache-Control"] = "no-cache"
+        response.headers["X-Content-Type-Options"] = "nosniff"
 
         logger.info(f'导出投标信息成功，文件名：{filename}')
         return response

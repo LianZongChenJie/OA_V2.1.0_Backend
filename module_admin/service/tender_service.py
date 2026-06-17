@@ -498,6 +498,11 @@ class TenderService:
             with pd.ExcelWriter(output, engine='openpyxl') as writer:
                 df.to_excel(writer, sheet_name='投标信息', index=False, header=header_names)
                 worksheet = writer.sheets['投标信息']
+                workbook = writer.book
+                
+                # 设置文档属性，增强Office兼容性
+                workbook.properties.creator = 'OA System'
+                workbook.properties.title = '投标信息导出'
                 
                 # 样式设置
                 for cell in worksheet[1]:
@@ -506,9 +511,13 @@ class TenderService:
                 
                 # 列宽自适应
                 for col in worksheet.columns:
-                    max_length = max(len(str(cell.value)) for cell in col)
+                    max_length = max(len(str(cell.value)) if cell.value else 0 for cell in col)
                     worksheet.column_dimensions[col[0].column_letter].width = min(max_length + 2, 50)
+                
+                # 冻结首行，方便查看
+                worksheet.freeze_panes = 'A2'
             
+            # 确保数据完全写入
             output.seek(0)
             return output
         except Exception as e:
