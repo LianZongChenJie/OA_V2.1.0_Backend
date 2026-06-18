@@ -9,6 +9,7 @@ from common.constant import CommonConstant
 from common.vo import CrudResponseModel, PageModel
 from exceptions.exception import ServiceException
 from module_contract.dao.contract_dao import ContractDao
+from module_contract.dao.contract_attachment_dao import ContractAttachmentDao
 from module_contract.entity.do.contract_do import OaContract
 from module_contract.entity.vo.contract_vo import (
     AddContractModel,
@@ -142,7 +143,26 @@ class ContractService:
                 'check_time': page_object.check_time if page_object.check_time is not None else 0,
             }
 
-            await ContractDao.add_contract_dao(query_db, contract_data)
+            # 保存合同基本信息，获取返回的合同对象
+            contract_result = await ContractDao.add_contract_dao(query_db, contract_data)
+            contract_id = contract_result.id
+            
+            # 如果有附件，批量保存附件
+            if page_object.attachments and len(page_object.attachments) > 0:
+                for attachment in page_object.attachments:
+                    # 构建附件数据
+                    attachment_data = {
+                        'contract_id': contract_id,
+                        'file_name': attachment.file_name or '',
+                        'file_path': attachment.file_path or '',
+                        'file_size': attachment.file_size or 0,
+                        'file_ext': attachment.file_ext or '',
+                        'file_mime': attachment.file_mime or '',
+                        'sort': attachment.sort or 0,
+                        'delete_time': 0,
+                    }
+                    await ContractAttachmentDao.add_attachment(query_db, attachment_data)
+            
             await query_db.commit()
             return CrudResponseModel(is_success=True, message='新增成功')
         except Exception as e:
@@ -187,6 +207,28 @@ class ContractService:
                 if contract_info and contract_info.id:
                     edit_contract['update_time'] = int(datetime.now().timestamp())
                     await ContractDao.edit_contract_dao(query_db, page_object.id, edit_contract)
+                    
+                    # 先删除原有附件（软删除）- 无论是否有新附件都执行删除
+                    existing_attachments = await ContractAttachmentDao.get_attachment_list(query_db, page_object.id)
+                    if existing_attachments:
+                        attachment_ids = [att.id for att in existing_attachments]
+                        await ContractAttachmentDao.delete_attachment(query_db, attachment_ids)
+                    
+                    # 如果有新附件，新增新附件
+                    if page_object.attachments and len(page_object.attachments) > 0:
+                        for attachment in page_object.attachments:
+                            attachment_data = {
+                                'contract_id': page_object.id,
+                                'file_name': attachment.file_name or '',
+                                'file_path': attachment.file_path or '',
+                                'file_size': attachment.file_size or 0,
+                                'file_ext': attachment.file_ext or '',
+                                'file_mime': attachment.file_mime or '',
+                                'sort': attachment.sort or 0,
+                                'delete_time': 0,
+                            }
+                            await ContractAttachmentDao.add_attachment(query_db, attachment_data)
+                    
                     await query_db.commit()
                     return CrudResponseModel(is_success=True, message='更新成功')
                 else:
@@ -198,13 +240,13 @@ class ContractService:
             raise ServiceException(message='合同不存在')
 
     @classmethod
-    async def contract_detail_services(cls, query_db: AsyncSession, contract_id: int) -> ContractModel:
+    async def contract_detail_services(cls, query_db: AsyncSession, contract_id: int) -> dict[str, Any]:
         """
         获取合同详细信息 service
 
         :param query_db: orm 对象
         :param contract_id: 合同 ID
-        :return: 合同 ID 对应的信息
+        :return: 合同信息和附件信息的字典
         """
         from module_personnel.dao.flow_record_dao import FlowRecordDao
         from utils.time_format_util import timestamp_to_datetime
@@ -212,13 +254,13 @@ class ContractService:
         contract_result = await ContractDao.get_contract_detail_by_id(query_db, contract_id)
 
         if not contract_result:
-            return ContractModel()
+            raise ServiceException(message=f'合同信息不存在，ID：{contract_id}')
 
         # 从字典中提取 contract_info（SQLAlchemy 对象）
         contract_info = contract_result.get('contract_info')
 
         if not contract_info:
-            return ContractModel()
+            raise ServiceException(message=f'合同信息不存在，ID：{contract_id}')
 
         # 只提取数据库表存在的字段，排除扩展字段
         valid_fields = {c.name for c in OaContract.__table__.columns}
@@ -281,9 +323,12 @@ class ContractService:
         else:
             contract_data['records'] = []
 
-        result = ContractModel(**contract_data)
-
-        return result
+        # 获取附件列表
+        try:
+            attachments = await ContractAttachmentDao.get_attachment_list(query_db, contract_id)
+            return {'contract': contract_data, 'attachments': attachments}
+        except Exception as e:
+            raise ServiceException(message=f'获取合同附件失败：{str(e)}') from e
 
     @staticmethod
     def _get_check_status_text(check_status: int | None) -> str:
@@ -386,4 +431,3 @@ class ContractService:
             from utils.log_util import logger
             logger.error(f'销售合同归档失败: {str(e)}', exc_info=True)
             raise e
-

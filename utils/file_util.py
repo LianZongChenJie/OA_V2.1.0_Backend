@@ -4,9 +4,14 @@ from datetime import datetime
 from fastapi import UploadFile
 from typing import Tuple
 
+# ==================== 招投标附件配置 ====================
 # 文件存储配置（可放到配置文件中）
 UPLOAD_DIR = "./uploads/tender_attachments"
 ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png", "pdf", "docx", "doc", "xlsx", "xls", "zip", "rar"}
+
+# ==================== 销售合同附件配置 ====================
+CONTRACT_UPLOAD_DIR = "./uploads/tender_attachments"
+CONTRACT_ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png", "pdf", "docx", "doc", "xlsx", "xls", "zip", "rar"}
 
 def allowed_file(filename: str) -> bool:
     """检查文件扩展名是否合法"""
@@ -73,3 +78,55 @@ async def save_upload_file(file: UploadFile, file_path: str) -> int:
             f.write(chunk)
             file_size += len(chunk)
     return file_size
+
+
+# ==================== 销售合同附件相关函数 ====================
+
+def allowed_contract_file(filename: str) -> bool:
+    """检查文件扩展名是否合法（销售合同附件）"""
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in CONTRACT_ALLOWED_EXTENSIONS
+
+
+def generate_contract_file_path(contract_id: int, filename: str) -> Tuple[str, str]:
+    """
+    生成文件存储路径（带合同ID）
+    :param contract_id: 合同ID
+    :param filename: 原始文件名
+    :return: 相对路径、绝对路径
+    """
+    # 创建日期目录
+    date_dir = datetime.now().strftime("%Y%m%d")
+    save_dir = os.path.join(CONTRACT_UPLOAD_DIR, str(contract_id), date_dir)
+    os.makedirs(save_dir, exist_ok=True)
+
+    # 生成唯一文件名（避免重复）
+    file_ext = get_file_ext(filename)
+    unique_filename = f"{uuid.uuid4()}.{file_ext}" if file_ext else str(uuid.uuid4())
+
+    # 相对路径（存储到数据库）和绝对路径（实际存储）
+    relative_path = os.path.join(str(contract_id), date_dir, unique_filename)
+    absolute_path = os.path.join(save_dir, unique_filename)
+
+    return relative_path, absolute_path
+
+
+def generate_contract_file_path_without_id(filename: str) -> Tuple[str, str]:
+    """
+    生成文件存储路径（不带合同ID，用于预上传）
+    :param filename: 原始文件名
+    :return: 相对路径、绝对路径
+    """
+    # 创建日期目录
+    date_dir = datetime.now().strftime("%Y%m%d")
+    save_dir = os.path.join(CONTRACT_UPLOAD_DIR, "temp", date_dir)
+    os.makedirs(save_dir, exist_ok=True)
+
+    # 生成唯一文件名（避免重复）
+    file_ext = get_file_ext(filename)
+    unique_filename = f"{uuid.uuid4()}.{file_ext}" if file_ext else str(uuid.uuid4())
+
+    # 相对路径（存储到数据库）和绝对路径（实际存储）
+    relative_path = os.path.join("temp", date_dir, unique_filename)
+    absolute_path = os.path.join(save_dir, unique_filename)
+
+    return relative_path, absolute_path

@@ -226,7 +226,7 @@ async def delete_system_contract(
     '/{id}',
     summary='获取合同详情接口',
     description='用于获取指定合同的详细信息',
-    response_model=DataResponseModel[ContractModel],
+    response_model=DataResponseModel,
     dependencies=[UserInterfaceAuthDependency('system:contract:query')],
 )
 async def query_detail_system_contract(
@@ -234,11 +234,29 @@ async def query_detail_system_contract(
         id: Annotated[int, Path(description='合同 ID')],
         query_db: Annotated[AsyncSession, DBSessionDependency()],
 ) -> Response:
-    detail_contract_result = await ContractService.contract_detail_services(query_db, id)
-    logger.info(f'获取 id 为{id}的信息成功')
+    """获取合同详情"""
+    try:
+        contract_detail = await ContractService.contract_detail_services(query_db, id)
+        logger.info(f'获取合同详情成功，ID：{id}')
 
-    contract_dict = detail_contract_result.model_dump(by_alias=True)
-    formatted_dict = ModelConverter.time_format(contract_dict)
-
-    return ResponseUtil.success(data=formatted_dict)
-
+        if contract_detail and isinstance(contract_detail, dict):
+            # 将 contract 和 attachments 中的字段转换为驼峰命名
+            from utils.common_util import CamelCaseUtil
+            result = {}
+            # 将合同信息字段直接放到result根级别
+            if 'contract' in contract_detail:
+                contract_data = CamelCaseUtil.transform_result(contract_detail['contract'])
+                result.update(contract_data)
+            # 附件作为同级字段
+            if 'attachments' in contract_detail:
+                result['attachments'] = CamelCaseUtil.transform_result(contract_detail['attachments'])
+            return ResponseUtil.success(data=result)
+        elif contract_detail and hasattr(contract_detail, 'model_dump'):
+            return ResponseUtil.success(data=contract_detail.model_dump(by_alias=True))
+        return ResponseUtil.success(data=contract_detail)
+    except ServiceException as e:
+        logger.error(f'获取合同详情失败：{e.message}')
+        return ResponseUtil.error(msg=e.message)
+    except Exception as e:
+        logger.error(f'获取合同详情失败：{str(e)}', exc_info=True)
+        return ResponseUtil.error(msg=f'获取详情失败：{str(e)}')

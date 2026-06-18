@@ -214,12 +214,76 @@ class ContractPageQueryModel(ContractModel):
 
         return None
 
+
+class ContractAttachmentModel(BaseModel):
+    """
+    销售合同附件模型
+    """
+
+    model_config = ConfigDict(alias_generator=to_camel, from_attributes=True, populate_by_name=True)
+
+    id: int | None = Field(default=None, description='附件ID')
+    contract_id: int | None = Field(default=None, description='关联的销售合同ID')
+    file_name: str | None = Field(default=None, description='原始文件名', max_length=255)
+    file_path: str | None = Field(default=None, description='文件存储路径', max_length=500)
+    file_size: int | None = Field(default=0, description='文件大小(字节)')
+    file_ext: str | None = Field(default=None, description='文件扩展名', max_length=20)
+    file_mime: str | None = Field(default=None, description='文件MIME类型', max_length=100)
+    sort: int | None = Field(default=0, description='排序值')
+    create_time: int | str | None = Field(default=None, description='创建时间')
+    update_time: int | str | None = Field(default=None, description='更新时间')
+    delete_time: int | None = Field(default=0, description='软删除时间')
+
+
+class AddContractAttachmentModel(ContractAttachmentModel):
+    """
+    新增销售合同附件模型
+    """
+
+    contract_id: int = Field(..., description='销售合同ID')
+    file_name: str = Field(..., description='原始文件名', max_length=255)
+    file_path: str = Field(..., description='文件存储路径', max_length=500)
+    file_size: int | None = Field(default=0, description='文件大小(字节)')
+    file_ext: str | None = Field(default=None, description='文件扩展名', max_length=20)
+    file_mime: str | None = Field(default=None, description='文件MIME类型', max_length=100)
+    sort: int | None = Field(default=0, description='排序值')
+
+
+class EditContractAttachmentModel(ContractAttachmentModel):
+    """
+    编辑销售合同附件模型
+    """
+
+    id: int = Field(..., description='附件ID')
+
+
+class DeleteContractAttachmentModel(BaseModel):
+    """
+    删除销售合同附件模型
+    """
+
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+
+    ids: str = Field(..., description='附件ID列表(逗号分隔)')
+
+
+class UploadContractAttachmentModel(BaseModel):
+    """
+    上传销售合同附件模型
+    """
+
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+
+    contract_id: int = Field(..., description='销售合同ID')
+    sort: int | None = Field(default=0, description='排序值')
+
+
 class AddContractModel(ContractModel):
     """
     新增销售合同模型
     """
 
-    pass
+    attachments: list[ContractAttachmentModel] | None = Field(default=[], description='附件列表')
 
 
 class EditContractModel(AddContractModel):
@@ -227,8 +291,17 @@ class EditContractModel(AddContractModel):
     编辑销售合同模型
     """
 
-    pass
+    id: int = Field(..., description='合同ID')
 
+
+class DeleteContractModel(BaseModel):
+    """
+    删除销售合同模型
+    """
+
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+
+    id: int = Field(description='需要删除的合同 ID')
 
 class DeleteContractModel(BaseModel):
     """
