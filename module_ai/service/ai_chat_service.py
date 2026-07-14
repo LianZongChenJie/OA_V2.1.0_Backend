@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import uuid
 from collections.abc import AsyncGenerator, AsyncIterator
 from datetime import datetime
@@ -30,9 +31,11 @@ from module_ai.entity.vo.ai_chat_vo import (
     SessionMetricsModel,
 )
 from module_ai.entity.vo.ai_model_vo import AiModelModel
+from module_resume_kb.service.resume_kb_service import ResumeKbService
 from utils.ai_util import AiUtil
 from utils.common_util import CamelCaseUtil
 from utils.crypto_util import CryptoUtil
+from utils.log_util import logger
 
 if TYPE_CHECKING:
     from agno.models.message import Message
@@ -107,7 +110,11 @@ class AiChatService:
         :param num_history: 历史消息轮数
         :return: Agent对象
         """
-        real_api_key = CryptoUtil.decrypt(model_config.api_key)
+        try:
+            real_api_key = CryptoUtil.decrypt(model_config.api_key)
+        except Exception:
+            # 兼容明文存储的API Key
+            real_api_key = model_config.api_key
 
         model = AiUtil.get_model_from_factory(
             provider=model_config.provider,
@@ -254,6 +261,194 @@ class AiChatService:
         except Exception as e:
             yield json.dumps({'error': str(e), 'type': 'error'}) + '\n'
 
+    # ========== 简历知识库集成（6步RAG流程：意图检测 → 意图分类 → MySQL检索 → 上下文构建 → Prompt注入 → LLM推理）==========
+
+    # 【第1步】意图检测：简历相关关键词匹配，判断用户是否在问简历相关问题
+    _RESUME_KEYWORDS = [
+        '简历', '求职', '候选人', '人才', '应聘', '招聘',
+        '学历', '本科', '硕士', '博士', '大专', '毕业',
+        '工作经历', '项目经验', '专业技能', '技术栈',
+        '工作年限', '薪资', '期望', '面试',
+        '有哪些人', '有没有人', '找个人', '推荐人',
+        '谁会', '谁懂', '谁有', '几个人',
+        'resume', 'CV',
+    ]
+
+    # 投标文件相关关键词
+    _BID_KEYWORDS = [
+        '投标', '投标文件', '标书', '招标', '竞标',
+        '人员配备', '人员配置', '人员安排', '项目团队',
+        '投标项目', '投标公司', '投标人', '项目编号',
+        '劳务外包', '外包人员', '驻场人员', '交付团队',
+        '丰科瑞智', 'BJFLX',
+    ]
+
+    # 【第2步】意图分类：对简历相关查询细分意图（count/list/filter/detail/general），决定检索策略
+    _COUNT_INTENT_KEYWORDS = ['多少', '几个', '总数', '统计', '一共', '总共', '全部', '所有', '多少人', '几个候选人']
+    # 列表类意图关键词：涉及"列出、有哪些、显示、给我看看"
+    _LIST_INTENT_KEYWORDS = ['列出', '有哪些', '显示', '给我看看', '给我', '介绍', '说说']
+    # 筛选类意图关键词：涉及"有没有、找、推荐、筛选、符合条件的"
+    _FILTER_INTENT_KEYWORDS = ['有没有', '找', '推荐', '筛选', '符合', '满足', '合适', '匹配']
+    # 详情类意图关键词：涉及"XXX的情况、XXX的简历、了解XXX"
+    _DETAIL_INTENT_KEYWORDS = ['情况', '详细信息', '详细', '背景', '了解']
+
+    @classmethod
+    def _is_resume_related(cls, message: str) -> bool:
+        """
+        检测用户消息是否与简历查询相关
+
+        :param message: 用户消息
+        :return: 是否与简历相关
+        """
+        if not message:
+            return False
+        msg_lower = message.lower()
+        return any(kw.lower() in msg_lower for kw in cls._RESUME_KEYWORDS)
+
+    @classmethod
+    def _is_bid_related(cls, message: str) -> bool:
+        """
+        检测用户消息是否与投标文件相关
+
+        :param message: 用户消息
+        :return: 是否与投标文件相关
+        """
+        if not message:
+            return False
+        msg_lower = message.lower()
+        return any(kw.lower() in msg_lower for kw in cls._BID_KEYWORDS)
+
+    @classmethod
+    def _classify_resume_intent(cls, message: str) -> str:
+        """
+        对简历相关查询进行意图分类
+
+        :param message: 用户消息
+        :return: 意图类型 - 'count'(统计), 'list'(列表), 'filter'(筛选), 'detail'(详情), 'general'(一般)
+        """
+        if not message:
+            return 'general'
+        
+        # 统计意图：多少/几个/总数/全部
+        if any(kw in message for kw in cls._COUNT_INTENT_KEYWORDS):
+            return 'count'
+        
+        # 详情意图：XXX的情况/了解XXX
+        # 检测是否包含具体人名（常见姓名特征：2-4字中文且不包含常见疑问词）
+        import re
+        # 简单判断：如果有"的简历"、"的情况"、"了解" + 前面2-4个字，视为详情
+        if re.search(r'[\u4e00-\u9fa5]{2,4}的简历', message) or \
+           re.search(r'[\u4e00-\u9fa5]{2,4}的情况', message):
+            return 'detail'
+        
+        # 筛选意图：有没有/找/推荐
+        if any(kw in message for kw in cls._FILTER_INTENT_KEYWORDS):
+            return 'filter'
+        
+        # 列表意图：列出/有哪些/显示
+        if any(kw in message for kw in cls._LIST_INTENT_KEYWORDS):
+            return 'list'
+        
+        # 如果包含明显的条件词（学历、技能、公司等），视为筛选
+        condition_keywords = ['本科', '硕士', '博士', '大专', 'Java', 'Python', '前端', '后端', 
+                              '开发', '工程师', '经理', '总监', '3年', '5年', '10年', '以上', '以下',
+                              '985', '211', '一本', '二本']
+        if any(kw in message for kw in condition_keywords):
+            return 'filter'
+        
+        return 'general'
+
+    # 【第3步】MySQL检索 + 【第4步】上下文构建：根据意图调用ResumeKbService检索简历并格式化为文本块
+    @classmethod
+    async def _get_resume_context(cls, query_db: AsyncSession, message: str) -> str | None:
+        """
+        获取简历知识库上下文 - 根据查询意图采用不同检索策略
+
+        :param query_db: orm对象
+        :param message: 用户消息
+        :return: 简历上下文文本，无相关简历时返回None
+        """
+        try:
+            intent = cls._classify_resume_intent(message)
+            
+            # 根据意图调整检索策略
+            if intent == 'count':
+                # 统计类：强制返回所有简历用于统计
+                related_resumes = await ResumeKbService._retrieve_related_resumes(
+                    query_db, message, top_k=100, force_all=True
+                )
+                # 统计类额外注入总数信息
+                total_count = len(related_resumes)
+                context = ResumeKbService._build_resume_context(related_resumes[:5])
+                return f"【简历知识库统计】当前简历库共有 {total_count} 份简历。\n\n{context}"
+            
+            elif intent == 'list':
+                # 列表类：获取更多简历用于展示
+                related_resumes = await ResumeKbService._retrieve_related_resumes(
+                    query_db, message, top_k=20
+                )
+                if not related_resumes:
+                    return None
+                return ResumeKbService._build_resume_context(related_resumes)
+            
+            elif intent == 'filter':
+                # 筛选类：正常检索，结果数量适中
+                related_resumes = await ResumeKbService._retrieve_related_resumes(
+                    query_db, message, top_k=10
+                )
+                if not related_resumes:
+                    return None
+                return ResumeKbService._build_resume_context(related_resumes)
+            
+            elif intent == 'detail':
+                # 详情类：精准检索，减少数量但提高精度
+                related_resumes = await ResumeKbService._retrieve_related_resumes(
+                    query_db, message, top_k=3
+                )
+                if not related_resumes:
+                    return None
+                return ResumeKbService._build_resume_context(related_resumes)
+            
+            else:
+                # 一般类：默认检索
+                related_resumes = await ResumeKbService._retrieve_related_resumes(
+                    query_db, message, top_k=5
+                )
+                if not related_resumes:
+                    return None
+                return ResumeKbService._build_resume_context(related_resumes)
+                
+        except Exception as e:
+            logger.warning(f'查询简历知识库失败，跳过简历上下文注入: {str(e)}')
+            return None
+
+    # 【第5步】Prompt注入：将检索到的简历上下文追加到系统提示词中
+    @classmethod
+    def _build_resume_enhanced_prompt(cls, original_prompt: str | None, resume_context: str) -> str:
+        """
+        将简历上下文融合到系统提示词中
+
+        :param original_prompt: 原始系统提示词
+        :param resume_context: 简历上下文
+        :return: 增强后的系统提示词
+        """
+        base = original_prompt or 'You are a helpful AI assistant.'
+        enhanced = f"""{base}
+
+---
+【简历知识库数据】
+当用户询问与简历、候选人、人才、招聘相关的问题时，请参考以下从简历库中检索到的信息进行回答。
+
+{resume_context}
+
+回答要求：
+1. 严格基于提供的简历信息回答，不要编造信息
+2. 如果检索到的简历信息不足以回答问题，请如实说明"根据现有简历库信息，暂时无法回答"
+3. 涉及统计类问题（如"有多少份简历"），请基于实际检索结果给出准确数字
+4. 涉及列表类问题（如"有哪些人"），请逐一列出相关简历的关键信息
+5. 回答要简洁、准确、有条理，避免冗余"""
+        return enhanced
+
     @classmethod
     async def chat_services(
         cls, query_db: AsyncSession, chat_req: AiChatRequestModel, user_id: int
@@ -282,6 +477,14 @@ class AiChatService:
         add_history, num_history = cls._resolve_history_config(user_config)
         system_prompt = user_config.system_prompt
 
+        # 【第5步】Prompt注入：将检索到的简历上下文追加到系统提示词中
+        if cls._is_resume_related(chat_req.message):
+            resume_context = await cls._get_resume_context(query_db, chat_req.message)
+            if resume_context:
+                system_prompt = cls._build_resume_enhanced_prompt(system_prompt, resume_context)
+                logger.info(f'检测到简历相关提问，已注入简历知识库上下文')
+
+        # 【第6步】LLM推理：agno Agent携带注入的简历上下文，调用LLM生成流式回答
         agent = cls._build_agent(
             model_config=model_config,
             temperature=temperature,

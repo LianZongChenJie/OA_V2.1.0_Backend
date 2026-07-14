@@ -83,6 +83,15 @@ class TimeFormatUtil:
     """
 
     @classmethod
+    def get_current_timestamp(cls) -> int:
+        """
+        获取当前时间戳（秒级）
+        
+        :return: 当前时间戳（秒）
+        """
+        return int(datetime.now().timestamp())
+
+    @classmethod
     def format_time(cls, time_info: str | datetime, fmt: str = '%Y-%m-%d %H:%M:%S') -> str:
         """
         格式化时间字符串或datetime对象为指定格式

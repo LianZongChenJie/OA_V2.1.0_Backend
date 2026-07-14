@@ -4,6 +4,35 @@ from datetime import datetime
 from fastapi import UploadFile
 from typing import Tuple
 
+# ==================== 简历附件配置 ====================
+# 简历文件存储配置
+RESUME_UPLOAD_DIR = "./uploads/resume_attachments"
+RESUME_ALLOWED_EXTENSIONS = {"pdf", "docx", "doc", "txt", "png", "jpg", "jpeg"}
+
+def allowed_resume_file(filename: str) -> bool:
+    """检查简历文件扩展名是否合法"""
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in RESUME_ALLOWED_EXTENSIONS
+
+
+def generate_resume_file_path(filename: str) -> Tuple[str, str]:
+    """
+    生成简历文件存储路径
+    :param filename: 原始文件名
+    :return: 相对路径、绝对路径
+    """
+    date_dir = datetime.now().strftime("%Y%m%d")
+    save_dir = os.path.join(RESUME_UPLOAD_DIR, date_dir)
+    os.makedirs(save_dir, exist_ok=True)
+
+    file_ext = get_file_ext(filename)
+    unique_filename = f"{uuid.uuid4()}.{file_ext}" if file_ext else str(uuid.uuid4())
+
+    relative_path = os.path.join(date_dir, unique_filename)
+    absolute_path = os.path.join(save_dir, unique_filename)
+
+    return relative_path, absolute_path
+
+
 # ==================== 招投标附件配置 ====================
 # 文件存储配置（可放到配置文件中）
 UPLOAD_DIR = "./uploads/tender_attachments"

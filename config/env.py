@@ -119,6 +119,20 @@ class MailSettings(BaseSettings):
     mail_sender_name: str = 'OA系统'
 
 
+class AiResumeParserSettings(BaseSettings):
+    """
+    AI 简历解析配置
+    """
+
+    ai_resume_parser_enabled: bool = False
+    ai_resume_parser_provider: str = 'OpenAI'
+    ai_resume_parser_model: str = 'gpt-3.5-turbo'
+    ai_resume_parser_api_key: str = ''
+    ai_resume_parser_base_url: str = ''
+    ai_resume_parser_temperature: float = 0.1
+    ai_resume_parser_max_tokens: int = 2000
+
+
 class GenSettings:
     """
     代码生成配置
@@ -254,6 +268,12 @@ class GetConfig:
         # 实例上传配置
         return UploadSettings()
 
+    def get_ai_resume_parser_config(self) -> AiResumeParserSettings:
+        """
+        获取AI简历解析配置
+        """
+        return AiResumeParserSettings()
+
     @staticmethod
     def parse_cli_args() -> None:
         """
@@ -307,3 +327,5 @@ MailConfig = get_config.get_mail_config()
 GenConfig = get_config.get_gen_config()
 # 上传配置
 UploadConfig = get_config.get_upload_config()
+# AI简历解析配置
+AiResumeParserConfig = get_config.get_ai_resume_parser_config()
