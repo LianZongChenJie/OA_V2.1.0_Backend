@@ -182,7 +182,7 @@ class BidKbService:
             cls._set_progress(bid_uuid, 'extract', 45, 100, '投标信息提取完成')
 
             # 3. 拆分简历
-            resume_segments = cls._split_resumes(full_text)
+            resume_segments = await cls._split_resumes(full_text)
             logger.info(f'投标文件共 {total_pages} 页，识别到 {len(resume_segments)} 份简历')
 
             # 限制解析简历数量，加快整体速度（默认前20份，BID_MAX_RESUMES 环境变量可调）
@@ -196,6 +196,9 @@ class BidKbService:
                 cls._set_progress(bid_uuid, 'done', 100, 100, '未识别到简历')
                 await cls._update_bid_status(bid_id, bid_info.get('bid_name', file_name), 1, 0, 0)
                 return
+
+            # 全局提取所有学信网和身份证信息（不依赖拆分，按姓名匹配，最准确）
+            global_xuexin, global_idcards = cls._extract_global_credentials(full_text)
 
             # 4. 逐份LLM解析简历（串行，避免并发压垮LLM）
             # 解析阶段占总进度的 45-90%（共45%）
@@ -211,6 +214,24 @@ class BidKbService:
             for idx, resume_text in enumerate(resume_segments, 1):
                 try:
                     structured_info = await cls._parse_resume_llm_only(resume_text)
+
+                    # 用全局提取的学信网/身份证信息覆盖（不依赖拆分边界，最准确）
+                    name = structured_info.get('name', '')
+                    if name and name in global_xuexin:
+                        for key in ['name', 'gender', 'birth_date', 'education', 'major', 'school', 'graduation_date', 'degree', 'school_system', 'study_form']:
+                            if global_xuexin[name].get(key):
+                                structured_info[key] = global_xuexin[name][key]
+                    if name and name in global_idcards:
+                        for key in ['name', 'gender', 'birth_date', 'age', 'id_card_number', 'id_card_address']:
+                            if global_idcards[name].get(key):
+                                structured_info[key] = global_idcards[name][key]
+                        # 身份证出生日期重新算年龄
+                        if global_idcards[name].get('birth_date') and not structured_info.get('age'):
+                            try:
+                                structured_info['age'] = time.localtime().tm_year - int(structured_info['birth_date'][:4])
+                            except:
+                                pass
+
                     parsed_results.append(structured_info)
                     # 计算解析进度：45% + (idx/total) * 45%
                     parse_percent = 45 + int(idx / total_resumes * 45)
@@ -701,7 +722,7 @@ class BidKbService:
         return info
 
     @classmethod
-    def _split_resumes(cls, text: str) -> list[str]:
+    async def _split_resumes(cls, text: str) -> list[str]:
         """
         从投标文件文本中拆分出多份简历。
         优先使用 LLM 识别人员，LLM 失败时降级到正则规则。
@@ -709,7 +730,7 @@ class BidKbService:
         # 首先尝试用 LLM 拆分
         if AiResumeParserConfig.ai_resume_parser_enabled:
             try:
-                resumes = cls._split_resumes_llm(text)
+                resumes = await cls._split_resumes_llm(text)
                 if resumes and len(resumes) > 0:
                     logger.info(f'LLM 拆分得到 {len(resumes)} 份简历文本')
                     return resumes
@@ -720,10 +741,12 @@ class BidKbService:
         return cls._split_resumes_regex(text)
 
     @classmethod
-    def _split_resumes_llm(cls, text: str) -> list[str]:
-        """使用 LLM 识别人员并拆分简历"""
+    async def _split_resumes_llm(cls, text: str) -> list[str]:
+        """使用 LLM 识别人员并拆分简历（异步方法，复用当前事件循环）"""
         # 截断文本避免超出 token 限制
-        max_len = 20000
+        # 投标文件通常几百页，20000字符只够前30页，大量简历信息在后面
+        # 提升到 100000 字符（约150-200页），覆盖大部分投标文件的简历区域
+        max_len = 100000
         truncated_text = text[:max_len] if len(text) > max_len else text
 
         prompt_lines = [
@@ -760,28 +783,23 @@ class BidKbService:
             if '/' in model and not model.startswith(('openai/', 'anthropic/', 'azure/', 'cohere/', 'groq/', 'ollama/', 'vertex_ai/')):
                 model = f'openai/{model}'
 
-            import asyncio
-            import litellm
-
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            try:
-                response = loop.run_until_complete(
-                    litellm.acompletion(
-                        model=model,
-                        messages=[
-                            {'role': 'system', 'content': '你是一个专业的投标文件解析助手，善于从长文本中识别人物并提取其相关信息。'},
-                            {'role': 'user', 'content': prompt},
-                        ],
-                        api_key=api_key,
-                        base_url=base_url,
-                        temperature=temperature,
-                        max_tokens=8192,
-                        timeout=45,
-                    )
-                )
-            finally:
-                loop.close()
+            # 使用 async acompletion，复用当前事件循环，避免破坏后续 async session 操作
+            # 用 asyncio.wait_for 强制总耗时不超过 120 秒（litellm 自带的 timeout 只监控服务器响应间隔）
+            response = await asyncio.wait_for(
+                litellm.acompletion(
+                    model=model,
+                    messages=[
+                        {'role': 'system', 'content': '你是一个专业的投标文件解析助手，善于从长文本中识别人物并提取其相关信息。'},
+                        {'role': 'user', 'content': prompt},
+                    ],
+                    api_key=api_key,
+                    base_url=base_url,
+                    temperature=temperature,
+                    max_tokens=8192,
+                    timeout=120,
+                ),
+                timeout=125,
+            )
 
             result_content = response.choices[0].message.content if response and response.choices else None
             if not result_content:
@@ -798,7 +816,19 @@ class BidKbService:
                 if not isinstance(item, dict):
                     continue
                 resume_text = item.get('resume_text', '').strip()
-                if resume_text and len(resume_text) > 50:
+                # 过滤过短的文本（少于200字符大概率是表格行或残缺片段）
+                if resume_text and len(resume_text) > 200:
+                    # 额外检查：如果文本只是"姓名\n性别\n年龄\n学历\n..."这种表格列头，跳过
+                    # 这种文本特征：每行只有2-4个字，且全是字段名
+                    lines = [l.strip() for l in resume_text.split('\n') if l.strip()]
+                    field_names = {'姓名', '性别', '年龄', '学历', '职称', '拟任职务', '工作年限',
+                                   '出生', '住址', '民族', '身份证', '号码', '专业', '学校', '毕业'}
+                    field_like_count = sum(1 for l in lines[:20] if l in field_names or len(l) <= 2)
+                    if field_like_count > len(lines[:20]) * 0.6:
+                        logger.warning(f'跳过疑似表格列头片段: {resume_text[:80]}')
+                        if item.get('name') and item.get('name') not in names_found:
+                            names_found.append(item.get('name'))
+                        continue
                     resume_texts.append(resume_text)
                 if item.get('name') and item.get('name') not in names_found:
                     names_found.append(item.get('name'))
@@ -806,6 +836,14 @@ class BidKbService:
             # 如果 LLM 返回了文本但 resume_text 为空，尝试用名字做规则拆分
             if not resume_texts and names_found:
                 return cls._split_resumes_regex_with_names(text, names_found)
+
+            # 即使 LLM 返回了 resume_text，也优先用名字从原文中截取更完整的文本段
+            # 因为 LLM 返回的文本可能被截断或不完整，而从原文截取能保留所有 OCR 文本
+            if names_found:
+                original_segments = cls._split_resumes_regex_with_names(text, names_found)
+                if original_segments and len(original_segments) >= len(resume_texts):
+                    logger.info(f'使用名字从原文截取 {len(original_segments)} 段（替代 LLM 返回的 {len(resume_texts)} 段）')
+                    return original_segments
 
             return resume_texts
 
@@ -930,6 +968,12 @@ class BidKbService:
         """
         names = []
 
+        # 排除字段名被误识别为姓名的集合（所有策略共用）
+        EXCLUDE_NAMES = {'性别', '民族', '年龄', '学历', '出生', '住址', '姓名', '学制', '学位', '专业', '学校', '毕业', '身份',
+                         '男', '女', '联系电话', '联系方式', '邮箱', '地址', '职称', '职务', '电话', '出生日期',
+                         '身份证', '公民', '号码', '签发机关', '有效期', '起始', '截止', '编号', '项目', '公司',
+                         '投标人', '盖章', '说明', '备注', '日期', '签名', '签章'}
+
         # Strategy 1: 标题格式 "章节编号 级别-姓名"
         title_pattern = re.compile(
             r'(?:^|\n)\s*(?:\d{1,3}(?:\.\d{1,3}){0,3}\s+)?'
@@ -939,7 +983,7 @@ class BidKbService:
         )
         for m in title_pattern.finditer(text):
             name = m.group(1).strip()
-            if name and name not in names:
+            if name and name not in names and name not in EXCLUDE_NAMES:
                 names.append(name)
 
         # Strategy 2: "姓名" 标签格式（包括学信网和身份证OCR文本）
@@ -949,11 +993,10 @@ class BidKbService:
         )
         for m in xuexin_name_pattern.finditer(text):
             name = m.group(1).strip()
-            if name and name not in names:
+            if name and name not in names and name not in EXCLUDE_NAMES:
                 names.append(name)
 
         # Strategy 3: 人员清单表格
-        EXCLUDE_NAMES = {'性别', '民族', '年龄', '学历', '出生', '住址', '姓名', '学制', '学位', '专业', '学校', '毕业', '身份'}
         if not names:
             person_list_pattern = re.compile(
                 r'(?:^|\n)\s*(\d{1,3})\s+'
@@ -1052,17 +1095,116 @@ class BidKbService:
         return filtered
 
     @classmethod
+    def _extract_global_credentials(cls, full_text: str) -> tuple[dict[str, dict], dict[str, dict]]:
+        """
+        全局提取所有学信网和身份证信息，按姓名建立索引
+        不依赖拆分边界，确保高可信度数据源一定能匹配上
+        返回: (xuexin_map, idcard_map) key=姓名 value=信息字典
+        """
+        xuexin_map: dict[str, dict] = {}
+        idcard_map: dict[str, dict] = {}
+
+        # 找出所有"姓名：XXX"的位置（学信网和身份证里都有姓名）
+        name_pattern = re.compile(r'姓\s*名\s*[：:\s]\s*([\u4e00-\u9fa5·]{2,4})')
+
+        for match in name_pattern.finditer(full_text):
+            name = match.group(1).strip()
+            if len(name) < 2:
+                continue
+
+            # 姓名后面截取3000字符，足够包含学信网或身份证的完整内容
+            start = match.start()
+            end = min(start + 3000, len(full_text))
+            segment = full_text[start:end]
+
+            # 尝试提取学信网信息
+            xuexin_info = {}
+            ResumeKbService._extract_from_xuexin(segment, xuexin_info)
+            # 至少有学校或专业才算有效学信网记录
+            if xuexin_info.get('school') or xuexin_info.get('major') or xuexin_info.get('education'):
+                if name not in xuexin_map:
+                    xuexin_map[name] = xuexin_info
+                    logger.info(f'全局提取学信网: {name} - {xuexin_info.get("school")} / {xuexin_info.get("major")}')
+
+            # 尝试提取身份证信息
+            idcard_info = {}
+            ResumeKbService._extract_from_id_card(segment, idcard_info)
+            # 至少有身份证号或出生日期才算有效身份证记录
+            if idcard_info.get('id_card_number') or idcard_info.get('birth_date'):
+                if name not in idcard_map:
+                    idcard_map[name] = idcard_info
+                    logger.info(f'全局提取身份证: {name} - {idcard_info.get("id_card_number")}')
+
+        logger.info(f'全局提取完成: 学信网 {len(xuexin_map)} 份，身份证 {len(idcard_map)} 份')
+        return xuexin_map, idcard_map
+
+    @classmethod
     async def _parse_resume_llm_only(
         cls,
         resume_text: str,
     ) -> dict[str, Any]:
-        """Phase 1: 仅做 LLM 解析，不触碰 DB"""
-        structured_info = await ResumeKbService._extract_structured_info(resume_text)
-        abnormal_fields = ResumeKbService._validate_parsed_fields(structured_info)
-        if abnormal_fields:
-            await ResumeKbService._llm_recheck_fields(
-                resume_text, abnormal_fields, structured_info
-            )
+        """Phase 1: 只从学信网和身份证提取人员信息，不调用LLM解析其他内容"""
+        import time as _time
+
+        # 初始化结构化信息
+        structured_info = {
+            'name': None,
+            'gender': None,
+            'age': None,
+            'birth_date': None,
+            'phone': None,
+            'email': None,
+            'education': None,
+            'major': None,
+            'school': None,
+            'graduation_date': None,
+            'work_years': None,
+            'current_company': None,
+            'current_position': None,
+            'degree': None,
+            'school_system': None,
+            'study_form': None,
+            'id_card_number': None,
+            'id_card_address': None,
+            'work_experiences': [],
+            'project_experiences': [],
+            'technical_skills': [],
+            'certifications': [],
+            '_full_text': resume_text,
+        }
+
+        # 只从学信网文本提取信息
+        xuexin_info = {}
+        ResumeKbService._extract_from_xuexin(resume_text, xuexin_info)
+        for key in ['name', 'gender', 'birth_date', 'education', 'major', 'school',
+                     'graduation_date', 'degree', 'school_system', 'study_form']:
+            if xuexin_info.get(key):
+                structured_info[key] = xuexin_info[key]
+
+        # 只从身份证文本提取信息
+        id_card_info = {}
+        ResumeKbService._extract_from_id_card(resume_text, id_card_info)
+        for key in ['name', 'gender', 'birth_date', 'age', 'id_card_number', 'id_card_address']:
+            if id_card_info.get(key):
+                structured_info[key] = id_card_info[key]
+
+        # 从身份证出生日期重新算年龄
+        if structured_info.get('birth_date') and not structured_info.get('age'):
+            try:
+                structured_info['age'] = _time.localtime().tm_year - int(structured_info['birth_date'][:4])
+            except:
+                pass
+
+        # 从身份证号反算出生日期和年龄
+        ResumeKbService._fill_birth_age_from_id(structured_info)
+
+        logger.info(
+            f'学信网/身份证解析完成: 姓名={structured_info.get("name")}, '
+            f'身份证号={structured_info.get("id_card_number")}, '
+            f'学历={structured_info.get("education")}, '
+            f'学校={structured_info.get("school")}'
+        )
+
         tags = ResumeKbService._generate_tags(structured_info)
         structured_info['_tags'] = tags
         return structured_info
@@ -1078,6 +1220,8 @@ class BidKbService:
     ) -> OaResume | None:
         """Phase 2: 仅做 DB 写入"""
         async with AsyncSessionLocal() as db:
+            # 禁用 commit 后对象过期，避免 greenlet context 被破坏后触发 lazy loading
+            db.expire_on_commit = False
             try:
                 tags = structured_info.get('_tags', [])
                 resume_uuid = str(uuid.uuid4())

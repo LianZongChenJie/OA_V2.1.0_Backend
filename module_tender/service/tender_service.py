@@ -27,11 +27,12 @@ from module_tender.entity.vo.tender_vo import (
     MatchResultModel,
 )
 from module_resume_kb.entity.do.resume_do import OaResume
+from config.database import AsyncSessionLocal, SyncSessionLocal
 from utils.log_util import logger
 from utils.time_format_util import TimeFormatUtil
-from utils.common_util import CamelCaseUtil
+from utils.common_util import SqlalchemyUtil
 from config.env import AiResumeParserConfig
-import litellm
+import httpx
 import fitz
 
 
@@ -72,72 +73,132 @@ class TenderService:
 
             logger.info(f'招标文件解析: {file_name}，共{total_pages}页，文本长度{len(full_text)}')
 
-            # 2. LLM提取关键信息
-            tender_info = await cls._extract_tender_info_by_llm(full_text)
+            # 2. LLM提取关键信息（失败不中断，fallback规则提取兜底）
+            try:
+                tender_info = await cls._extract_tender_info_by_llm(full_text)
+            except Exception as llm_err:
+                logger.warning(f'LLM提取失败，将使用规则提取: {llm_err}')
+                tender_info = None
 
-            # 3. 创建招标文件主记录
-            tender_uuid = str(uuid.uuid4())
-            requirements_json = json.dumps(tender_info.get('requirements', []), ensure_ascii=False)
-            score_standard_json = json.dumps(tender_info.get('score_standards', []), ensure_ascii=False)
+            # 始终运行规则提取作为补充（LLM可能部分提取成功，部分失败）
+            fallback_info = cls._fallback_extract_info(full_text, file_path, file_ext)
 
-            tender = OaTenderDocument(
-                tender_uuid=tender_uuid,
-                file_name=file_name,
-                tender_name=tender_info.get('tender_name', file_name),
-                tender_code=tender_info.get('tender_code', ''),
-                company_name=tender_info.get('company_name', ''),
-                total_pages=total_pages,
-                status=0,
-                requirements_json=requirements_json,
-                score_standard_json=score_standard_json,
-                file_path=file_path,
-                generated_file_path='',
-                admin_id=user_id,
-                create_time=TimeFormatUtil.get_current_timestamp(),
-                update_time=TimeFormatUtil.get_current_timestamp(),
+            # 合并结果：LLM优先，空字段用fallback填充
+            if tender_info:
+                for key in ('tender_name', 'tender_code', 'company_name'):
+                    if not tender_info.get(key) and fallback_info.get(key):
+                        logger.info(f'LLM未提取到{key}，使用规则提取结果: {fallback_info[key]}')
+                        tender_info[key] = fallback_info[key]
+                if not tender_info.get('requirements'):
+                    tender_info['requirements'] = fallback_info.get('requirements', [])
+            else:
+                tender_info = fallback_info
+
+            if not tender_info:
+                raise ServiceException(message='招标文件解析失败：无法提取关键信息')
+
+            # 3. 数据库操作（使用同步session在线程池执行，彻底绕开异步session的greenlet上下文问题）
+            loop = asyncio.get_event_loop()
+            result = await loop.run_in_executor(
+                None,
+                cls._save_tender_sync,
+                file_name,
+                file_path,
+                total_pages,
+                user_id,
+                tender_info,
             )
-            tender = await TenderDao.create_tender_document(query_db, tender)
-
-            # 4. 批量创建结构化要求
-            requirements_data = tender_info.get('requirements', [])
-            requirement_dos = []
-            for req_data in requirements_data:
-                req_do = OaTenderRequirement(
-                    tender_id=tender.id,
-                    requirement_type=req_data.get('requirement_type', ''),
-                    requirement_key=req_data.get('requirement_key', ''),
-                    operator=req_data.get('operator', ''),
-                    requirement_value=req_data.get('requirement_value', ''),
-                    score_weight=Decimal(str(req_data.get('score_weight', 0))),
-                    description=req_data.get('description', ''),
-                    create_time=TimeFormatUtil.get_current_timestamp(),
-                )
-                requirement_dos.append(req_do)
-
-            if requirement_dos:
-                await TenderDao.batch_create_requirements(query_db, requirement_dos)
 
             parse_time = int((time.time() - start_time) * 1000)
             logger.info(
-                f'招标文件解析完成: {file_name}，提取{len(requirement_dos)}条要求，耗时{parse_time}ms'
+                f'招标文件解析完成: {file_name}，提取{result["requirement_count"]}条要求，耗时{parse_time}ms'
             )
 
             return TenderDocumentUploadResultModel(
-                tender_id=tender.id,
-                tender_uuid=tender_uuid,
-                tender_name=tender.tender_name,
-                tender_code=tender.tender_code,
-                requirement_count=len(requirement_dos),
-                message=f'解析完成：提取{len(requirement_dos)}条人员配置要求',
+                tender_id=result['tender_id'],
+                tender_uuid=result['tender_uuid'],
+                tender_name=result['tender_name'],
+                tender_code=result['tender_code'],
+                requirement_count=result['requirement_count'],
+                message=f'解析完成：提取{result["requirement_count"]}条人员配置要求',
             )
 
         except ServiceException:
-            await query_db.rollback()
             raise
         except Exception as e:
-            await query_db.rollback()
             logger.error(f'招标文件解析入库失败: {str(e)}')
             raise ServiceException(message=f'招标文件解析入库失败: {str(e)}')
+
+    @classmethod
+    def _save_tender_sync(
+        cls,
+        file_name: str,
+        file_path: str,
+        total_pages: int,
+        user_id: int,
+        tender_info: dict,
+    ) -> dict:
+        """同步保存招标文件数据（在线程池中执行，避免greenlet问题）"""
+        with SyncSessionLocal() as db:
+            try:
+                tender_uuid = str(uuid.uuid4())
+                requirements_json = json.dumps(tender_info.get('requirements', []) or [], ensure_ascii=False)
+                score_standard_json = json.dumps(tender_info.get('score_standards', []) or [], ensure_ascii=False)
+                now_ts = TimeFormatUtil.get_current_timestamp()
+
+                tender = OaTenderDocument(
+                    tender_uuid=tender_uuid,
+                    file_name=file_name,
+                    tender_name=tender_info.get('tender_name', file_name),
+                    tender_code=tender_info.get('tender_code', ''),
+                    company_name=tender_info.get('company_name', ''),
+                    total_pages=total_pages,
+                    status=0,
+                    requirements_json=requirements_json,
+                    score_standard_json=score_standard_json,
+                    file_path=file_path,
+                    generated_file_path='',
+                    admin_id=user_id,
+                    create_time=now_ts,
+                    update_time=now_ts,
+                )
+                db.add(tender)
+                db.flush()
+                db.refresh(tender)
+
+                # 批量创建结构化要求
+                requirements_data = tender_info.get('requirements') or []
+                requirement_count = 0
+                for req_data in requirements_data:
+                    req_do = OaTenderRequirement(
+                        tender_id=tender.id,
+                        requirement_type=req_data.get('requirement_type', ''),
+                        requirement_key=req_data.get('requirement_key', ''),
+                        operator=req_data.get('operator', ''),
+                        requirement_value=req_data.get('requirement_value', ''),
+                        score_weight=Decimal(str(req_data.get('score_weight', 0))),
+                        description=req_data.get('description', ''),
+                        create_time=now_ts,
+                    )
+                    db.add(req_do)
+                    requirement_count += 1
+
+                if requirement_count > 0:
+                    db.flush()
+
+                db.commit()
+                logger.info(f'同步事务提交成功, tender_id={tender.id}')
+
+                return {
+                    'tender_id': tender.id,
+                    'tender_uuid': tender_uuid,
+                    'tender_name': tender.tender_name,
+                    'tender_code': tender.tender_code,
+                    'requirement_count': requirement_count,
+                }
+            except Exception:
+                db.rollback()
+                raise
 
     @classmethod
     def _parse_tender_document(cls, file_path: str, file_ext: str) -> str:
@@ -175,6 +236,285 @@ class TenderService:
             raise ServiceException(message=f'解析招标文件失败: {str(e)}')
 
     @classmethod
+    def _fallback_extract_info(cls, text: str, file_path: str = '', file_ext: str = '') -> dict:
+        """
+        使用规则提取关键信息（作为LLM的补充或fallback）
+        
+        策略：
+        1. 基本信息提取：处理多行label-value模式（标签和值在不同行）
+        2. 人员要求提取：直接解析docx表格
+        """
+        result = {
+            'tender_name': '',
+            'tender_code': '',
+            'company_name': '',
+            'requirements': [],
+            'score_standards': []
+        }
+
+        lines = text.split('\n')
+
+        # ===== 1. 提取招标编号 =====
+        # 模式A: 同一行 "招标编号：BJFLX-2026-112"
+        for i, line in enumerate(lines[:200]):
+            match = re.search(r'招\s*标\s*编\s*号[：:\s]*([A-Za-z0-9\-]+)', line)
+            if match and match.group(1):
+                result['tender_code'] = match.group(1).strip()
+                break
+        # 模式B: 标签行后跟值行（docx常见："招 标 编 号:" → "：" → "BJFLX-2026-112"）
+        if not result['tender_code']:
+            for i, line in enumerate(lines[:30]):
+                if re.search(r'招\s*标\s*编\s*号', line):
+                    # 向下搜索最多3行找编号值
+                    for j in range(i + 1, min(len(lines), i + 4)):
+                        val_match = re.search(r'([A-Z]{2,}[-]?\d{2,}[-]?[A-Za-z0-9\-]+)', lines[j])
+                        if val_match:
+                            result['tender_code'] = val_match.group(1).strip()
+                            break
+                    if result['tender_code']:
+                        break
+        # 模式C: "1、招标编号：BJFLX-2026-112"
+        if not result['tender_code']:
+            for i, line in enumerate(lines[:200]):
+                match = re.search(r'编\s*号[：:\s]*([A-Za-z0-9]{3,}[-\w]+)', line)
+                if match:
+                    result['tender_code'] = match.group(1).strip()
+                    break
+
+        # ===== 2. 提取项目名称 =====
+        # 模式A: 同一行 "项目名称：XXX"
+        for i, line in enumerate(lines[:200]):
+            match = re.search(r'项\s*目\s*名\s*称[：:\s]*(.+)', line)
+            if match and match.group(1).strip():
+                result['tender_name'] = match.group(1).strip()
+                break
+        # 模式B: 第一行通常是标题
+        if not result['tender_name']:
+            for line in lines[:5]:
+                stripped = line.strip()
+                if stripped and len(stripped) > 4 and len(stripped) < 100:
+                    result['tender_name'] = stripped
+                    break
+
+        # ===== 3. 提取招标人/招标单位 =====
+        # 模式A: 同一行 "招标人：北京XXX公司"
+        for i, line in enumerate(lines[:200]):
+            match = re.search(r'招\s*标\s*人[：:\s]+([\u4e00-\u9fa5][\u4e00-\u9fa5（）\(\)有限公司股份集团有限责任]+)', line)
+            if match and len(match.group(1).strip()) > 4:
+                result['company_name'] = match.group(1).strip()
+                break
+        # 模式B: 标签行后跟值行（docx常见："招 标 人:" → "：" → "北京XXX公司"）
+        if not result['company_name']:
+            for i, line in enumerate(lines[:30]):
+                if re.search(r'招\s*标\s*人', line) and '代理' not in line:
+                    # 向下搜索最多3行找公司名
+                    for j in range(i + 1, min(len(lines), i + 4)):
+                        company_match = re.search(r'([\u4e00-\u9fa5]{4,}(?:有限公司|股份有限公司|集团|有限责任公司))', lines[j])
+                        if company_match:
+                            result['company_name'] = company_match.group(1).strip()
+                            break
+                    if result['company_name']:
+                        break
+        # 模式C: 从招标公告正文提取 "受招标人XXX委托"
+        if not result['company_name']:
+            for line in lines[:200]:
+                match = re.search(r'受\s*招\s*标\s*人\s*([\u4e00-\u9fa5]{4,}(?:有限公司|股份有限公司|集团|有限责任公司))', line)
+                if match:
+                    result['company_name'] = match.group(1).strip()
+                    break
+
+        # ===== 4. 提取人员配置要求 =====
+        # 优先从docx表格中直接解析（最准确）
+        if file_path and file_ext in ('.docx', '.doc'):
+            try:
+                table_reqs = cls._extract_requirements_from_docx_tables(file_path)
+                if table_reqs:
+                    result['requirements'] = table_reqs
+                    logger.info(f'从docx表格提取到{len(table_reqs)}条人员要求')
+            except Exception as e:
+                logger.warning(f'从docx表格提取人员要求失败: {e}')
+
+        # 如果表格提取失败，用正则从文本提取
+        if not result['requirements']:
+            result['requirements'] = cls._extract_requirements_from_text(lines)
+
+        logger.info(
+            f'规则提取结果: tender_name={result["tender_name"]}, '
+            f'tender_code={result["tender_code"]}, '
+            f'company_name={result["company_name"]}, '
+            f'requirements={len(result["requirements"])}'
+        )
+        return result
+
+    @classmethod
+    def _extract_requirements_from_docx_tables(cls, file_path: str) -> list[dict]:
+        """从docx表格中提取人员配置要求"""
+        from docx import Document
+
+        doc = Document(file_path)
+        requirements = []
+
+        for table in doc.tables:
+            if len(table.rows) < 2:
+                continue
+
+            # 检查表头是否包含人员要求相关关键词
+            header_cells = [cell.text.strip() for cell in table.rows[0].cells]
+            # 也检查第二行（有些表格有合并单元格的二级表头）
+            row1_cells = [cell.text.strip() for cell in table.rows[1].cells] if len(table.rows) > 1 else []
+
+            all_header_text = ' '.join(header_cells + row1_cells)
+
+            # 匹配人员要求表格的特征：表头含"工作年限/任职要求/职责"等
+            if not any(kw in all_header_text for kw in ['工作年限', '任职要求', '职责', '名称']):
+                continue
+            # 同时检查数据行是否含岗位关键词（后端/前端/UI等在数据行而非表头）
+            all_data_text = ''
+            for ri in range(2, min(len(table.rows), 5)):
+                for cell in table.rows[ri].cells:
+                    all_data_text += cell.text.strip() + ' '
+            if not any(kw in all_data_text for kw in ['后端', '前端', '开发', 'UI', 'AI', '咨询', '方案', '初级', '中级', '高级', '专家']):
+                continue
+
+            logger.info(f'找到人员要求表格，共{len(table.rows)}行')
+
+            # 解析表格数据行
+            for ri in range(2, len(table.rows)):  # 跳过前两行表头
+                row = table.rows[ri]
+                cells = [cell.text.strip() for cell in row.cells]
+
+                if len(cells) < 3:
+                    continue
+
+                name = cells[0]  # 如 "后端开发\n（初级）"
+                work_years_cells = cells[1:4] if len(cells) >= 4 else cells[1:]  # 工作年限列（本科以下/本科/研究生）
+                duty = cells[4] if len(cells) > 4 else ''
+                req_text = cells[5] if len(cells) > 5 else ''
+
+                if not name or len(name) < 2:
+                    continue
+
+                # 解析岗位名称和级别
+                name_clean = name.replace('\n', '').replace('\r', '').strip()
+                level_match = re.search(r'[（(](初|中|高|专家)[级]?[）)]', name_clean)
+                level = level_match.group(1) if level_match else ''
+                position = re.sub(r'[（(].*?[）)]', '', name_clean).strip()
+
+                if not position or not level:
+                    continue
+
+                # 提取本科工作年限（最常用的学历要求）
+                work_years_str = ''
+                for wy_cell in work_years_cells:
+                    years_match = re.search(r'(\d+)[-~](\d+)', wy_cell)
+                    if years_match:
+                        work_years_str = f'{years_match.group(1)}-{years_match.group(2)}年'
+                        break
+                    years_match = re.search(r'(\d+)\s*年以上', wy_cell)
+                    if years_match:
+                        work_years_str = f'{years_match.group(1)}年以上'
+                        break
+
+                if not work_years_str:
+                    continue
+
+                # 创建工作年限要求
+                min_years_match = re.match(r'(\d+)', work_years_str)
+                min_years = min_years_match.group(1) if min_years_match else '1'
+
+                requirements.append({
+                    'requirement_type': '工作',
+                    'requirement_key': 'work_years',
+                    'operator': 'gte',
+                    'requirement_value': min_years,
+                    'score_weight': 15,
+                    'description': f'{position}（{level}）: 工作年限{work_years_str}'
+                })
+
+                # 学历要求（该表格结构中包含"本科"和"研究生"列）
+                requirements.append({
+                    'requirement_type': '学历',
+                    'requirement_key': 'education',
+                    'operator': 'in',
+                    'requirement_value': '本科,研究生',
+                    'score_weight': 10,
+                    'description': f'{position}（{level}）: 学历要求本科及以上'
+                })
+
+                # 技能要求（从任职要求列提取）
+                if req_text:
+                    # 提取技术关键词
+                    tech_keywords = []
+                    for kw in ['SpringBoot', 'MyBatis', 'MySQL', 'Redis', 'Vue', 'React', 'Python',
+                               'Java', 'JavaScript', 'TypeScript', 'Linux', 'Docker', 'Kubernetes',
+                               'Spring Cloud', 'RabbitMQ', 'Kafka', 'ElasticSearch', 'MongoDB',
+                               'AI', '大模型', 'Prompt', 'RAG', 'Agent', 'Figma', 'Sketch',
+                               'Photoshop', 'Illustrator', 'HTML', 'CSS', 'Node.js']:
+                        if kw.lower() in req_text.lower():
+                            tech_keywords.append(kw)
+
+                    if tech_keywords:
+                        requirements.append({
+                            'requirement_type': '技能',
+                            'requirement_key': 'skills',
+                            'operator': 'contains',
+                            'requirement_value': ','.join(tech_keywords[:8]),
+                            'score_weight': 20,
+                            'description': f'{position}（{level}）: 技能要求 {",".join(tech_keywords[:5])}'
+                        })
+
+        return requirements
+
+    @classmethod
+    def _extract_requirements_from_text(cls, lines: list[str]) -> list[dict]:
+        """从纯文本行中提取人员要求（当表格解析不可用时）"""
+        requirements = []
+        seen = set()
+
+        for i, line in enumerate(lines):
+            # 匹配 "后端开发（初级）" 等模式
+            match = re.search(r'([前后]端开发|UI产品|AI应用|解决方案|项目咨询|测试|运维|工程师|项目经理|架构师|设计师)\s*[（(](初|中|高|专家)[级]?[）)]', line)
+            if match:
+                position = match.group(1)
+                level = match.group(2)
+
+                # 向下搜索工作年限
+                for j in range(i, min(len(lines), i + 10)):
+                    years_match = re.search(r'(\d+)[-~](\d+)\s*年', lines[j])
+                    if years_match:
+                        min_years = years_match.group(1)
+                        max_years = years_match.group(2)
+                        key = ('work_years', position, level)
+                        if key not in seen:
+                            seen.add(key)
+                            requirements.append({
+                                'requirement_type': '工作',
+                                'requirement_key': 'work_years',
+                                'operator': 'gte',
+                                'requirement_value': min_years,
+                                'score_weight': 15,
+                                'description': f'{position}（{level}）: 工作年限{min_years}-{max_years}年'
+                            })
+                        break
+                    years_match = re.search(r'(\d+)\s*年以上', lines[j])
+                    if years_match:
+                        min_years = years_match.group(1)
+                        key = ('work_years', position, level)
+                        if key not in seen:
+                            seen.add(key)
+                            requirements.append({
+                                'requirement_type': '工作',
+                                'requirement_key': 'work_years',
+                                'operator': 'gte',
+                                'requirement_value': min_years,
+                                'score_weight': 15,
+                                'description': f'{position}（{level}）: 工作年限{min_years}年以上'
+                            })
+                        break
+
+        return requirements[:20]  # 最多20条
+
+    @classmethod
     def _get_file_page_count(cls, file_path: str, file_ext: str) -> int:
         """获取文件页数"""
         try:
@@ -183,128 +523,159 @@ class TenderService:
                 count = doc.page_count
                 doc.close()
                 return count
+            elif file_ext in ('.docx', '.doc'):
+                # Word文档页数无法直接获取，按字数粗略估算（每页约500字）
+                text = cls._parse_tender_document(file_path, file_ext)
+                char_count = len(text.strip())
+                pages = max(1, char_count // 500)
+                return pages
             else:
-                # Word/TXT按段落估算
-                return 0
-        except:
-            return 0
+                # TXT等纯文本按字数估算
+                text = cls._parse_tender_document(file_path, file_ext)
+                char_count = len(text.strip())
+                return max(1, char_count // 500)
+        except Exception:
+            return 1
 
     @classmethod
     async def _extract_tender_info_by_llm(cls, text: str) -> dict[str, Any]:
         """
         使用LLM从招标文件文本中提取关键信息
-
-        提取内容：
-        - 项目信息（项目名称、编号、招标单位、投标截止日期）
-        - 人员配置要求（学历、工作年限、技能、证书、业绩要求）
-        - 评标标准（人员配置及权重、业绩要求及权重）
+        
+        采用两阶段策略：
+        1. 第一阶段：从文件开头提取基本信息（项目名称、招标编号、招标单位）
+        2. 第二阶段：从全文提取人员配置要求
         """
-        # 截断文本（保留前20000字符，招标文件通常较长）
-        max_len = 20000
-        truncated_text = text[:max_len] if len(text) > max_len else text
-
-        prompt = f"""你是一个专业的招标文件分析专家。请从以下招标文件文本中精准提取人员配置要求信息，输出JSON。
-
-【招标文件文本】
-{truncated_text}
-【招标文件文本结束】
-
-【输出JSON格式】——找不到的填null：
-{{
-    "tender_name": "招标项目名称",
-    "tender_code": "招标编号",
-    "company_name": "招标单位名称",
-    "requirements": [
-        {{
-            "requirement_type": "学历/工作/技能/证书/业绩",
-            "requirement_key": "education/work_years/skills/certificates/performance",
-            "operator": "eq/gte/lte/contains/in",
-            "requirement_value": "具体要求值，如'本科'或'3'或'Java,Spring'或'PMP'",
-            "score_weight": 评分权重数字(0-100),
-            "description": "要求描述原文"
-        }}
-    ],
-    "score_standards": [
-        {{
-            "category": "评标项类别",
-            "criteria": "评分标准描述",
-            "weight": 权重数字
-        }}
-    ]
-}}
-
-【运算符说明】
-- eq: 等于（如学历等于"本科"）
-- gte: 大于等于（如工作年限>=3年）
-- lte: 小于等于
-- contains: 包含（如技能包含"Java"）
-- in: 在列表中（如学历在["硕士","博士"]中）
-
-【注意】
-- 仔细阅读招标文件中"人员要求"、"项目团队"、"人员配置"等章节
-- 每条要求独立提取，不要合并
-- score_weight根据招标文件中给出的分值，没有明确分值时根据重要性合理估算
-- 输出必须是合法JSON，不要包含注释或多余文本"""
-
         api_key = AiResumeParserConfig.ai_resume_parser_api_key
         base_url = AiResumeParserConfig.ai_resume_parser_base_url
         model = AiResumeParserConfig.ai_resume_parser_model
         temperature = AiResumeParserConfig.ai_resume_parser_temperature or 0.1
         max_tokens = AiResumeParserConfig.ai_resume_parser_max_tokens or 8192
 
-        # litellm 需要 provider 前缀
-        if '/' in model and not model.startswith((
-            'openai/', 'anthropic/', 'azure/', 'cohere/', 'groq/', 'ollama/', 'vertex_ai/'
-        )):
-            model = f'openai/{model}'
+        # ===== 第一阶段：提取基本信息（文件开头3000字符足够）=====
+        basic_text = text[:3000]
+        logger.info(f'LLM第一阶段提取基本信息: 文本长度{len(basic_text)}')
 
-        def _call_litellm():
-            """在线程池中执行同步litellm调用"""
-            return litellm.completion(
-                model=model,
-                messages=[
-                    {
-                        'role': 'system',
-                        'content': '你是一个专业的招标文件分析专家。请仔细阅读用户提供的招标文件文本，从中提取所有人员配置要求信息，严格按照要求的JSON格式输出。如果某个信息未在文件中提及，请返回null。不要猜测或编造任何信息。',
-                    },
-                    {
-                        'role': 'user',
-                        'content': prompt,
-                    },
-                ],
-                api_key=api_key,
-                base_url=base_url,
-                temperature=temperature,
-                max_tokens=max_tokens,
-                timeout=60,
-            )
+        basic_prompt = f"""从招标文件中提取基本信息。只输出JSON，不要任何解释。
+
+查找规则：
+- "项目名称"后面的文字就是 tender_name
+- "招标编号"后面的字母数字组合就是 tender_code（如BJFLX-2026-112格式）
+- "招标人"后面的公司名就是 company_name（注意可能跨行，跳过冒号行）
+- 如果文件开头是标题，它也可能是 tender_name
+
+输出格式：
+{{"tender_name": "项目名称", "tender_code": "编号", "company_name": "招标单位名称"}}
+
+招标文件开头部分：
+{basic_text}"""
+
+        result = {
+            'tender_name': '',
+            'tender_code': '',
+            'company_name': '',
+            'requirements': [],
+            'score_standards': []
+        }
 
         try:
-            loop = asyncio.get_event_loop()
-            response = await asyncio.wait_for(
-                loop.run_in_executor(None, _call_litellm),
-                timeout=65,
-            )
-
-            content = response.choices[0].message.content if response and response.choices else None
-            if not content:
-                return {'requirements': [], 'score_standards': []}
-
-            result = cls._parse_llm_json_response(content)
-            return result
-
-        except asyncio.TimeoutError:
-            logger.error('LLM提取招标信息超时')
-            raise ServiceException(message='招标文件分析超时，请稍后重试')
+            basic_result = await cls._call_llm(basic_prompt, api_key, base_url, model, temperature, max_tokens)
+            if basic_result:
+                result['tender_name'] = basic_result.get('tender_name', '') or ''
+                result['tender_code'] = basic_result.get('tender_code', '') or ''
+                result['company_name'] = basic_result.get('company_name', '') or ''
+                logger.info(f'LLM第一阶段提取成功: name={result["tender_name"]}, code={result["tender_code"]}, company={result["company_name"]}')
         except Exception as e:
-            logger.error(f'LLM提取招标信息失败: {str(e)}')
-            raise ServiceException(message=f'招标文件分析失败: {str(e)}')
+            logger.warning(f'LLM提取基本信息失败，将依赖规则提取: {e}')
+
+        # ===== 第二阶段：提取人员要求（全文，最多80000字符）=====
+        max_len = 80000
+        req_text = text[:max_len] if len(text) > max_len else text
+        logger.info(f'LLM第二阶段提取人员要求: 文本长度{len(req_text)}')
+
+        req_prompt = f"""从招标文件中提取人员配置要求。只输出JSON，不要任何解释。
+
+查找规则：
+1. 在文件中搜索"服务需求""服务要求""人员配置""岗位要求"等关键词所在的章节
+2. 重点关注表格内容，特别是含有"初级""中级""高级""专家级"等职称分级的表格
+3. 对每个岗位级别提取：
+   - 工作年限（如"2-4年""5年以上"，取最小值作为requirement_value）
+   - 学历要求（如"本科""研究生"）
+   - 技能要求（从任职要求列提取技术关键词如SpringBoot/Vue/MySQL等）
+4. 每个要求单独作为数组元素
+
+输出格式：
+{{"requirements": [
+    {{"requirement_type": "工作", "requirement_key": "work_years", "operator": "gte", "requirement_value": "2", "score_weight": 15, "description": "后端开发初级：工作年限2-4年"}},
+    {{"requirement_type": "学历", "requirement_key": "education", "operator": "in", "requirement_value": "本科,研究生", "score_weight": 10, "description": "学历要求本科及以上"}}
+]}}
+
+招标文件全文：
+{req_text}"""
+
+        try:
+            req_result = await cls._call_llm(req_prompt, api_key, base_url, model, temperature, max_tokens)
+            if req_result and req_result.get('requirements'):
+                result['requirements'] = req_result['requirements']
+                logger.info(f'LLM第二阶段提取到{len(result["requirements"])}条人员要求')
+        except Exception as e:
+            logger.warning(f'LLM提取人员要求失败，将依赖规则提取: {e}')
+
+        return result
+
+    @classmethod
+    async def _call_llm(cls, prompt: str, api_key: str, base_url: str, model: str, temperature: float, max_tokens: int) -> dict:
+        """调用LLM API并返回解析后的JSON"""
+        headers = {
+            'Authorization': f'Bearer {api_key}',
+            'Content-Type': 'application/json',
+        }
+        payload = {
+            'model': model,
+            'messages': [
+                {
+                    'role': 'system',
+                    'content': '你是一个招标文件信息提取助手。只输出JSON，不输出任何其他文字。',
+                },
+                {
+                    'role': 'user',
+                    'content': prompt,
+                },
+            ],
+            'temperature': temperature,
+            'max_tokens': max_tokens,
+            'response_format': {'type': 'json_object'},
+        }
+        url = f'{base_url}/chat/completions'
+        logger.info(f'调用LLM API: url={url}, model={model}')
+
+        async with httpx.AsyncClient(timeout=httpx.Timeout(120.0)) as client:
+            resp = await client.post(url, json=payload, headers=headers)
+            resp.raise_for_status()
+            resp_json = resp.json()
+
+        content = None
+        if resp_json and resp_json.get('choices'):
+            content = resp_json['choices'][0].get('message', {}).get('content')
+
+        if not content:
+            logger.warning('LLM返回空内容')
+            return {}
+
+        logger.info(f'LLM返回内容长度: {len(content)}')
+        logger.info(f'LLM返回完整内容: {content}')
+
+        result = cls._parse_llm_json_response(content)
+        return result
 
     @classmethod
     def _parse_llm_json_response(cls, content: str) -> dict[str, Any]:
-        """解析LLM返回的JSON内容"""
-        # 移除可能的markdown代码块标记
+        """解析LLM返回的JSON内容（增强容错：处理单引号、中文引号、尾逗号等常见格式问题）"""
+        import ast
+
         content = content.strip()
+
+        # 1. 移除markdown代码块标记
         if content.startswith('```json'):
             content = content[7:]
         if content.startswith('```'):
@@ -313,24 +684,76 @@ class TenderService:
             content = content[:-3]
         content = content.strip()
 
+        # 2. 尝试直接解析
         try:
             result = json.loads(content)
-            # 确保关键字段存在
-            if 'requirements' not in result:
-                result['requirements'] = []
-            if 'score_standards' not in result:
-                result['score_standards'] = []
-            return result
+            return cls._normalize_llm_result(result)
         except json.JSONDecodeError:
-            # 尝试提取JSON部分
-            json_match = re.search(r'\{[\s\S]*\}', content)
-            if json_match:
+            pass
+
+        # 3. 清理常见格式问题后再试
+        cleaned = content
+        # 替换中文引号为英文双引号
+        cleaned = cleaned.replace('"', '"').replace('"', '"')
+        cleaned = cleaned.replace(''', "'").replace(''', "'")
+        # 处理尾逗号（对象或数组最后一个元素后的逗号）
+        cleaned = re.sub(r',\s*([}\]])', r'\1', cleaned)
+
+        try:
+            result = json.loads(cleaned)
+            return cls._normalize_llm_result(result)
+        except json.JSONDecodeError:
+            pass
+
+        # 4. 尝试用 ast.literal_eval 解析（兼容单引号）
+        try:
+            result = ast.literal_eval(cleaned)
+            if isinstance(result, dict):
+                return cls._normalize_llm_result(result)
+        except (SyntaxError, ValueError):
+            pass
+
+        # 5. 正则提取最外层JSON对象
+        json_match = re.search(r'\{[\s\S]*\}', content)
+        if json_match:
+            candidate = json_match.group()
+            # 再做一次清理
+            candidate = candidate.replace('"', '"').replace('"', '"')
+            candidate = re.sub(r',\s*([}\]])', r'\1', candidate)
+            try:
+                result = json.loads(candidate)
+                return cls._normalize_llm_result(result)
+            except json.JSONDecodeError:
                 try:
-                    return json.loads(json_match.group())
-                except:
+                    result = ast.literal_eval(candidate)
+                    if isinstance(result, dict):
+                        return cls._normalize_llm_result(result)
+                except (SyntaxError, ValueError):
                     pass
-            logger.error(f'LLM返回内容无法解析为JSON: {content[:200]}')
-            return {'requirements': [], 'score_standards': []}
+
+        logger.error(f'LLM返回内容无法解析为JSON: {content[:300]}')
+        return {'tender_name': '', 'tender_code': '', 'company_name': '', 'requirements': [], 'score_standards': []}
+
+    @classmethod
+    def _normalize_llm_result(cls, result: dict) -> dict:
+        """规范化LLM返回结果，确保关键字段存在"""
+        # 确保基本字段存在
+        if not result.get('tender_name'):
+            result['tender_name'] = ''
+        if not result.get('tender_code'):
+            result['tender_code'] = ''
+        if not result.get('company_name'):
+            result['company_name'] = ''
+        if not result.get('requirements'):
+            result['requirements'] = []
+        if not result.get('score_standards'):
+            result['score_standards'] = []
+        # 确保 requirements 是列表
+        if not isinstance(result['requirements'], list):
+            result['requirements'] = []
+        if not isinstance(result['score_standards'], list):
+            result['score_standards'] = []
+        return result
 
     # ========== 招标文件列表/详情/删除 ==========
 
@@ -339,7 +762,7 @@ class TenderService:
         cls,
         query_db: AsyncSession,
         query_object: TenderDocumentPageQueryModel,
-        is_page: bool = False,
+        is_page: bool = True,
     ) -> PageModel | list:
         """获取招标文件列表"""
         return await TenderDao.get_tender_document_list(query_db, query_object, is_page)
@@ -355,12 +778,16 @@ class TenderService:
         if not tender:
             return TenderDocumentDetailModel()
 
-        tender_model = TenderDocumentModel.model_validate(tender)
-        CamelCaseUtil.transform_result(tender_model)
+        # 将 ORM 对象转为 dict，再用 dict 构造 Pydantic model（避免 from_attributes 兼容性问题）
+        tender_dict = SqlalchemyUtil.base_to_dict(tender)
+        tender_model = TenderDocumentModel(**tender_dict)
 
         # 获取要求列表
         requirements = await TenderDao.get_requirements_by_tender_id(query_db, tender_id)
-        req_models = [TenderRequirementModel.model_validate(r) for r in requirements]
+        req_models = []
+        for r in requirements:
+            req_dict = SqlalchemyUtil.base_to_dict(r)
+            req_models.append(TenderRequirementModel(**req_dict))
 
         return TenderDocumentDetailModel(
             tender=tender_model,
@@ -375,7 +802,11 @@ class TenderService:
     ) -> list[TenderRequirementModel]:
         """获取招标文件的结构化要求列表"""
         requirements = await TenderDao.get_requirements_by_tender_id(query_db, tender_id)
-        return [TenderRequirementModel.model_validate(r) for r in requirements]
+        req_models = []
+        for r in requirements:
+            req_dict = SqlalchemyUtil.base_to_dict(r)
+            req_models.append(TenderRequirementModel(**req_dict))
+        return req_models
 
     @classmethod
     async def delete_tender_document_services(

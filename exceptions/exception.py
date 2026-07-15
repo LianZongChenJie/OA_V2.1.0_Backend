@@ -4,8 +4,12 @@ class LoginException(Exception):
     """
 
     def __init__(self, data: str | None = None, message: str | None = None) -> None:
+        super().__init__(message)
         self.data = data
         self.message = message
+
+    def __str__(self) -> str:
+        return self.message or ''
 
 
 class AuthException(Exception):
@@ -14,8 +18,12 @@ class AuthException(Exception):
     """
 
     def __init__(self, data: str | None = None, message: str | None = None) -> None:
+        super().__init__(message)
         self.data = data
         self.message = message
+
+    def __str__(self) -> str:
+        return self.message or ''
 
 
 class PermissionException(Exception):
@@ -24,8 +32,12 @@ class PermissionException(Exception):
     """
 
     def __init__(self, data: str | None = None, message: str | None = None) -> None:
+        super().__init__(message)
         self.data = data
         self.message = message
+
+    def __str__(self) -> str:
+        return self.message or ''
 
 
 class ServiceException(Exception):
@@ -34,8 +46,12 @@ class ServiceException(Exception):
     """
 
     def __init__(self, data: str | None = None, message: str | None = None) -> None:
+        super().__init__(message)
         self.data = data
         self.message = message
+
+    def __str__(self) -> str:
+        return self.message or ''
 
 
 class ServiceWarning(Exception):
@@ -44,8 +60,12 @@ class ServiceWarning(Exception):
     """
 
     def __init__(self, data: str | None = None, message: str | None = None) -> None:
+        super().__init__(message)
         self.data = data
         self.message = message
+
+    def __str__(self) -> str:
+        return self.message or ''
 
 
 class ModelValidatorException(Exception):
@@ -54,5 +74,9 @@ class ModelValidatorException(Exception):
     """
 
     def __init__(self, data: str | None = None, message: str | None = None) -> None:
+        super().__init__(message)
         self.data = data
         self.message = message
+
+    def __str__(self) -> str:
+        return self.message or ''

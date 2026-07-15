@@ -1310,10 +1310,16 @@ class ResumeKbService:
                 llm_result = await cls._extract_by_llm_full(text)
                 if llm_result and isinstance(llm_result, dict):
                     cls._sanitize_llm_result(llm_result)
-                    # LLM 结果作为主要数据源
+                    # LLM 结果作为主要数据源（使用 _is_valid_value 过滤垃圾值如 "null" 字符串）
                     for key in info.keys():
                         if key in llm_result and llm_result[key] is not None and llm_result[key] != '':
-                            info[key] = llm_result[key]
+                            llm_val = llm_result[key]
+                            # 对简单字段做有效性校验，过滤 "null" "None" "未知" 等垃圾值
+                            if isinstance(llm_val, str):
+                                val_stripped = llm_val.strip()
+                                if val_stripped.lower() in ('null', 'none', 'n/a', '未知', '无', '暂无', '未提供', '未填写', '-', '—'):
+                                    continue
+                            info[key] = llm_val
                     logger.info(f'LLM 解析完成: 姓名={info.get("name")}, 学历={info.get("education")}, 专业={info.get("major")}')
                     llm_success = True
             except asyncio.TimeoutError:
@@ -1333,9 +1339,18 @@ class ResumeKbService:
             if xuexin_info.get(key):
                 info[key] = xuexin_info[key]
 
-        for key in ['name', 'gender', 'birth_date', 'id_card_number', 'id_card_address']:
+        for key in ['name', 'gender', 'birth_date', 'age', 'id_card_number', 'id_card_address']:
             if id_card_info.get(key):
                 info[key] = id_card_info[key]
+
+        # 根据身份证的出生日期重新计算年龄（最准确）
+        if info.get('birth_date') and not info.get('age'):
+            try:
+                import time
+                birth_year = int(info['birth_date'][:4])
+                info['age'] = time.localtime().tm_year - birth_year
+            except:
+                pass
 
         # === 第三步：如果 LLM 完全失败，用规则提取补充所有空字段 ===
         if not llm_success:
@@ -1702,18 +1717,21 @@ class ResumeKbService:
         if not info.get('id_card_address'):
             address_patterns = [
                 # 单行格式
-                r'住\s*址\s*[：:\s]\s*([\u4e00-\u9fa50-9省市区县镇村街道号路]{5,150})',
-                r'住址\s*[：:\s]\s*([\u4e00-\u9fa50-9省市区县镇村街道号路]{5,150})',
+                r'住\s*址\s*[：:\s]\s*([\u4e00-\u9fa50-9省市区县镇村街道号路幢室组庄屯乡]{5,150})',
+                r'住址\s*[：:\s]\s*([\u4e00-\u9fa50-9省市区县镇村街道号路幢室组庄屯乡]{5,150})',
                 # 跨行格式：住址\nXXX省XXX市（OCR分词导致）
-                r'住\s*址\s*$\s*([\u4e00-\u9fa50-9省市区县镇村街道号路]{5,150})',
+                r'住\s*址\s*$\s*([\u4e00-\u9fa50-9省市区县镇村街道号路幢室组庄屯乡]{5,150})',
+                # OCR可能将地址拆成多行：住址\nXXX省XXX市\nXXX区XXX路
+                r'住\s*址\s*$\s*([\u4e00-\u9fa50-9\n省市区县镇村街道号路幢室组庄屯乡]{5,200})',
             ]
             for pattern in address_patterns:
                 match = re.search(pattern, text, re.MULTILINE if '$' in pattern else 0)
                 if match:
                     addr = match.group(1).strip()
-                    # 去除OCR空格
-                    addr = re.sub(r'\s+', '', addr)
-                    if len(addr) >= 5:
+                    # 去除OCR空格和换行（地址可能跨行）
+                    addr = re.sub(r'[\s\n]', '', addr)
+                    # 验证地址至少包含"省"或"市"或"区"或"县"等行政区划关键字
+                    if len(addr) >= 5 and any(kw in addr for kw in ['省', '市', '区', '县', '镇', '乡', '村', '街', '路']):
                         info['id_card_address'] = addr
                         logger.info(f'身份证提取地址: {addr[:30]}...')
                         break
@@ -1812,32 +1830,47 @@ class ResumeKbService:
         # === 5. 专业名称提取（学信网截图格式："专业：信息与计算科学" 或两行格式） ===
         if not info.get('major'):
             # 先尝试单行格式：专业：信息与计算科学
+            # 注意：字符类中用 [ \t] 替代 \s，避免跨行匹配到下一行的字段值
             major_patterns = [
-                r'专业名称\s*[：:\s]\s*([\u4e00-\u9fa5a-zA-Z0-9·（）()\-\s]{2,60})',
-                r'专业\s*[：:\s]\s*([\u4e00-\u9fa5a-zA-Z0-9·（）()\-\s]{2,60})',
+                r'专业名称\s*[：:\s]\s*([\u4e00-\u9fa5a-zA-Z0-9·（）()\- \t]{2,60})',
+                r'专业\s*[：:\s]\s*([\u4e00-\u9fa5a-zA-Z0-9·（）()\- \t]{2,60})',
             ]
             for pattern in major_patterns:
                 match = re.search(pattern, text)
                 if match:
                     major = match.group(1).strip()
-                    # 去除OCR空格后进行噪声清洗（OCR可能把"四年制本科学习"识别成"四 年制 本 科学习"）
+                    # 去除OCR空格后进行噪声清洗
                     major_no_space = re.sub(r'\s+', '', major)
                     # 清洗常见噪声词（取噪声词之前的部分）
-                    noise_words = ['学制', '学习形式', '层次', '毕业', '院校', '学校', '姓名', '年制本科', '年制专科']
+                    noise_words = ['学制', '学习形式', '层次', '毕业', '院校', '学校', '姓名',
+                                   '年制本科', '年制专科', '入学日期', '毕业日期', '证书编号',
+                                   '学历层次', '学历', '性别', '出生日期']
                     for noise in noise_words:
                         if noise in major_no_space:
                             major_no_space = major_no_space.split(noise)[0].strip()
                             break
-                    # 排除明显不是专业名的值（检查去空格后的值）
+                    # 排除明显不是专业名的值
                     invalid_values = ['四年制', '本科', '专科', '全日制', '普通', '学习', '信息',
-                                      '四年制本科学习', '年制本科', '年制专科', '四年制本科', '']
-                    invalid_patterns = [r'^四年制', r'^\d+年制', r'本科学习', r'专科学习', r'^本科$', r'^专科$']
+                                      '四年制本科学习', '年制本科', '年制专科', '四年制本科', '',
+                                      'null', 'None', '未知', '无']
+                    invalid_patterns = [
+                        r'^四年制', r'^\d+年制', r'本科学习', r'专科学习',
+                        r'^本科$', r'^专科$', r'^硕士$', r'^博士$',
+                        r'^年.*月', r'^\d{1,2}年.*月',  # "年九月至二" 等日期片段
+                        r'^至$', r'^\d+至\d+',
+                        r'学习形式', r'学制', r'普通全日制',
+                    ]
                     is_invalid = major_no_space in invalid_values
                     if not is_invalid:
                         for inv_pat in invalid_patterns:
-                            if re.search(inv_pat, major_no_space):
+                            if re.search(inv_pat, major_no_space, re.IGNORECASE):
                                 is_invalid = True
                                 break
+                    # 额外检查：专业名至少含2个中文字符
+                    if not is_invalid:
+                        chinese_chars = re.findall(r'[\u4e00-\u9fa5]', major_no_space)
+                        if len(chinese_chars) < 2:
+                            is_invalid = True
                     if not is_invalid and 2 <= len(major_no_space) <= 60:
                         info['major'] = major_no_space
                         logger.info(f'学信网提取专业名称(单行): {info["major"]}')
@@ -1854,12 +1887,17 @@ class ResumeKbService:
                     if match:
                         major = match.group(1).strip()
                         # 验证：排除学制、学习形式等误匹配
-                        if major not in ['四年制', '本科', '专科', '全日制', '普通', '学习'] and len(major) >= 2:
+                        invalid_vals = ['四年制', '本科', '专科', '全日制', '普通', '学习',
+                                        'null', 'None', '未知', '无']
+                        if major not in invalid_vals and len(major) >= 2:
                             # 进一步验证：专业名通常不含"年""制""形式"等词
-                            if not any(bad in major for bad in ['学制', '学习形式', '层次', '年制']):
-                                info['major'] = major
-                                logger.info(f'学信网提取专业名称(两行): {major}')
-                                break
+                            if not any(bad in major for bad in ['学制', '学习形式', '层次', '年制', '年月']):
+                                # 至少含2个中文字符
+                                chinese_chars = re.findall(r'[\u4e00-\u9fa5]', major)
+                                if len(chinese_chars) >= 2:
+                                    info['major'] = major
+                                    logger.info(f'学信网提取专业名称(两行): {major}')
+                                    break
 
         # === 6. 学校名称提取 ===
         if not info.get('school'):
@@ -2852,7 +2890,15 @@ class ResumeKbService:
                 logger.info(f'身份证号反算出生日期: {info["birth_date"]}')
             
             # 补全年龄（精确计算：考虑月份和日期）
-            if not info.get('age') or info.get('age') == 0:
+            # 条件：age为None、0、或与身份证号推算的年龄差距超过2年
+            current_age = info.get('age')
+            need_recalc = current_age is None or current_age == 0
+            if not need_recalc and isinstance(current_age, (int, str)):
+                try:
+                    need_recalc = abs(int(current_age) - (time.localtime().tm_year - year)) > 2
+                except (ValueError, TypeError):
+                    need_recalc = True
+            if need_recalc:
                 now = time.localtime()
                 age = now.tm_year - year
                 # 如果还没过生日，减1
@@ -2982,7 +3028,7 @@ class ResumeKbService:
                         info['education'] = std
                         break
 
-        # === 4.5 专业字段清洗（防止"四年制本科学习"等OCR噪声被误提取为专业） ===
+        # === 4.5 专业字段清洗（防止"四年制本科学习""年九月至二"等OCR噪声被误提取为专业） ===
         major = info.get('major')
         if major and isinstance(major, str):
             major_cleaned = re.sub(r'\s+', '', major)  # 去除OCR空格
@@ -2991,17 +3037,42 @@ class ResumeKbService:
                 r'^四年制', r'^\d+年制', r'本科学习', r'专科学习',
                 r'^本科$', r'^专科$', r'^硕士$', r'^博士$',
                 r'学习形式', r'学制', r'普通全日制',
+                r'^年.*月', r'^\d{1,2}年.*月',  # "年九月至二" 等日期片段
+                r'^至$', r'^\d+至\d+',
+                r'入学日期', r'毕业日期', r'证书编号',
+                r'^学历层次$', r'^层次$', r'^学历$',
+                r'^null$', r'^None$', r'^未知$',
             ]
             is_invalid_major = False
             for inv_pat in invalid_major_patterns:
-                if re.search(inv_pat, major_cleaned):
+                if re.search(inv_pat, major_cleaned, re.IGNORECASE):
                     is_invalid_major = True
                     break
+            # 额外检查：如果专业值不含任何中文实词（全是数字、标点、字母组合），也视为无效
+            if not is_invalid_major:
+                chinese_chars = re.findall(r'[\u4e00-\u9fa5]', major_cleaned)
+                if len(chinese_chars) < 2:
+                    is_invalid_major = True
             if is_invalid_major:
                 logger.warning(f'专业字段清洗: "{major}" 为无效值，清空')
                 info['major'] = None
             else:
-                info['major'] = major_cleaned
+                # 清除尾部粘连的字段名（OCR跨行导致的"专业：计算机科学与技术\n学历类别" → "计算机科学与技术学历类别"）
+                trailing_noise = ['学历类别', '学习形式', '学制', '层次', '学历',
+                                  '毕业日期', '入学日期', '证书编号', '院校名称',
+                                  '学校名称', '毕(结)业', '毕（结）业']
+                for noise in trailing_noise:
+                    if major_cleaned.endswith(noise) and len(major_cleaned) > len(noise):
+                        major_cleaned = major_cleaned[:-len(noise)]
+                        logger.info(f'专业字段去除尾部粘连: "{noise}" → "{major_cleaned}"')
+                        break
+                # 清除后再次校验中文字符数
+                chinese_chars = re.findall(r'[\u4e00-\u9fa5]', major_cleaned)
+                if len(chinese_chars) >= 2:
+                    info['major'] = major_cleaned
+                else:
+                    logger.warning(f'专业字段清洗后中文字符不足2: "{major_cleaned}"，清空')
+                    info['major'] = None
         grad_date = info.get('graduation_date')
         if grad_date and isinstance(grad_date, str):
             # 确保 YYYY-MM 格式
@@ -3031,6 +3102,27 @@ class ResumeKbService:
                     info['age'] = age_int
             except (ValueError, TypeError):
                 info['age'] = None
+
+        # === 6.5 年龄与出生日期交叉校验 ===
+        # 如果出生日期存在但年龄与出生年份不一致，用出生日期重算年龄
+        birth = info.get('birth_date')
+        if birth and isinstance(birth, str):
+            year_match = re.search(r'(19\d{2}|20\d{2})', birth)
+            if year_match:
+                birth_year = int(year_match.group(1))
+                now = time.localtime()
+                correct_age = now.tm_year - birth_year
+                # 如果当前月份 < 出生月份（从birth_date提取），减1
+                month_match = re.search(r'\d{4}-(\d{1,2})', birth)
+                if month_match:
+                    birth_month = int(month_match.group(1))
+                    if now.tm_mon < birth_month:
+                        correct_age -= 1
+                if 16 <= correct_age <= 70:
+                    current_age = info.get('age')
+                    if current_age is None or current_age == 0 or abs(int(current_age) - correct_age) > 2:
+                        logger.info(f'年龄交叉校验: birth_date={birth}, 原age={current_age} → 修正为{correct_age}')
+                        info['age'] = correct_age
 
         # === 7. 技能去重和清洗 ===
         skills = info.get('technical_skills', [])
@@ -3103,16 +3195,52 @@ class ResumeKbService:
             name = name.strip()
             # 去除可能的"简历""求职"等后缀
             name = re.sub(r'(简历|求职|应聘|个人|的).*$', '', name).strip()
+            # 去除前缀（如"姓名："）
+            name = re.sub(r'^姓\s*名\s*[：:\s]*', '', name).strip()
             # 排除字段名被误识别为姓名
             INVALID_NAMES = {'性别', '民族', '年龄', '学历', '出生', '住址', '姓名', '学制', '学位', '专业', '学校', '毕业', '身份',
-                             '男', '女', '联系电话', '联系方式', '邮箱', '地址', '职称', '职务', '电话'}
+                             '男', '女', '联系电话', '联系方式', '邮箱', '地址', '职称', '职务', '电话',
+                             '出生日期', '身份证', '公民', '号码', '签发机关', '有效期', '编号',
+                             '投标人', '盖章', '说明', '备注', '日期', '签名', '签章',
+                             'null', 'None', 'none', '未知', '无', '暂无'}
             if name in INVALID_NAMES:
-                logger.warning(f'姓名清洗: "{name}" 为字段名，清空')
+                logger.warning(f'姓名清洗: "{name}" 为字段名/无效值，清空')
                 info['name'] = None
-            elif len(name) < 2 or len(name) > 4:
+            elif len(name) < 2 or len(name) > 5:
                 info['name'] = None
             else:
                 info['name'] = name
+
+        # === 10. 全局 "null"/"None" 字符串过滤 ===
+        # LLM 经常返回字符串 "null" 或 "None"，这些不是有效值
+        null_strings = {'null', 'None', 'none', 'NULL', '未知', '暂无', '无', '-'}
+        null_keys = ['phone', 'email', 'major', 'school', 'degree', 'school_system',
+                     'study_form', 'current_company', 'current_position', 'birth_date',
+                     'graduation_date', 'id_card_number', 'id_card_address']
+        for key in null_keys:
+            val = info.get(key)
+            if isinstance(val, str) and val.strip() in null_strings:
+                logger.info(f'全局null过滤: {key}="{val}" → None')
+                info[key] = None
+
+        # === 11. 出生日期残缺值清洗 ===
+        birth = info.get('birth_date')
+        if birth and isinstance(birth, str):
+            birth = birth.strip()
+            # 匹配 YYYY-MM-DD 格式
+            m = re.match(r'^(\d{4})-(\d{1,2})-(\d{1,2})$', birth)
+            if not m:
+                # 尝试 YYYY-MM 格式
+                m2 = re.match(r'^(\d{4})-(\d{1,2})$', birth)
+                if not m2:
+                    # 尝试从残缺值中提取年份
+                    year_match = re.search(r'(19\d{2}|20\d{2})', birth)
+                    if year_match:
+                        info['birth_date'] = f"{year_match.group(1)}-01-01"
+                        logger.info(f'出生日期残缺修复: "{birth}" → "{info["birth_date"]}"')
+                    else:
+                        logger.warning(f'出生日期无法解析: "{birth}"，清空')
+                        info['birth_date'] = None
 
     @classmethod
     def _parse_llm_response(cls, content: str) -> dict[str, Any] | None:

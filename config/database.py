@@ -61,6 +61,7 @@ def create_async_db_engine(echo: bool | None = None) -> AsyncEngine:
         pool_size=DataBaseConfig.db_pool_size,
         pool_recycle=DataBaseConfig.db_pool_recycle,
         pool_timeout=DataBaseConfig.db_pool_timeout,
+        pool_pre_ping=True,
     )
 
 
@@ -103,6 +104,9 @@ def create_sync_session_local(engine: Engine) -> sessionmaker:
 
 async_engine = create_async_db_engine()
 AsyncSessionLocal = create_async_session_local(async_engine)
+
+sync_engine = create_sync_db_engine()
+SyncSessionLocal = create_sync_session_local(sync_engine)
 
 
 class Base(AsyncAttrs, DeclarativeBase):
