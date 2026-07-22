@@ -2179,6 +2179,39 @@ class ResumeKbService:
                         logger.info(f'学信网提取学习形式: {info["study_form"]}')
                         break
 
+        # === 11. 证书编号提取（学信网学历证书编号） ===
+        cert_no_patterns = [
+            r'证书编号\s*[：:\s]\s*([A-Za-z0-9]{10,30})',
+            r'证书编号\s*[：:\s]\s*(\d{12,20})',
+        ]
+        cert_no = None
+        for pattern in cert_no_patterns:
+            match = re.search(pattern, text)
+            if match:
+                cert_no = match.group(1).strip()
+                break
+
+        if cert_no:
+            # 添加到 certifications 证书列表
+            if 'certifications' not in info or not info.get('certifications'):
+                info['certifications'] = []
+            # 检查是否已存在相同学历证书
+            cert_exists = False
+            for cert in info['certifications']:
+                if isinstance(cert, dict) and cert.get('name') in ['学历证书', '毕业证书']:
+                    if not cert.get('number'):
+                        cert['number'] = cert_no
+                        cert_exists = True
+                        break
+            if not cert_exists:
+                info['certifications'].append({
+                    'name': '学历证书',
+                    'number': cert_no,
+                    'issue_date': info.get('graduation_date', ''),
+                    'issuer': info.get('school', ''),
+                })
+            logger.info(f'学信网提取证书编号: {cert_no}')
+
     @classmethod
     def _extract_by_rules(cls, text: str, info: dict[str, Any]) -> None:
         """

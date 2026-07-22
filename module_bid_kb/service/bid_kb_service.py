@@ -185,13 +185,6 @@ class BidKbService:
             resume_segments = await cls._split_resumes(full_text)
             logger.info(f'投标文件共 {total_pages} 页，识别到 {len(resume_segments)} 份简历')
 
-            # 限制解析简历数量，加快整体速度（默认前20份，BID_MAX_RESUMES 环境变量可调）
-            import os
-            max_resumes = int(os.environ.get('BID_MAX_RESUMES', '20'))
-            if len(resume_segments) > max_resumes:
-                logger.info(f'限制只解析前 {max_resumes} 份简历（共 {len(resume_segments)} 份）')
-                resume_segments = resume_segments[:max_resumes]
-
             if not resume_segments:
                 cls._set_progress(bid_uuid, 'done', 100, 100, '未识别到简历')
                 await cls._update_bid_status(bid_id, bid_info.get('bid_name', file_name), 1, 0, 0)
@@ -225,6 +218,19 @@ class BidKbService:
                         for key in ['name', 'gender', 'birth_date', 'education', 'major', 'school', 'graduation_date', 'degree', 'school_system', 'study_form']:
                             if global_xuexin[resume_name].get(key):
                                 structured_info[key] = global_xuexin[resume_name][key]
+                        # 合并全局提取的证书信息（学信网证书编号等）
+                        global_certs = global_xuexin[resume_name].get('certifications', [])
+                        if global_certs and isinstance(global_certs, list):
+                            existing = structured_info.get('certifications', [])
+                            if not isinstance(existing, list):
+                                existing = []
+                            # 按证书名称去重合并
+                            existing_names = {c.get('name', '') for c in existing if isinstance(c, dict)}
+                            for cert in global_certs:
+                                if isinstance(cert, dict) and cert.get('name') not in existing_names:
+                                    existing.append(cert)
+                                    existing_names.add(cert.get('name', ''))
+                            structured_info['certifications'] = existing
                     if resume_name and resume_name in global_idcards:
                         logger.info(f'  简历#{idx} "{resume_name}": 从global_idcards覆盖身份证信息: {global_idcards[resume_name]}')
                         for key in ['name', 'gender', 'birth_date', 'age', 'id_card_number', 'id_card_address']:
