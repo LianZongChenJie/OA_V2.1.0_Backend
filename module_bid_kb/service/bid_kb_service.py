@@ -200,6 +200,9 @@ class BidKbService:
             # 全局提取所有学信网和身份证信息（不依赖拆分，按姓名匹配，最准确）
             global_xuexin, global_idcards = cls._extract_global_credentials(full_text)
 
+            logger.info(f'===== 逐份简历解析阶段 =====')
+            logger.info(f'  global_idcards: {global_idcards}')
+
             # 4. 逐份LLM解析简历（串行，避免并发压垮LLM）
             # 解析阶段占总进度的 45-90%（共45%）
             total_resumes = len(resume_segments)
@@ -214,23 +217,29 @@ class BidKbService:
             for idx, resume_text in enumerate(resume_segments, 1):
                 try:
                     structured_info = await cls._parse_resume_llm_only(resume_text)
+                    resume_name = structured_info.get('name', '')
 
                     # 用全局提取的学信网/身份证信息覆盖（不依赖拆分边界，最准确）
-                    name = structured_info.get('name', '')
-                    if name and name in global_xuexin:
+                    logger.info(f'  简历#{idx} "{resume_name}": 解析后 id_card_number={structured_info.get("id_card_number")}, birth_date={structured_info.get("birth_date")}')
+                    if resume_name and resume_name in global_xuexin:
                         for key in ['name', 'gender', 'birth_date', 'education', 'major', 'school', 'graduation_date', 'degree', 'school_system', 'study_form']:
-                            if global_xuexin[name].get(key):
-                                structured_info[key] = global_xuexin[name][key]
-                    if name and name in global_idcards:
+                            if global_xuexin[resume_name].get(key):
+                                structured_info[key] = global_xuexin[resume_name][key]
+                    if resume_name and resume_name in global_idcards:
+                        logger.info(f'  简历#{idx} "{resume_name}": 从global_idcards覆盖身份证信息: {global_idcards[resume_name]}')
                         for key in ['name', 'gender', 'birth_date', 'age', 'id_card_number', 'id_card_address']:
-                            if global_idcards[name].get(key):
-                                structured_info[key] = global_idcards[name][key]
+                            if global_idcards[resume_name].get(key):
+                                structured_info[key] = global_idcards[resume_name][key]
                         # 身份证出生日期重新算年龄
-                        if global_idcards[name].get('birth_date') and not structured_info.get('age'):
+                        if global_idcards[resume_name].get('birth_date') and not structured_info.get('age'):
                             try:
                                 structured_info['age'] = time.localtime().tm_year - int(structured_info['birth_date'][:4])
                             except:
                                 pass
+                    else:
+                        logger.info(f'  简历#{idx} "{resume_name}": 未在global_idcards中找到匹配')
+
+                    logger.info(f'  简历#{idx} "{resume_name}" 最终: id_card_number={structured_info.get("id_card_number")}, birth_date={structured_info.get("birth_date")}')
 
                     parsed_results.append(structured_info)
                     # 计算解析进度：45% + (idx/total) * 45%
@@ -298,8 +307,14 @@ class BidKbService:
                 f'正在保存 {len(valid_results)} 份简历到数据库...'
             )
             success_count = 0
+            logger.info(f'===== 入库阶段开始 - 共 {len(valid_results)} 份简历 =====')
             for idx, structured_info in enumerate(valid_results, 1):
                 try:
+                    name = structured_info.get('name', '')
+                    id_card = structured_info.get('id_card_number', '')
+                    birth = structured_info.get('birth_date', '')
+                    addr = structured_info.get('id_card_address', '')
+                    logger.info(f'  入库#{idx} "{name}": id_card_number={id_card}, birth_date={birth}, address={addr[:50] if addr else ""}')
                     result = await cls._save_resume_to_db(
                         structured_info,
                         file_name,
@@ -309,6 +324,7 @@ class BidKbService:
                     )
                     if result:
                         success_count += 1
+                        logger.info(f'  入库#{idx} "{name}" 成功: resume_id={result.id}, id_card_number={result.id_card_number}')
                     # 计算保存进度：90% + (idx/total) * 10%
                     save_percent = 90 + int(idx / len(valid_results) * 10)
                     cls._set_progress(
@@ -318,6 +334,7 @@ class BidKbService:
                 except Exception as e:
                     failed_count += 1
                     logger.error(f'第 {idx} 份简历入库异常: {str(e)}')
+            logger.info(f'===== 入库阶段结束 =====')
 
             # 6. 更新投标文件状态（完成）
             await cls._update_bid_status(
@@ -548,6 +565,11 @@ class BidKbService:
                         result, _ = engine(img_bytes)
                         if result:
                             ocr_preview_text = ' '.join([item[1] for item in result])
+                            logger.info(f'第{actual_page+1}页OCR预检文本: {ocr_preview_text[:200]}')
+                            xuexin_matches = [(kw, kw in ocr_preview_text) for kw in XUEXIN_KEYWORDS]
+                            id_card_matches = [(kw, kw in ocr_preview_text) for kw in ID_CARD_KEYWORDS]
+                            logger.info(f'第{actual_page+1}页学信网关键词检查: {xuexin_matches}')
+                            logger.info(f'第{actual_page+1}页身份证关键词检查: {id_card_matches}')
                             # 检查是否包含学信网或身份证关键词
                             if any(kw in ocr_preview_text for kw in XUEXIN_KEYWORDS):
                                 is_target_image = True
@@ -631,6 +653,31 @@ class BidKbService:
         # 合并：封面文本 + 章节文本，确保封面信息不丢失
         resume_text = '\n'.join(filter(None, all_text))
         full_text = cover_text + '\n' + resume_text
+        
+        # ==== 身份证调试日志 ====
+        # 搜索full_text中所有身份证相关内容
+        import re as _re
+        id_segments = []
+        for kw in ['中华人民共和国', '居民身份证', '公民身份号码', '签发机关']:
+            pos = 0
+            while True:
+                pos = full_text.find(kw, pos)
+                if pos == -1:
+                    break
+                start = max(0, pos - 50)
+                end = min(len(full_text), pos + 200)
+                id_segments.append(f"[{kw}] 位置{pos}: {repr(full_text[start:end])}")
+                pos += 1
+        
+        # 搜索18位数字（可能是身份证号）
+        id_number_matches = _re.findall(r'\d{17}[\dXx]', full_text)
+        logger.info(f'===== 身份证调试 - full_text中身份证关键词匹配: {len(id_segments)} 处，身份证号匹配: {len(id_number_matches)} 个 =====')
+        for seg in id_segments[:10]:
+            logger.info(f'  {seg}')
+        if id_number_matches:
+            logger.info(f'  识别到的身份证号: {id_number_matches}')
+        # ========================
+        
         return full_text
 
     @classmethod
@@ -996,19 +1043,50 @@ class BidKbService:
             if name and name not in names and name not in EXCLUDE_NAMES:
                 names.append(name)
 
-        # Strategy 3: 人员清单表格
+        # Strategy 3: 人员清单表格（多种列顺序兼容）
         if not names:
-            person_list_pattern = re.compile(
+            # 3.1 标准格式: 序号 姓名 性别 年龄
+            pattern1 = re.compile(
                 r'(?:^|\n)\s*(\d{1,3})\s+'
                 r'([\u4e00-\u9fa5·•]{2,10})\s+'
                 r'(男|女)\s+'
-                r'(\d{1,3})\s+',
+                r'(\d{1,3})',
                 re.MULTILINE
             )
-            for m in person_list_pattern.finditer(text):
+            for m in pattern1.finditer(text):
                 name = m.group(2).strip()
                 if name and name not in names and name not in EXCLUDE_NAMES:
                     names.append(name)
+
+            # 3.2 无性别格式: 序号 姓名 年龄 学历
+            if not names:
+                pattern2 = re.compile(
+                    r'(?:^|\n)\s*(\d{1,3})\s+'
+                    r'([\u4e00-\u9fa5·•]{2,10})\s+'
+                    r'(\d{1,3})\s+'
+                    r'(?:本科|硕士|博士|大专|专科|高中|中专|职高)',
+                    re.MULTILINE
+                )
+                for m in pattern2.finditer(text):
+                    name = m.group(2).strip()
+                    if name and name not in names and name not in EXCLUDE_NAMES:
+                        names.append(name)
+
+            # 3.3 姓名+学历+职称 格式（表格列较多时）
+            if not names:
+                pattern3 = re.compile(
+                    r'(?:^|\n)\s*(\d{1,3})\s+'
+                    r'([\u4e00-\u9fa5·•]{2,10})\s+'
+                    r'(?:男|女)?\s*'
+                    r'(?:\d{1,3})?\s*'
+                    r'(?:本科|硕士|博士|大专|专科)\s+'
+                    r'(?:[\u4e00-\u9fa5]{2,10})',
+                    re.MULTILINE
+                )
+                for m in pattern3.finditer(text):
+                    name = m.group(2).strip()
+                    if name and name not in names and name not in EXCLUDE_NAMES:
+                        names.append(name)
 
         # Strategy 4: 行首 姓名+性别+年龄 回退模式
         # 排除"性别""民族""年龄""学历"等字段名被误识别为姓名
@@ -1021,6 +1099,101 @@ class BidKbService:
                 name = m.group(1).strip()
                 if name and name not in names and name not in EXCLUDE_NAMES:
                     names.append(name)
+
+        # Strategy 5: 表格表头检测法
+        # 先找到包含"序号 姓名 性别 年龄 学历"等表头关键词的行，再从下面的行提取姓名
+        if not names:
+            table_header_pattern = re.compile(
+                r'(?:^|\n)\s*(?:序号|编号|NO)?\s*'
+                r'(?:姓名|名字)\s*'
+                r'(?:性别|民族)?\s*'
+                r'(?:年龄|出生年月)?\s*'
+                r'(?:学历|文化程度)?\s*'
+                r'(?:专业|职称|职务)?',
+                re.MULTILINE
+            )
+            header_match = table_header_pattern.search(text)
+            if header_match:
+                # 表头之后取50行内的人员行
+                after_header = text[header_match.end():header_match.end() + 3000]
+                lines = after_header.split('\n')
+                for line in lines[:50]:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    # 跳过纯表头重复行
+                    if any(kw in line for kw in ['序号', '姓名', '性别', '年龄', '学历', '专业', '职称']) and len(line) < 30:
+                        continue
+                    # 匹配行首序号+姓名模式
+                    row_match = re.match(
+                        r'^(\d{1,3})\s+'
+                        r'([\u4e00-\u9fa5·•]{2,10})',
+                        line
+                    )
+                    if row_match:
+                        name = row_match.group(2).strip()
+                        if name and name not in names and name not in EXCLUDE_NAMES:
+                            names.append(name)
+                    else:
+                        # 没有序号时，尝试匹配行首直接是姓名（2-4个汉字）后跟空格和内容
+                        row_match2 = re.match(
+                            r'^([\u4e00-\u9fa5·•]{2,4})\s+'
+                            r'(?:男|女|\d{1,3}|本科|硕士|博士|大专)',
+                            line
+                        )
+                        if row_match2:
+                            name = row_match2.group(1).strip()
+                            if name and name not in names and name not in EXCLUDE_NAMES:
+                                names.append(name)
+                logger.info(f'  Strategy5表格表头检测: 识别到 {len(names)} 人')
+
+        # Strategy 6: 密集人员特征检测（OCR表格结构丢失时的兜底）
+        # 检测一段文本中密集出现学历/职称关键词，说明是人员表格区域
+        if not names:
+            lines = text.split('\n')
+            edu_keywords = ['本科', '硕士', '博士', '大专', '专科', '研究生', '高中', '中专']
+            title_keywords = ['工程师', '高级', '中级', '初级', '经理', '主管', '总监', '专家', '顾问']
+
+            # 统计连续行中包含学历/职称关键词的密度
+            dense_regions = []
+            current_region_start = -1
+            current_count = 0
+
+            for i, line in enumerate(lines):
+                has_edu = any(kw in line for kw in edu_keywords)
+                has_title = any(kw in line for kw in title_keywords)
+                if has_edu or has_title:
+                    if current_region_start == -1:
+                        current_region_start = i
+                    current_count += 1
+                else:
+                    if current_count >= 3:
+                        dense_regions.append((current_region_start, i))
+                    current_region_start = -1
+                    current_count = 0
+            if current_count >= 3:
+                dense_regions.append((current_region_start, len(lines)))
+
+            # 从密集区域中提取姓名
+            for start, end in dense_regions:
+                region_text = '\n'.join(lines[start:end])
+                # 提取所有2-4个汉字的词，排除关键词和字段名
+                candidates = re.findall(r'(?:^|\s)([\u4e00-\u9fa5·•]{2,4})(?:\s|$)', region_text, re.MULTILINE)
+                for name in candidates:
+                    name = name.strip()
+                    if (name and len(name) >= 2 and len(name) <= 4
+                            and name not in names
+                            and name not in EXCLUDE_NAMES
+                            and name not in edu_keywords
+                            and name not in title_keywords
+                            and not any(kw in name for kw in ['公司', '项目', '技术', '系统', '开发', '测试', '产品', '设计'])):
+                        # 进一步验证：姓名前后应该有其他字段特征
+                        name_pattern = re.compile(r'(?:^|\n|\s)' + re.escape(name) + r'(?:\s|\n|$)')
+                        if name_pattern.search(region_text):
+                            names.append(name)
+
+            if names:
+                logger.info(f'  Strategy6密集特征检测: 识别到 {len(names)} 人: {names[:10]}')
 
         logger.info(f'规则拆分识别到 {len(names)} 个人员: {names[:10]}')
 
@@ -1054,15 +1227,24 @@ class BidKbService:
                 if m:
                     pos = m.start()
                 else:
-                    # 优先3: 人员清单行首位置
+                    # 优先3: 人员清单行首位置（支持多种格式：姓名+性别、姓名+年龄、姓名+学历）
                     list_re = re.compile(
-                        r'(?:^|\n)\s*(?:\d{1,3}\s+)?' + re.escape(name) + r'\s+(?:男|女)'
+                        r'(?:^|\n)\s*(?:\d{1,3}\s+)?' + re.escape(name) + r'\s+(?:男|女|\d{1,3}|本科|硕士|博士|大专|专科)',
                     )
                     m = list_re.search(text)
                     if m:
                         pos = m.start()
                     else:
-                        pos = text.find(name)
+                        # 优先4: 表格行开头的序号+姓名
+                        row_re = re.compile(
+                            r'(?:^|\n)\s*\d{1,3}\s+' + re.escape(name) + r'(?:\s|$)',
+                            re.MULTILINE
+                        )
+                        m = row_re.search(text)
+                        if m:
+                            pos = m.start()
+                        else:
+                            pos = text.find(name)
 
             if pos >= 0 and (pos, name) not in name_positions:
                 name_positions.append((pos, name))
@@ -1107,6 +1289,15 @@ class BidKbService:
         # 找出所有"姓名：XXX"的位置（学信网和身份证里都有姓名）
         name_pattern = re.compile(r'姓\s*名\s*[：:\s]\s*([\u4e00-\u9fa5·]{2,4})')
 
+        logger.info(f'===== 全局提取身份证/学信网信息开始 =====')
+        name_matches = list(name_pattern.finditer(full_text))
+        logger.info(f'在full_text中找到 {len(name_matches)} 个"姓名 XXX"格式')
+        for i, m in enumerate(name_matches):
+            start = m.start()
+            context_start = max(0, start - 30)
+            context_end = min(len(full_text), start + 100)
+            logger.info(f'  姓名#{i+1}: "{m.group(1)}" 位置{start}, 上下文: {repr(full_text[context_start:context_end])}')
+
         for match in name_pattern.finditer(full_text):
             name = match.group(1).strip()
             if len(name) < 2:
@@ -1116,6 +1307,13 @@ class BidKbService:
             start = match.start()
             end = min(start + 3000, len(full_text))
             segment = full_text[start:end]
+
+            # ==== 身份证调试日志 ====
+            # 检查segment中是否包含身份证相关内容
+            has_id_kw = any(kw in segment for kw in ['中华人民共和国', '居民身份证', '公民身份号码', '签发机关'])
+            id_num_in_segment = re.findall(r'\d{17}[\dXx]', segment)
+            logger.info(f'  处理姓名 "{name}": 身份证关键词={has_id_kw}, 身份证号={id_num_in_segment}, segment长度={len(segment)}')
+            # ==========================
 
             # 尝试提取学信网信息
             xuexin_info = {}
@@ -1129,6 +1327,7 @@ class BidKbService:
             # 尝试提取身份证信息
             idcard_info = {}
             ResumeKbService._extract_from_id_card(segment, idcard_info)
+            logger.info(f'  姓名 "{name}" 提取结果: id_card_number={idcard_info.get("id_card_number")}, birth_date={idcard_info.get("birth_date")}, address={idcard_info.get("id_card_address")}')
             # 至少有身份证号或出生日期才算有效身份证记录
             if idcard_info.get('id_card_number') or idcard_info.get('birth_date'):
                 if name not in idcard_map:
@@ -1136,14 +1335,166 @@ class BidKbService:
                     logger.info(f'全局提取身份证: {name} - {idcard_info.get("id_card_number")}')
 
         logger.info(f'全局提取完成: 学信网 {len(xuexin_map)} 份，身份证 {len(idcard_map)} 份')
+        logger.info(f'  idcard_map keys: {list(idcard_map.keys())}')
+        logger.info(f'===== 全局提取身份证/学信网信息结束 =====')
         return xuexin_map, idcard_map
+
+    @classmethod
+    def _extract_from_person_table(cls, text: str, info: dict[str, Any]) -> None:
+        """
+        从人员一览表表格行/表格文本中提取人员基础信息
+        用于投标文件中人员表格的解析，补充学信网/身份证覆盖不到的字段
+
+        支持的表格格式：
+        - 横向表格行：序号 姓名 性别 年龄 学历 专业 毕业院校 职称 公司
+        - 垂直排列（OCR按列读取）：每列内容纵向排列
+        """
+        EDU_LEVELS = ['博士', '硕士', '本科', '大专', '专科', '研究生', '高中', '中专', '职高']
+        GENDERS = ['男', '女']
+
+        lines = [l.strip() for l in text.split('\n') if l.strip()]
+        if not lines:
+            return
+
+        # 先清理文本：合并多余空格
+        clean_text = re.sub(r'[ \t]+', ' ', text)
+
+        # === 策略1：标准横向表格行匹配 ===
+        # 格式：可选序号 + 姓名(2-4字) + 性别 + 年龄(数字) + 学历 + 专业 + 学校 + ...
+        row_patterns = [
+            # 完整格式：序号 姓名 性别 年龄 学历 专业 学校
+            (r'(?:^|\n)\s*(?:\d{1,3}\s+)?'
+             r'([\u4e00-\u9fa5·•]{2,4})\s+'
+             r'(男|女)\s+'
+             r'(\d{1,3})\s+'
+             r'(博士|硕士|本科|大专|专科|研究生|高中|中专)\s+'
+             r'([\u4e00-\u9fa5]{2,20})?\s*'
+             r'([\u4e00-\u9fa5]{2,30}(?:大学|学院|学校|大学|研究院))?'),
+            # 无性别格式：序号 姓名 年龄 学历 专业
+            (r'(?:^|\n)\s*(?:\d{1,3}\s+)?'
+             r'([\u4e00-\u9fa5·•]{2,4})\s+'
+             r'(\d{1,3})\s+'
+             r'(博士|硕士|本科|大专|专科|研究生|高中|中专)\s+'
+             r'([\u4e00-\u9fa5]{2,20})?'),
+        ]
+
+        for pattern in row_patterns:
+            match = re.search(pattern, clean_text, re.MULTILINE)
+            if match:
+                groups = match.groups()
+                # 根据匹配组数提取对应字段
+                idx = 0
+                # 姓名
+                if not info.get('name') and groups[idx]:
+                    info['name'] = groups[idx].strip()
+                idx += 1
+                # 性别（第一个模式有，第二个没有）
+                if groups[idx] in GENDERS:
+                    if not info.get('gender'):
+                        info['gender'] = '1' if groups[idx] == '女' else '0'
+                    idx += 1
+                # 年龄
+                if groups[idx].isdigit():
+                    if not info.get('age'):
+                        info['age'] = int(groups[idx])
+                    idx += 1
+                # 学历
+                if groups[idx] in EDU_LEVELS:
+                    if not info.get('education'):
+                        info['education'] = groups[idx]
+                    idx += 1
+                # 专业（可能为空）
+                if idx < len(groups) and groups[idx] and groups[idx] not in EDU_LEVELS:
+                    if not info.get('major'):
+                        info['major'] = groups[idx].strip()
+                    idx += 1
+                # 学校（可能为空）
+                if idx < len(groups) and groups[idx]:
+                    if not info.get('school'):
+                        info['school'] = groups[idx].strip()
+                break
+
+        # === 策略2：逐字段独立提取（表格结构混乱时兜底） ===
+        # 姓名：2-4个汉字，前后有空格或换行，且附近有人事相关字段
+        if not info.get('name'):
+            # 找学历关键词前面的2-4个汉字（通常是姓名）
+            for edu in EDU_LEVELS:
+                pattern = r'([\u4e00-\u9fa5·•]{2,4})\s+' + re.escape(edu)
+                match = re.search(pattern, clean_text)
+                if match:
+                    candidate = match.group(1).strip()
+                    # 排除字段名
+                    exclude = {'性别', '年龄', '学历', '专业', '学校', '毕业', '职称', '职位', '公司', '序号', '姓名'}
+                    if candidate not in exclude and len(candidate) >= 2 and len(candidate) <= 4:
+                        info['name'] = candidate
+                        break
+
+        # 性别
+        if not info.get('gender'):
+            for g in GENDERS:
+                if re.search(r'(?:^|\s)' + re.escape(g) + r'(?:\s|$)', clean_text):
+                    info['gender'] = '1' if g == '女' else '0'
+                    break
+
+        # 年龄：独立数字18-65，前后有分隔
+        if not info.get('age'):
+            age_match = re.search(r'(?:^|\s)([2-5]\d)(?:\s|$)', clean_text)
+            if age_match:
+                info['age'] = int(age_match.group(1))
+
+        # 学历
+        if not info.get('education'):
+            for edu in EDU_LEVELS:
+                if edu in clean_text:
+                    info['education'] = edu
+                    break
+
+        # 专业：学历关键词后面跟着的2-15个汉字
+        if not info.get('major'):
+            for edu in EDU_LEVELS:
+                pattern = re.escape(edu) + r'\s+([\u4e00-\u9fa5]{2,15})'
+                match = re.search(pattern, clean_text)
+                if match:
+                    major = match.group(1).strip()
+                    exclude = {'毕业', '学校', '院校', '专业', '学院', '大学'}
+                    if major not in exclude:
+                        info['major'] = major
+                        break
+
+        # 学校：包含"大学/学院/学校"的词组
+        if not info.get('school'):
+            school_match = re.search(r'([\u4e00-\u9fa5]{2,20}(?:大学|学院|学校|研究院))', clean_text)
+            if school_match:
+                info['school'] = school_match.group(1).strip()
+
+        # 职称/职位：包含工程师/经理/总监/主管等关键词
+        if not info.get('current_position'):
+            title_patterns = ['高级工程师', '工程师', '项目经理', '技术经理', '产品经理',
+                              '主管', '总监', '专家', '顾问', '开发工程师', '测试工程师']
+            for title in title_patterns:
+                if title in clean_text:
+                    info['current_position'] = title
+                    break
+
+        # 公司：包含"公司/科技/有限"等关键词
+        if not info.get('current_company'):
+            company_match = re.search(r'([\u4e00-\u9fa5]{2,20}(?:公司|科技|有限|集团|信息|网络))', clean_text)
+            if company_match:
+                info['current_company'] = company_match.group(1).strip()
+
+        logger.info(
+            f'表格提取完成: 姓名={info.get("name")}, 性别={info.get("gender")}, '
+            f'年龄={info.get("age")}, 学历={info.get("education")}, '
+            f'专业={info.get("major")}, 学校={info.get("school")}, '
+            f'职位={info.get("current_position")}'
+        )
 
     @classmethod
     async def _parse_resume_llm_only(
         cls,
         resume_text: str,
     ) -> dict[str, Any]:
-        """Phase 1: 只从学信网和身份证提取人员信息，不调用LLM解析其他内容"""
+        """Phase 1: 从学信网、身份证、人员表格中提取人员信息，不调用LLM解析其他内容"""
         import time as _time
 
         # 初始化结构化信息
@@ -1198,8 +1549,38 @@ class BidKbService:
         # 从身份证号反算出生日期和年龄
         ResumeKbService._fill_birth_age_from_id(structured_info)
 
+        # 强制修正：只要有身份证号，出生日期和年龄就以身份证号为准（最可靠的数据源）
+        # 防止学信网入学日期/OCR识别错误的出生日期覆盖正确值
+        id_num = structured_info.get('id_card_number')
+        if id_num and isinstance(id_num, str) and len(id_num) == 18:
+            try:
+                import re as _re
+                id_clean = _re.sub(r'[\s\n]', '', id_num)
+                if len(id_clean) == 18:
+                    year = int(id_clean[6:10])
+                    month = int(id_clean[10:12])
+                    day = int(id_clean[12:14])
+                    if 1940 <= year <= 2010 and 1 <= month <= 12 and 1 <= day <= 31:
+                        # 强制覆盖出生日期（身份证号比OCR文本可靠得多）
+                        structured_info['birth_date'] = f"{year}-{month:02d}-{day:02d}"
+                        # 强制重新计算年龄
+                        import time as _time2
+                        now = _time2.localtime()
+                        age = now.tm_year - year
+                        if now.tm_mon < month or (now.tm_mon == month and now.tm_mday < day):
+                            age -= 1
+                        if 16 <= age <= 70:
+                            structured_info['age'] = age
+            except (ValueError, IndexError):
+                pass
+
+        # 补充：从人员表格行提取信息（投标文件人员一览表，学信网/身份证覆盖不到的场景）
+        has_basic = all([structured_info.get('name'), structured_info.get('education'), structured_info.get('age')])
+        if not has_basic:
+            cls._extract_from_person_table(resume_text, structured_info)
+
         logger.info(
-            f'学信网/身份证解析完成: 姓名={structured_info.get("name")}, '
+            f'学信网/身份证/表格解析完成: 姓名={structured_info.get("name")}, '
             f'身份证号={structured_info.get("id_card_number")}, '
             f'学历={structured_info.get("education")}, '
             f'学校={structured_info.get("school")}'

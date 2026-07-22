@@ -112,6 +112,11 @@ class ResumeKbService:
             if not full_text:
                 raise ServiceException(message='文档解析失败，无法提取文本内容')
 
+            # 1.1 检测是否为投标文件（避免整包投标文件当单份简历解析）
+            is_bid_doc = cls._detect_bid_document(full_text, file_name)
+            if is_bid_doc:
+                logger.warning(f'检测到上传文件疑似投标文件: {file_name}，建议使用【投标文件知识库】模块上传以批量解析人员简历')
+
             # 2. 提取结构化信息
             structured_info = await cls._extract_structured_info(full_text)
 
@@ -332,6 +337,11 @@ class ResumeKbService:
             work_years=resume.work_years,
             current_company=resume.current_company,
             current_position=resume.current_position,
+            id_card_number=resume.id_card_number,
+            id_card_address=resume.id_card_address,
+            degree=resume.degree,
+            school_system=resume.school_system,
+            study_form=resume.study_form,
             technical_skills=technical_skills,
             certifications=certifications,
             tags=tags,
@@ -869,6 +879,44 @@ class ResumeKbService:
             return True
         
         logger.info(f'_is_garbled_text 最终判定: 正常文本')
+        return False
+
+    @classmethod
+    def _detect_bid_document(cls, text: str, file_name: str = '') -> bool:
+        """
+        检测上传的文档是否为投标文件（而非单份简历）
+        投标文件特征：包含"投标文件""劳务外包""人员一览表""专职人员""投标人""项目名称"等批量人员相关词汇
+        返回 True 表示检测到是投标文件
+        """
+        # 文件名检测
+        bid_filename_keywords = ['投标', '标书', '劳务外包', '人员清单', '人员一览表', '专职人员', '竞标', '磋商']
+        for kw in bid_filename_keywords:
+            if kw in file_name:
+                logger.info(f'文件名检测到投标文件特征: {kw}')
+                return True
+
+        # 文本内容检测（命中多个关键词才判定，避免误判）
+        bid_content_keywords = [
+            '投标文件', '投标人', '投标函', '开标', '评标', '中标',
+            '劳务外包', '服务外包', '人员派遣', '劳务派遣',
+            '专职人员', '人员一览表', '拟投入', '项目人员', '人员配置',
+            '唱标', '应答文件', '磋商文件', '谈判文件', '采购文件',
+        ]
+        hit_count = 0
+        for kw in bid_content_keywords:
+            if kw in text:
+                hit_count += 1
+                if hit_count >= 2:  # 命中2个以上关键词才判定
+                    logger.info(f'文本检测到投标文件特征，命中{hit_count}个关键词')
+                    return True
+
+        # 额外检测：人员表格特征（大量学历/职称关键词密集出现）
+        edu_keywords = ['本科', '硕士', '博士', '大专', '专科']
+        edu_count = sum(text.count(kw) for kw in edu_keywords)
+        if edu_count >= 8:  # 单份简历一般只有1-2个学历词，超过8个很可能是人员表格
+            logger.info(f'检测到大量学历关键词({edu_count}个)，疑似投标文件人员表格')
+            return True
+
         return False
 
     @classmethod
@@ -1549,8 +1597,13 @@ class ResumeKbService:
         id_card_keywords = ['中华人民共和国居民身份证', '居民身份证', '公民身份号码', '签发机关']
         has_id_card = any(kw in text for kw in id_card_keywords)
         has_id_number = bool(re.search(r'\b\d{17}[\dXx]\b', text))
-        
+
+        logger.info(f'===== _extract_from_id_card 开始 =====')
+        logger.info(f'  has_id_card关键词={has_id_card}, has_id_number={has_id_number}')
+        logger.info(f'  身份证文本长度={len(text)}, 前200字: {repr(text[:2000])}')
+
         if not has_id_card and not has_id_number:
+            logger.info(f'  未检测到身份证内容，跳过提取')
             return
 
         logger.info('检测到身份证内容，优先提取信息')
@@ -1562,8 +1615,9 @@ class ResumeKbService:
                 r'姓名\s*[：:\s]\s*([\u4e00-\u9fa5·]{2,10})',
                 r'([\u4e00-\u9fa5·]{2,10})\s*\n\s*性\s*别',
             ]
-            for pattern in name_patterns:
+            for i, pattern in enumerate(name_patterns):
                 match = re.search(pattern, text)
+                logger.info(f'  姓名模式#{i+1}: {pattern} -> 匹配={bool(match)}')
                 if match:
                     name = match.group(1).strip()
                     if 2 <= len(name) <= 10:
@@ -1578,8 +1632,9 @@ class ResumeKbService:
                 r'性别\s*[：:\s]\s*(男|女)',
                 r'(男|女)\s*\n\s*民\s*族',
             ]
-            for pattern in gender_patterns:
+            for i, pattern in enumerate(gender_patterns):
                 match = re.search(pattern, text)
+                logger.info(f'  性别模式#{i+1}: {pattern} -> 匹配={bool(match)}')
                 if match:
                     info['gender'] = match.group(1)
                     logger.info(f'身份证提取性别: {info["gender"]}')
@@ -1588,36 +1643,42 @@ class ResumeKbService:
         # === 3. 从身份证号提取出生日期和年龄 ===
         # 先尝试标准格式（无空格）
         id_number_match = re.search(r'(?<!\d)(\d{6})(\d{8})(\d{3})([\dXx])(?!\d)', text)
+        logger.info(f'  身份证号标准格式匹配: {bool(id_number_match)}')
         if not id_number_match:
             # 尝试OCR分词格式：身份证号中间有空格或换行（如 "342626 19980404 4912" 或 "342626\n19980404\n4912"）
             # 先清理：把"公民身份号码"后面的文本中的空格和换行去掉再匹配
             id_card_prefix_match = re.search(r'(?:公民身份号\s*码|身份号\s*码|号码|证号)\s*[：:\s]*\n?\s*((?:[\dXx\s\n]{18,25}))', text)
+            logger.info(f'  身份证号前缀匹配: {bool(id_card_prefix_match)}')
             if id_card_prefix_match:
                 raw_id = id_card_prefix_match.group(1)
+                logger.info(f'  原始身份证号文本: {repr(raw_id)}')
                 # 去除所有空格和换行
                 cleaned_id = re.sub(r'[\s\n]', '', raw_id)
+                logger.info(f'  清理后身份证号: {cleaned_id}')
                 # 验证是否为有效身份证号
                 id_check = re.match(r'^(\d{6})(\d{8})(\d{3})([\dXx])$', cleaned_id)
+                logger.info(f'  格式校验: {bool(id_check)}')
                 if id_check:
                     id_number_match = id_check
-        
+
         if id_number_match:
             birth_str = id_number_match.group(2)
             year = birth_str[:4]
             month = birth_str[4:6]
             day = birth_str[6:8]
-            
+            logger.info(f'  从身份证号解析出生日期: {year}-{month}-{day}')
+
             if not info.get('birth_date'):
                 info['birth_date'] = f"{year}-{month}-{day}"
                 logger.info(f'身份证提取出生日期: {info["birth_date"]}')
-            
+
             if not info.get('age'):
                 try:
                     current_year = time.localtime().tm_year
                     info['age'] = current_year - int(year)
                 except:
                     pass
-            
+
             if not info.get('id_card_number'):
                 id_num = id_number_match.group(0)
                 # OCR纠错
@@ -1629,6 +1690,7 @@ class ResumeKbService:
         # === 4. 从文本提取出生日期（支持"出生 1994年 7 月22日"格式） ===
         if not info.get('birth_date'):
             birth_matches = re.findall(r'(?:出\s*生|出生)\s*[：:\s]\s*(\d{4})\s*年\s*(\d{1,2})\s*月(?:\s*(\d{1,2})\s*日)?', text)
+            logger.info(f'  出生日期文本匹配: {len(birth_matches)} 个结果')
             if birth_matches:
                 year, month, day = birth_matches[0]
                 info['birth_date'] = f"{year}-{month.zfill(2)}-{day.zfill(2) if day else '01'}"
@@ -1657,8 +1719,9 @@ class ResumeKbService:
                 # OCR空格分词格式：号码 后面18位数字被空格/换行分隔
                 r'(?:公民身份号\s*码|身份号\s*码|号码|证号)\s*[：:\s]*\n?\s*((?:[\dXx][\s\n]*){18})',
             ]
-            for pattern in id_patterns:
+            for i, pattern in enumerate(id_patterns):
                 match = re.search(pattern, text)
+                logger.info(f'  身份证号模式#{i+1}: {pattern[:50]}... -> 匹配={bool(match)}')
                 if match:
                     id_num = match.group(1)
                     # 去除OCR空格和换行
@@ -1670,11 +1733,12 @@ class ResumeKbService:
                         info['id_card_number'] = id_num
                         logger.info(f'身份证提取身份证号: {id_num}')
                     break
-            
+
             # 兜底：如果没有前缀匹配成功，尝试在文本中查找孤立的18位身份证号
             if not info.get('id_card_number'):
                 # 查找18位数字（可能带X），且前6位是有效的地区码开头，第7-14位是日期
                 loose_match = re.search(r'(?<![\d])([1-9]\d{5}(?:19|20)\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01])\d{3}[\dXx])(?![\d])', text)
+                logger.info(f'  身份证号兜底匹配: {bool(loose_match)}')
                 if loose_match:
                     id_num = loose_match.group(1)
                     id_num = id_num.replace('O', '0').replace('o', '0')
@@ -1692,11 +1756,12 @@ class ResumeKbService:
                             logger.info(f'身份证兜底提取身份证号: {id_num}')
                     except:
                         pass
-            
+
             # 最终兜底：OCR将身份证号拆成多段（如"342626 1998 0404 4912"），整体清理后匹配
             if not info.get('id_card_number'):
                 # 搜索包含数字和空格/换行的20-30字符片段，清理后验证
                 candidate_matches = re.findall(r'((?:[\dXx][\s\n]*){18,25})', text)
+                logger.info(f'  身份证号最终兜底: 找到 {len(candidate_matches)} 个候选')
                 for candidate in candidate_matches:
                     cleaned = re.sub(r'[\s\n]', '', candidate)
                     cleaned = cleaned.replace('O', '0').replace('o', '0').replace('I', '1').replace('l', '1')
@@ -1724,8 +1789,9 @@ class ResumeKbService:
                 # OCR可能将地址拆成多行：住址\nXXX省XXX市\nXXX区XXX路
                 r'住\s*址\s*$\s*([\u4e00-\u9fa50-9\n省市区县镇村街道号路幢室组庄屯乡]{5,200})',
             ]
-            for pattern in address_patterns:
+            for i, pattern in enumerate(address_patterns):
                 match = re.search(pattern, text, re.MULTILINE if '$' in pattern else 0)
+                logger.info(f'  地址模式#{i+1}: {pattern[:50]}... -> 匹配={bool(match)}')
                 if match:
                     addr = match.group(1).strip()
                     # 去除OCR空格和换行（地址可能跨行）
@@ -1735,6 +1801,125 @@ class ResumeKbService:
                         info['id_card_address'] = addr
                         logger.info(f'身份证提取地址: {addr[:30]}...')
                         break
+
+        # === 6.1 地址兜底提取：无"住址"标签时，从身份证布局特征推断 ===
+        # 身份证正面OCR常见布局：出生日期行之后紧跟地址（可能跨多行），再之后是"签发机关"
+        if not info.get('id_card_address'):
+            fallback_addr = cls._extract_address_without_label(text)
+            if fallback_addr:
+                info['id_card_address'] = fallback_addr
+                logger.info(f'身份证兜底提取地址: {fallback_addr}')
+
+        logger.info(f'===== _extract_from_id_card 结束: name={info.get("name")}, id_card_number={info.get("id_card_number")}, birth_date={info.get("birth_date")}, address={info.get("id_card_address")} =====')
+
+    @classmethod
+    def _extract_address_without_label(cls, text: str) -> str | None:
+        """
+        无"住址"标签时，从身份证OCR文本布局推断地址
+        
+        身份证正面OCR典型布局（无明确"住址"标签时）：
+          ...
+          XXXX年XX月XX日        ← 出生日期行
+          XX省XX市XX区/县XX镇   ← 地址第1行
+          XX村/街道XX号          ← 地址第2行（可能还有第3行）
+          签发机关                ← 下一个字段
+          ...
+        
+        策略：
+        1. 从"出生日期"行之后、"签发机关"之前的文本段中提取地址
+        2. 直接匹配以省级行政区划开头的跨行地址
+        3. 合并跨行地址片段
+        """
+        ADDR_PROVINCES = [
+            '北京', '天津', '上海', '重庆',
+            '河北', '山西', '辽宁', '吉林', '黑龙江',
+            '江苏', '浙江', '安徽', '福建', '江西', '山东',
+            '河南', '湖北', '湖南', '广东', '海南',
+            '四川', '贵州', '云南', '陕西', '甘肃', '青海',
+            '内蒙古', '广西', '西藏', '宁夏', '新疆',
+            '香港', '澳门',
+        ]
+        ADDR_END_MARKERS = ['签发机关', '公民身份号码', '有效期限', '中华人民共和国居民身份证']
+
+        # 策略1：从出生日期行之后、签发机关之前提取
+        birth_match = re.search(r'\d{4}\s*年\s*\d{1,2}\s*月\s*\d{1,2}\s*日', text)
+        if birth_match:
+            after_birth = text[birth_match.end():]
+            end_pos = len(after_birth)
+            for marker in ADDR_END_MARKERS:
+                marker_pos = after_birth.find(marker)
+                if marker_pos >= 0 and marker_pos < end_pos:
+                    end_pos = marker_pos
+            candidate = after_birth[:end_pos].strip()
+            logger.info(f'  地址兜底-出生日期后文本: {repr(candidate[:200])}')
+            if candidate:
+                lines = [l.strip() for l in candidate.split('\n') if l.strip()]
+                addr_lines = []
+                for line in lines:
+                    cleaned = re.sub(r'[\s]+', '', line)
+                    if not cleaned:
+                        continue
+                    if any(marker in cleaned for marker in ADDR_END_MARKERS):
+                        break
+                    if re.match(r'^[\u4e00-\u9fa50-9]', cleaned) and len(cleaned) >= 2:
+                        addr_lines.append(cleaned)
+                    else:
+                        break
+                if addr_lines:
+                    merged = ''.join(addr_lines)
+                    merged = re.sub(r'[\s\n]', '', merged)
+                    if len(merged) >= 5 and any(kw in merged for kw in ['省', '市', '区', '县', '自治区', '镇', '乡', '村', '街', '路']):
+                        if any(prov in merged for prov in ADDR_PROVINCES):
+                            logger.info(f'  地址兜底-策略1成功: {merged}')
+                            return merged
+
+        # 策略2：直接匹配以省级行政区划开头的地址（不依赖出生日期行定位）
+        for province in ADDR_PROVINCES:
+            pattern = re.compile(
+                re.escape(province) + r'[\u4e00-\u9fa50-9省市区县镇村街道号路幢室组庄屯乡盟旗]{3,100}'
+            )
+            match = pattern.search(text)
+            if match:
+                addr = match.group(0)
+                addr = re.sub(r'[\s\n]', '', addr)
+                for marker in ADDR_END_MARKERS:
+                    marker_pos = addr.find(marker)
+                    if marker_pos > 0:
+                        addr = addr[:marker_pos]
+                if len(addr) >= 5 and any(kw in addr for kw in ['省', '市', '区', '县', '自治区', '镇', '乡', '村', '街', '路']):
+                    logger.info(f'  地址兜底-策略2成功: {addr}')
+                    return addr
+
+        # 策略3：跨行合并 - OCR将地址拆成多行，每行以省/市/区/县/镇/村/号等结尾
+        lines = text.split('\n')
+        for i, line in enumerate(lines):
+            line_stripped = line.strip()
+            if not line_stripped:
+                continue
+            if any(prov in line_stripped for prov in ADDR_PROVINCES) and re.search(r'[\u4e00-\u9fa5]', line_stripped):
+                merged_parts = [re.sub(r'\s+', '', line_stripped)]
+                for j in range(i + 1, min(i + 5, len(lines))):
+                    next_line = lines[j].strip()
+                    if not next_line:
+                        continue
+                    if any(marker in next_line for marker in ADDR_END_MARKERS):
+                        break
+                    if re.match(r'^[\u4e00-\u9fa50-9]', next_line) and len(next_line) <= 60:
+                        has_addr_char = any(kw in next_line for kw in ['村', '号', '路', '街', '道', '组', '庄', '屯', '幢', '室', '镇', '乡', '区', '县', '市', '省'])
+                        if has_addr_char or re.match(r'^[\u4e00-\u9fa5]{2,}', next_line):
+                            merged_parts.append(re.sub(r'\s+', '', next_line))
+                        else:
+                            break
+                    else:
+                        break
+                merged = ''.join(merged_parts)
+                merged = re.sub(r'[\s\n]', '', merged)
+                if len(merged) >= 5 and any(kw in merged for kw in ['省', '市', '区', '县', '自治区', '镇', '乡', '村', '街', '路']):
+                    logger.info(f'  地址兜底-策略3成功: {merged}')
+                    return merged
+
+        logger.info(f'  地址兜底-所有策略均未匹配')
+        return None
 
     @classmethod
     def _extract_from_xuexin(cls, text: str, info: dict[str, Any]) -> None:
