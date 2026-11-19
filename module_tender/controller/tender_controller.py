@@ -26,7 +26,7 @@ from utils.log_util import logger
 from utils.response_util import ResponseUtil
 
 tender_controller = APIRouterPro(
-    prefix='/tender', order_num=42, tags=['招标文件智能生成'], dependencies=[PreAuthDependency()]
+    prefix='/ai/tender', order_num=42, tags=['招标文件智能生成'], dependencies=[PreAuthDependency()]
 )
 
 

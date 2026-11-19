@@ -70,6 +70,7 @@ class OaProjectTender(Base):
     update_time = Column(DateTime, nullable=False, default=datetime.now, onupdate=datetime.now, comment='更新时间')
     delete_time = Column(BigInteger, nullable=True, default=0, comment='删除时间')
     sort = Column(BigInteger, nullable=True, comment='排序值')
+    tenant_id = Column(BigInteger, nullable=False, default=1, server_default='1', comment='租户ID')
 
 class OaProjectTenderAttachment(Base):
     """项目投标附件表"""
