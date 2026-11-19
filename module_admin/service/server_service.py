@@ -37,8 +37,11 @@ class ServerService:
         # 主机信息
         # 获取主机名
         hostname = socket.gethostname()
-        # 获取IP
-        computer_ip = socket.gethostbyname(hostname)
+        # 获取IP（macOS等环境下主机名可能未在/etc/hosts中映射，解析失败时回退到本机地址）
+        try:
+            computer_ip = socket.gethostbyname(hostname)
+        except OSError:
+            computer_ip = '127.0.0.1'
         os_name = platform.platform()
         computer_name = platform.node()
         os_arch = platform.machine()

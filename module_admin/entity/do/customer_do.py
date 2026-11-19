@@ -33,6 +33,7 @@ class OaCustomer(Base):
     follow_time = Column(BigInteger, nullable=False, server_default='0', comment='最新跟进时间')
     next_time = Column(BigInteger, nullable=False, server_default='0', comment='下次跟进时间')
     discard_time = Column(BigInteger, nullable=False, server_default='0', comment='废弃时间')
+    delete_uid = Column(Integer, nullable=False, server_default='0', comment='删除人/废弃人用户ID')
     share_ids = Column(String(500), nullable=False, server_default="''", comment='共享人员，如:1,2,3')
     content = Column(Text, nullable=True, comment='客户描述')
     market = Column(Text, nullable=True, comment='主要经营业务')

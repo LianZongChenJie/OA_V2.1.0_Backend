@@ -43,12 +43,10 @@ async def get_system_customer_trace_list(
 ) -> Response:
     # 获取分页数据
     customer_trace_page_query_result = await CustomerTraceService.get_customer_trace_list_services(
+        request,
         query_db,
         customer_trace_page_query,
-        current_user.user.user_id,
-        current_user.user.auth_dids or '',
-        current_user.user.son_dids or '',
-        current_user.user.admin,
+        current_user,
         is_page=True
     )
     logger.info('获取成功')
@@ -95,7 +93,7 @@ async def edit_system_customer_trace(
         current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
 ) -> Response:
     edit_customer_trace_result = await CustomerTraceService.edit_customer_trace_services(
-        request, query_db, edit_customer_trace
+        request, query_db, edit_customer_trace, current_user.user.user_id
     )
     logger.info(edit_customer_trace_result.message)
 
@@ -114,10 +112,11 @@ async def delete_system_customer_trace(
         request: Request,
         id: Annotated[int, Path(description='需要删除的跟进记录 ID')],
         query_db: Annotated[AsyncSession, DBSessionDependency()],
+        current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
 ) -> Response:
     delete_customer_trace = DeleteCustomerTraceModel(id=id)
     delete_customer_trace_result = await CustomerTraceService.delete_customer_trace_services(
-        request, query_db, delete_customer_trace
+        request, query_db, delete_customer_trace, current_user.user.user_id
     )
     logger.info(delete_customer_trace_result.message)
 
@@ -140,4 +139,34 @@ async def query_detail_system_customer_trace(
     logger.info(f'获取 id 为{id}的信息成功')
 
     return ResponseUtil.success(data=detail_customer_trace_result)
+
+
+@customer_trace_controller.get(
+    '/attachment/download',
+    summary='下载跟进记录附件接口',
+    description='用于下载客户跟进记录的附件（仅跟进记录创建人可下载）',
+    dependencies=[UserInterfaceAuthDependency('system:customerTrace:query')],
+)
+async def download_customer_trace_attachment(
+        request: Request,
+        traceId: Annotated[int, Query(description='跟进记录 ID')],
+        fileName: Annotated[str, Query(description='文件名称')],
+        query_db: Annotated[AsyncSession, DBSessionDependency()],
+        current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
+) -> Response:
+    """
+    下载跟进记录附件接口
+
+    :param request: Request 对象
+    :param traceId: 跟进记录 ID
+    :param fileName: 文件名称
+    :param query_db: orm 对象
+    :param current_user: 当前登录用户对象
+    :return: 文件响应对象
+    """
+    file_response = await CustomerTraceService.download_trace_attachment_services(
+        request, query_db, traceId, fileName, current_user.user.user_id
+    )
+
+    return file_response
 

@@ -100,12 +100,6 @@ class UserModel(BaseModel):
     city: str | None = Field(default=None, description='所在城市')
     city_id: str | None = Field(default=None, description='城市ID(多ID逗号分隔)')
     is_leader: bool | None = Field(default=None, description='是否为部门领导领导：0否,1是')
-    @model_validator(mode='after')
-    def check_password(self) -> 'UserModel':
-        pattern = r"""^[^<>"'|\\]+$"""
-        if self.password is None or re.match(pattern, self.password):
-            return self
-        raise ModelValidatorException(message='密码不能包含非法字符：< > " \' \\ |')
 
     @model_validator(mode='after')
     def check_admin(self) -> 'UserModel':
@@ -255,6 +249,13 @@ class AddUserModel(UserModel):
     post_ids: list | None = Field(default=[], description='岗位ID信息')
     type: str | None = Field(default=None, description='操作类型')
 
+    @model_validator(mode='after')
+    def check_password(self) -> 'AddUserModel':
+        pattern = r"""^[^<>"'|\\]+$"""
+        if self.password is None or re.match(pattern, self.password):
+            return self
+        raise ModelValidatorException(message='密码不能包含非法字符：< > " \' \\ |')
+
 
 class EditUserModel(AddUserModel):
     """
@@ -290,6 +291,13 @@ class ResetUserModel(UserModel):
     old_password: str | None = Field(default=None, description='旧密码')
     sms_code: str | None = Field(default=None, description='验证码')
     session_id: str | None = Field(default=None, description='会话id')
+
+    @model_validator(mode='after')
+    def check_password(self) -> 'ResetUserModel':
+        pattern = r"""^[^<>"'|\\]+$"""
+        if self.password is None or re.match(pattern, self.password):
+            return self
+        raise ModelValidatorException(message='密码不能包含非法字符：< > " \' \\ |')
 
 
 class DeleteUserModel(BaseModel):

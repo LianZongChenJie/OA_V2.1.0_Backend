@@ -200,6 +200,13 @@ class CustomerService:
                 }
             )
             edit_customer['update_time'] = current_time
+            # 过滤掉值为 None 的非空约束字段，避免前端传空值时将 NOT NULL 列更新为 NULL
+            from module_admin.entity.do.customer_do import OaCustomer
+            not_null_cols = {c.name for c in OaCustomer.__table__.columns if not c.nullable}
+            edit_customer = {
+                key: value for key, value in edit_customer.items()
+                if not (value is None and key in not_null_cols)
+            }
             await CustomerDao.edit_customer_dao(query_db, customer_id, edit_customer)
 
             # ====================== 2. 处理联系人：先删后加 ======================
@@ -254,7 +261,8 @@ class CustomerService:
 
     @classmethod
     async def delete_customer_services(
-            cls, request: Request, query_db: AsyncSession, page_object: DeleteCustomerModel
+            cls, request: Request, query_db: AsyncSession, page_object: DeleteCustomerModel,
+            current_user_id: int = 0
     ) -> CrudResponseModel:
         """
         删除客户信息 service（逻辑删除，使用 discard_time）
@@ -262,6 +270,7 @@ class CustomerService:
         :param request: Request 对象
         :param query_db: orm 对象
         :param page_object: 删除客户对象
+        :param current_user_id: 当前登录用户 ID（用于记录删除人）
         :return: 删除客户校验结果
         """
         if page_object.id:
@@ -273,7 +282,11 @@ class CustomerService:
                 update_time = int(datetime.now().timestamp())
                 await CustomerDao.discard_customer_dao(
                     query_db,
-                    CustomerModel(id=page_object.id, update_time=update_time)
+                    CustomerModel(
+                        id=page_object.id,
+                        update_time=update_time,
+                        delete_uid=current_user_id
+                    )
                 )
                 await query_db.commit()
                 return CrudResponseModel(is_success=True, message='删除成功')

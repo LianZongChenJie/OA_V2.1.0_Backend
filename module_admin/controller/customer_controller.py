@@ -105,10 +105,11 @@ async def delete_system_customer(
         request: Request,
         id: Annotated[int, Path(description='需要删除的客户 ID')],
         query_db: Annotated[AsyncSession, DBSessionDependency()],
+        current_user: Annotated[CurrentUserModel, CurrentUserDependency()],
 ) -> Response:
     delete_customer = DeleteCustomerModel(id=id)
     delete_customer_result = await CustomerService.delete_customer_services(
-        request, query_db, delete_customer
+        request, query_db, delete_customer, current_user.user.user_id
     )
     logger.info(delete_customer_result.message)
 

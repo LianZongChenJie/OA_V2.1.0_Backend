@@ -388,4 +388,56 @@ WHERE u.del_flag = '0'
       AND ssu.delete_time = 0
 );
 
+# 废弃客户菜单：oa_customer 新增删除人字段（记录删除 / 废弃操作人）
+ALTER TABLE `oa_customer`
+    ADD COLUMN `delete_uid` int NOT NULL DEFAULT '0' COMMENT '删除人/废弃人用户ID' AFTER `discard_time`;
+
+# 项目管理 - 月度项目台账表
+CREATE TABLE IF NOT EXISTS `oa_project_monthly` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `stat_month` char(7) NOT NULL DEFAULT '' COMMENT '年度/统计月份 YYYY-MM（列表“年度”列与月度筛选共用）',
+  `customer_name` varchar(255) NOT NULL DEFAULT '' COMMENT '客户名称',
+  `project_name` varchar(255) NOT NULL DEFAULT '' COMMENT '项目名称',
+  `contract_signed` tinyint NOT NULL DEFAULT 0 COMMENT '合同是否签订：0否 1是',
+  `planned_cost` decimal(15,2) NOT NULL DEFAULT 0.00 COMMENT '预计投入成本',
+  `actual_cost` decimal(15,2) NOT NULL DEFAULT 0.00 COMMENT '实际投入成本',
+  `planned_profit` decimal(15,2) NOT NULL DEFAULT 0.00 COMMENT '预计项目利润',
+  `actual_profit` decimal(15,2) NOT NULL DEFAULT 0.00 COMMENT '实际项目利润',
+  `collection_agreement` varchar(500) NOT NULL DEFAULT '' COMMENT '合同收款约定',
+  `invoiced_amount` decimal(15,2) NOT NULL DEFAULT 0.00 COMMENT '实际开票金额',
+  `received_amount` decimal(15,2) NOT NULL DEFAULT 0.00 COMMENT '实际收款金额',
+  `project_closed` tinyint NOT NULL DEFAULT 0 COMMENT '是否结项：0否 1是',
+  `project_id` int NOT NULL DEFAULT 0 COMMENT '关联旧项目ID（可选）',
+  `remark` varchar(1000) NOT NULL DEFAULT '' COMMENT '备注',
+  `admin_id` int NOT NULL DEFAULT 0 COMMENT '创建人',
+  `create_time` bigint NOT NULL DEFAULT 0 COMMENT '创建/上传/新增时间（秒）',
+  `update_time` bigint NOT NULL DEFAULT 0 COMMENT '更新时间（秒）',
+  `delete_time` bigint NOT NULL DEFAULT 0 COMMENT '删除时间（秒），0为未删除',
+  `tenant_id` bigint NOT NULL DEFAULT 1 COMMENT '租户ID',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_month_project_customer` (`stat_month`, `project_name`, `customer_name`, `delete_time`),
+  KEY `idx_stat_month` (`stat_month`),
+  KEY `idx_project_name` (`project_name`),
+  KEY `idx_customer_name` (`customer_name`),
+  KEY `idx_update_time` (`update_time`),
+  KEY `idx_delete_time` (`delete_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='项目月度台账表';
+
+-- 月度项目台账菜单与权限（开发环境已执行；其他环境请确认 menu_id 未占用后手动取消注释执行）
+-- INSERT INTO `sys_menu` (`menu_id`, `menu_name`, `parent_id`, `order_num`, `path`, `component`, `query`, `route_name`, `is_frame`, `is_cache`, `menu_type`, `visible`, `status`, `perms`, `icon`, `create_by`, `create_time`, `update_by`, `update_time`, `remark`)
+-- VALUES (3700, '月度项目台账', 2089, 4, 'monthly', 'project/monthly/index', NULL, '', 1, 0, 'C', '0', '0', 'project:monthly:list', 'list', 'admin', NOW(), 'admin', NOW(), '月度项目台账');
+-- INSERT INTO `sys_menu` (`menu_id`, `menu_name`, `parent_id`, `order_num`, `path`, `component`, `query`, `route_name`, `is_frame`, `is_cache`, `menu_type`, `visible`, `status`, `perms`, `icon`, `create_by`, `create_time`, `update_by`, `update_time`, `remark`)
+-- VALUES
+-- (3701, '查询', 3700, 1, '', NULL, NULL, '', 1, 0, 'F', '0', '0', 'project:monthly:query', '#', 'admin', NOW(), 'admin', NOW(), ''),
+-- (3702, '新增', 3700, 2, '', NULL, NULL, '', 1, 0, 'F', '0', '0', 'project:monthly:add', '#', 'admin', NOW(), 'admin', NOW(), ''),
+-- (3703, '编辑', 3700, 3, '', NULL, NULL, '', 1, 0, 'F', '0', '0', 'project:monthly:edit', '#', 'admin', NOW(), 'admin', NOW(), ''),
+-- (3704, '删除', 3700, 4, '', NULL, NULL, '', 1, 0, 'F', '0', '0', 'project:monthly:remove', '#', 'admin', NOW(), 'admin', NOW(), ''),
+-- (3705, '导入', 3700, 5, '', NULL, NULL, '', 1, 0, 'F', '0', '0', 'project:monthly:import', '#', 'admin', NOW(), 'admin', NOW(), ''),
+-- (3706, '导出', 3700, 6, '', NULL, NULL, '', 1, 0, 'F', '0', '0', 'project:monthly:export', '#', 'admin', NOW(), 'admin', NOW(), '');
+-- INSERT IGNORE INTO `sys_role_menu` (`role_id`, `menu_id`)
+-- SELECT DISTINCT rm.role_id, m.menu_id
+-- FROM `sys_role_menu` rm
+-- CROSS JOIN (SELECT 3700 AS menu_id UNION ALL SELECT 3701 UNION ALL SELECT 3702 UNION ALL SELECT 3703 UNION ALL SELECT 3704 UNION ALL SELECT 3705 UNION ALL SELECT 3706) m
+-- WHERE rm.menu_id = 2090;
+-- INSERT IGNORE INTO `sys_role_menu` (`role_id`, `menu_id`) VALUES (1, 3700), (1, 3701), (1, 3702), (1, 3703), (1, 3704), (1, 3705), (1, 3706);
 

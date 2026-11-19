@@ -680,7 +680,11 @@ class CustomerDao:
         await db.execute(
             update(OaCustomer)
             .where(OaCustomer.id.in_([customer.id]))
-            .values(discard_time=discard_time, update_time=update_time)
+            .values(
+                discard_time=discard_time,
+                delete_uid=customer.delete_uid,
+                update_time=update_time
+            )
         )
 
 #------------------- 首页统计功能---------------------------

@@ -7,7 +7,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from common.vo import PageModel
 from module_admin.entity.do.customer_trace_do import CustomerTrace
-from module_admin.entity.vo.customer_trace_vo import CustomerTraceModel, CustomerTracePageQueryModel
+from module_admin.entity.vo.customer_trace_vo import (
+    TRACE_EXTEND_FIELDS,
+    CustomerTraceModel,
+    CustomerTracePageQueryModel,
+)
 from utils.page_util import PageUtil
 
 
@@ -59,7 +63,7 @@ class CustomerTraceDao:
     @classmethod
     async def get_customer_trace_list(
             cls, db: AsyncSession, query_object: CustomerTracePageQueryModel, user_id: int,
-            auth_dids: str = '', son_dids: str = '', is_admin: bool = False, is_page: bool = False
+            is_page: bool = False
     ) -> PageModel | list[dict[str, Any]]:
         """
         根据查询参数获取客户跟进记录列表信息
@@ -67,22 +71,22 @@ class CustomerTraceDao:
         :param db: orm 对象
         :param query_object: 查询参数对象
         :param user_id: 当前用户 ID
-        :param auth_dids: 可见部门数据
-        :param son_dids: 可见子部门数据
-        :param is_admin: 是否为管理员
         :param is_page: 是否开启分页
         :return: 客户跟进记录列表信息对象
         """
-        # 主表别名 a
         conditions = [CustomerTrace.delete_time == 0]
 
-        # 关键词搜索：a.content|c.name|cc.title
+        # 关键词搜索
         if query_object.keywords:
             conditions.append(
                 or_(
                     CustomerTrace.content.like(f'%{query_object.keywords}%'),
                 )
             )
+
+        # 客户精确筛选（跟进记录模块按客户查询）
+        if query_object.cid is not None:
+            conditions.append(CustomerTrace.cid == query_object.cid)
 
         # 跟进时间范围筛选
         if query_object.follow_time_start is not None:
@@ -94,42 +98,13 @@ class CustomerTraceDao:
         if query_object.admin_id_filter is not None:
             conditions.append(CustomerTrace.admin_id == query_object.admin_id_filter)
 
-        # 构建权限相关的 OR 条件
-        # 权限逻辑：
-        # 1. belong_uid = 当前用户 ID (自己负责的客户)
-        # 2. FIND_IN_SET(user_id, share_ids) (共享给自己的客户)
-        # 3. belong_did IN (用户可见部门) (部门负责人可见本部门客户)
-
-        map_conditions = []
-        map_or_conditions = []
-
-        # 自己负责的客户
-        map_or_conditions.append(CustomerTrace.admin_id == user_id)
-
-        # 如果不是管理员，需要根据数据权限过滤
-        if not is_admin:
-            # 处理部门权限
-            if auth_dids or son_dids:
-                dept_ids = set()
-                if auth_dids:
-                    dept_ids.update([int(d.strip()) for d in auth_dids.split(',') if d.strip()])
-                if son_dids:
-                    dept_ids.update([int(d.strip()) for d in son_dids.split(',') if d.strip()])
-
-                if dept_ids:
-                    map_or_conditions.append(CustomerTrace.admin_id.in_(dept_ids))
-
-        if map_or_conditions:
-            map_conditions.append(or_(*map_or_conditions))
-
-        # 合并所有条件
-        all_conditions = conditions + map_conditions
+        # 数据权限：与客户列表保持一致的个人视角——仅展示当前登录人创建的记录
+        conditions.append(CustomerTrace.admin_id == user_id)
 
         query = (
             select(CustomerTrace)
-            .where(*all_conditions)
-            .order_by(CustomerTrace.create_time.desc())
-            .distinct()
+            .where(*conditions)
+            .order_by(CustomerTrace.follow_time.desc(), CustomerTrace.id.desc())
         )
 
         trace_list: PageModel | list[dict[str, Any]] = await PageUtil.paginate(
@@ -147,7 +122,7 @@ class CustomerTraceDao:
         :param trace: 客户跟进记录对象
         :return:
         """
-        db_trace = CustomerTrace(**trace.model_dump())
+        db_trace = CustomerTrace(**trace.model_dump(exclude=TRACE_EXTEND_FIELDS))
         db.add(db_trace)
         await db.flush()
 
@@ -162,7 +137,11 @@ class CustomerTraceDao:
         :param trace: 需要更新的客户跟进记录字典
         :return:
         """
-        await db.execute(update(CustomerTrace), [trace])
+        await db.execute(
+            update(CustomerTrace)
+            .where(CustomerTrace.id == trace.get('id'), CustomerTrace.delete_time == 0)
+            .values({k: v for k, v in trace.items() if k != 'id'})
+        )
 
     @classmethod
     async def delete_customer_trace_dao(cls, db: AsyncSession, trace: CustomerTraceModel) -> None:

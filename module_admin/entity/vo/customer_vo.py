@@ -62,6 +62,7 @@ class CustomerModel(BaseModel):
     follow_time: int | None = Field(default=None, description='最新跟进时间')
     next_time: int | None = Field(default=None, description='下次跟进时间')
     discard_time: int | None = Field(default=None, description='废弃时间')
+    delete_uid: int | None = Field(default=None, description='删除人用户ID')
     share_ids: str | None = Field(default=None, description='共享人员，如:1,2,3')
     content: str | None = Field(default=None, description='客户描述')
     market: str | None = Field(default=None, description='主要经营业务')
@@ -82,6 +83,9 @@ class CustomerModel(BaseModel):
     # 客户联系人列表（用于详情接口返回）
     contact_list: list[dict] | None = Field(default=None, description='客户联系人列表')
 
+    # 跟进记录列表（废弃客户详情返回该客户全部创建人的记录，无需权限过滤）
+    trace_list: list[dict] | None = Field(default=None, description='跟进记录列表')
+
     # 扩展字段，用于列表和详情展示
     belong_name: str | None = Field(default=None, description='所属人姓名')
     belong_department: str | None = Field(default=None, description='所属部门')
@@ -100,6 +104,8 @@ class CustomerModel(BaseModel):
     contact_mobile: str | None = Field(default=None, description='联系电话')
     contact_email: str | None = Field(default=None, description='联系人邮箱')
     share_names: str | None = Field(default=None, description='共享人员姓名列表')
+    delete_name: str | None = Field(default=None, description='删除人姓名')
+    delete_time_str: str | None = Field(default=None, description='删除/废弃时间字符串')
 
     @Xss(field_name='name', message='客户名称不能包含脚本字符')
     @NotBlank(field_name='name', message='客户名称不能为空')

@@ -20,7 +20,7 @@ class CustomerTrace(Base):
     content = Column(MEDIUMTEXT, comment='跟进内容')
     follow_time = Column(BigInteger, nullable=False, default=0, comment='跟进时间')
     next_time = Column(BigInteger, nullable=False, default=0, comment='下次跟进时间')
-    file_ids = Column(String(500), nullable=False, default='', comment='附件 ids,如:1,2,3')
+    file_ids = Column(String(2000), nullable=False, default='', comment='附件信息 JSON 数组')
     admin_id = Column(Integer, nullable=False, default=0, comment='创建人')
     create_time = Column(BigInteger, nullable=False, default=0, comment='创建时间')
     update_time = Column(BigInteger, nullable=False, default=0, comment='更新时间')

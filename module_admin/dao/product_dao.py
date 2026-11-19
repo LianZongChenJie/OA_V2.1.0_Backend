@@ -122,7 +122,6 @@ class ProductDao:
                 'stock': product.stock,
                 'isObject': product.is_object,
                 'status': product.status,
-                'adminId': product.admin_id,
                 'createTime': product.create_time,
                 'updateTime': product.update_time,
                 'deleteTime': product.delete_time,
