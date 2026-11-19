@@ -1,0 +1,35 @@
+# Git
+.git
+.github
+
+# IDE
+.idea/
+.vscode/
+*.swp
+.DS_Store
+
+# Python 编译缓存
+__pycache__/
+*.py[cod]
+*.so
+
+# 日志与运行时文件
+logs/
+*.log
+dump.rdb
+
+# 代码检查缓存
+.ruff_cache/
+.mypy_cache/
+.pytest_cache/
+
+# 上传的临时文件
+uploads/tender_attachments/temp/
+
+# 代码生成器产物目录
+vf_admin/download_path/
+vf_admin/gen_path/
+vf_admin/upload_path/
+
+# 测试脚本
+test_*.py
