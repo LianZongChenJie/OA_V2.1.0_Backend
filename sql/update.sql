@@ -492,3 +492,88 @@ CREATE TABLE IF NOT EXISTS `oa_service_customer_settlement` (
 -- WHERE rm.menu_id = 3700;
 -- INSERT IGNORE INTO `sys_role_menu` (`role_id`, `menu_id`) VALUES (1, 3800), (1, 3801), (1, 3802), (1, 3803), (1, 3804), (1, 3805), (1, 3806);
 
+# 人力总成本明细表
+CREATE TABLE IF NOT EXISTS `oa_hr_cost` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `stat_month` char(7) NOT NULL DEFAULT '' COMMENT '月份 YYYY-MM',
+  `employee_status` varchar(20) NOT NULL DEFAULT '' COMMENT '员工状态',
+  `city_id` int NOT NULL DEFAULT 0 COMMENT '城市ID，关联 oa_area.id（level=2 城市）',
+  `city_name` varchar(100) NOT NULL DEFAULT '' COMMENT '城市名称快照',
+  `org_id` int NOT NULL DEFAULT 0 COMMENT '组织架构ID，关联 sys_dept.dept_id',
+  `org_name` varchar(100) NOT NULL DEFAULT '' COMMENT '组织架构名称快照',
+  `employee_name` varchar(100) NOT NULL DEFAULT '' COMMENT '姓名',
+  `id_card` varchar(32) NOT NULL COMMENT '身份证号码（必填，判重字段）',
+  `entry_date` bigint NOT NULL DEFAULT 0 COMMENT '入职日期（秒）',
+  `entry_record_date` varchar(20) NOT NULL DEFAULT '' COMMENT '入职记录（新入职/重新入职）',
+  `project_name` varchar(255) NOT NULL DEFAULT '' COMMENT '目前所在项目',
+  `contract_salary` decimal(18,6) NOT NULL DEFAULT 0 COMMENT '合同工资',
+  `salary_ratio` decimal(5,2) NOT NULL DEFAULT 1.00 COMMENT '算薪比例',
+  `base_salary` decimal(18,6) NOT NULL DEFAULT 0 COMMENT '基本工资',
+  `performance_salary` decimal(18,6) NOT NULL DEFAULT 0 COMMENT '绩效工资',
+  `post_salary` decimal(18,6) NOT NULL DEFAULT 0 COMMENT '岗位工资',
+  `attendance_days` decimal(10,2) NOT NULL DEFAULT 0 COMMENT '考勤（天）',
+  `customer_fee_tax_included` decimal(18,6) NOT NULL DEFAULT 0 COMMENT '客户费用单（含税）',
+  `computer_subsidy` decimal(18,6) NOT NULL DEFAULT 0 COMMENT '电脑补助（加）',
+  `meal_subsidy` decimal(18,6) NOT NULL DEFAULT 0 COMMENT '工作日餐补（加）',
+  `bonus` decimal(18,6) NOT NULL DEFAULT 0 COMMENT '奖金（加）',
+  `subsidy` decimal(18,6) NOT NULL DEFAULT 0 COMMENT '补助（加）',
+  `deduction` decimal(18,6) NOT NULL DEFAULT 0 COMMENT '扣款（减）',
+  `other_deduction` decimal(18,6) NOT NULL DEFAULT 0 COMMENT '其他扣款（减）',
+  `gross_salary` decimal(18,6) NOT NULL DEFAULT 0 COMMENT '未扣五险一金薪资总额（计算）',
+  `pension_personal` decimal(18,6) NOT NULL DEFAULT 0 COMMENT '养老个人部分',
+  `medical_personal` decimal(18,6) NOT NULL DEFAULT 0 COMMENT '医疗个人部分',
+  `unemployment_personal` decimal(18,6) NOT NULL DEFAULT 0 COMMENT '失业个人部分',
+  `social_personal_total` decimal(18,6) NOT NULL DEFAULT 0 COMMENT '社保个人合计（计算）',
+  `housing_fund_personal` decimal(18,6) NOT NULL DEFAULT 0 COMMENT '公积金个人部分',
+  `taxable_salary` decimal(18,6) NOT NULL DEFAULT 0 COMMENT '扣除五险一金税前工资（计算）',
+  `income_tax` decimal(18,6) NOT NULL DEFAULT 0 COMMENT '个税代扣代缴',
+  `bank_pay_amount` decimal(18,6) NOT NULL DEFAULT 0 COMMENT '银行实际支付金额（计算）',
+  `pension_company` decimal(18,6) NOT NULL DEFAULT 0 COMMENT '养老单位部分',
+  `unemployment_company` decimal(18,6) NOT NULL DEFAULT 0 COMMENT '失业单位部分',
+  `injury_company` decimal(18,6) NOT NULL DEFAULT 0 COMMENT '工伤单位部分',
+  `medical_maternity_company` decimal(18,6) NOT NULL DEFAULT 0 COMMENT '（医疗+生育）单位部分',
+  `social_company_total` decimal(18,6) NOT NULL DEFAULT 0 COMMENT '社保单位合计（计算）',
+  `housing_fund_company` decimal(18,6) NOT NULL DEFAULT 0 COMMENT '公积金单位部分',
+  `social_total` decimal(18,6) NOT NULL DEFAULT 0 COMMENT '社保总合计（计算）',
+  `housing_fund_total` decimal(18,6) NOT NULL DEFAULT 0 COMMENT '公积金总合计（计算）',
+  `company_total_cost` decimal(18,6) NOT NULL DEFAULT 0 COMMENT '企业总成本（计算）',
+  `social_base` decimal(18,6) NOT NULL DEFAULT 0 COMMENT '社保基数',
+  `housing_fund_base` decimal(18,6) NOT NULL DEFAULT 0 COMMENT '公积金基数',
+  `remark` varchar(1000) NOT NULL DEFAULT '' COMMENT '备注',
+  `tax_excluded_revenue` decimal(18,6) NOT NULL DEFAULT 0 COMMENT '不含税收入（计算）',
+  `gross_profit` decimal(18,6) NOT NULL DEFAULT 0 COMMENT '毛利（计算）',
+  `tax_declaration_amount` decimal(18,6) NOT NULL DEFAULT 0 COMMENT '个税申报金额（计算）',
+  `admin_id` int NOT NULL DEFAULT 0 COMMENT '创建人',
+  `create_time` bigint NOT NULL DEFAULT 0 COMMENT '创建时间（秒）',
+  `update_time` bigint NOT NULL DEFAULT 0 COMMENT '更新时间（秒）',
+  `delete_time` bigint NOT NULL DEFAULT 0 COMMENT '删除时间（秒），0为未删除',
+  `tenant_id` bigint NOT NULL DEFAULT 1 COMMENT '租户ID',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_month_id_card` (`stat_month`, `id_card`, `delete_time`),
+  KEY `idx_stat_month` (`stat_month`),
+  KEY `idx_org_id` (`org_id`),
+  KEY `idx_city_id` (`city_id`),
+  KEY `idx_employee_name` (`employee_name`),
+  KEY `idx_delete_time` (`delete_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='人力总成本明细表';
+
+-- 人力成本菜单目录与人力总成本菜单（menu_id 需确认未占用后取消注释执行）
+-- INSERT INTO `sys_menu` (`menu_id`, `menu_name`, `parent_id`, `order_num`, `path`, `component`, `query`, `route_name`, `is_frame`, `is_cache`, `menu_type`, `visible`, `status`, `perms`, `icon`, `create_by`, `create_time`, `update_by`, `update_time`, `remark`)
+-- VALUES (3900, '人力成本', 0, 9, 'humanCost', NULL, NULL, '', 1, 0, 'M', '0', '0', '', 'money', 'admin', NOW(), 'admin', NOW(), '人力成本目录');
+-- INSERT INTO `sys_menu` (`menu_id`, `menu_name`, `parent_id`, `order_num`, `path`, `component`, `query`, `route_name`, `is_frame`, `is_cache`, `menu_type`, `visible`, `status`, `perms`, `icon`, `create_by`, `create_time`, `update_by`, `update_time`, `remark`)
+-- VALUES (3901, '人力总成本', 3900, 1, 'hrCost', 'hr/cost/index', NULL, '', 1, 0, 'C', '0', '0', 'hr:cost:list', 'money', 'admin', NOW(), 'admin', NOW(), '人力总成本');
+-- INSERT INTO `sys_menu` (`menu_id`, `menu_name`, `parent_id`, `order_num`, `path`, `component`, `query`, `route_name`, `is_frame`, `is_cache`, `menu_type`, `visible`, `status`, `perms`, `icon`, `create_by`, `create_time`, `update_by`, `update_time`, `remark`)
+-- VALUES
+-- (3902, '查询', 3901, 1, '', NULL, NULL, '', 1, 0, 'F', '0', '0', 'hr:cost:query', '#', 'admin', NOW(), 'admin', NOW(), ''),
+-- (3903, '新增', 3901, 2, '', NULL, NULL, '', 1, 0, 'F', '0', '0', 'hr:cost:add', '#', 'admin', NOW(), 'admin', NOW(), ''),
+-- (3904, '编辑', 3901, 3, '', NULL, NULL, '', 1, 0, 'F', '0', '0', 'hr:cost:edit', '#', 'admin', NOW(), 'admin', NOW(), ''),
+-- (3905, '删除', 3901, 4, '', NULL, NULL, '', 1, 0, 'F', '0', '0', 'hr:cost:remove', '#', 'admin', NOW(), 'admin', NOW(), ''),
+-- (3906, '导入', 3901, 5, '', NULL, NULL, '', 1, 0, 'F', '0', '0', 'hr:cost:import', '#', 'admin', NOW(), 'admin', NOW(), ''),
+-- (3907, '导出', 3901, 6, '', NULL, NULL, '', 1, 0, 'F', '0', '0', 'hr:cost:export', '#', 'admin', NOW(), 'admin', NOW(), '');
+-- INSERT IGNORE INTO `sys_role_menu` (`role_id`, `menu_id`)
+-- SELECT DISTINCT rm.role_id, m.menu_id
+-- FROM `sys_role_menu` rm
+-- CROSS JOIN (SELECT 3900 AS menu_id UNION ALL SELECT 3901 UNION ALL SELECT 3902 UNION ALL SELECT 3903 UNION ALL SELECT 3904 UNION ALL SELECT 3905 UNION ALL SELECT 3906 UNION ALL SELECT 3907) m
+-- WHERE rm.menu_id = 3800;
+-- INSERT IGNORE INTO `sys_role_menu` (`role_id`, `menu_id`) VALUES (1, 3900), (1, 3901), (1, 3902), (1, 3903), (1, 3904), (1, 3905), (1, 3906), (1, 3907);
+

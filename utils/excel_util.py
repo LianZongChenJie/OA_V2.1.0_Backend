@@ -43,13 +43,22 @@ class ExcelUtil:
         return binary_data
 
     @classmethod
-    def get_excel_template(cls, header_list: list, selector_header_list: list, option_list: list[dict]) -> bytes:
+    def get_excel_template(
+            cls,
+            header_list: list,
+            selector_header_list: list,
+            option_list: list[dict],
+            formula_map: dict[str, str] | None = None,
+            formula_rows: int = 500,
+    ) -> bytes:
         """
         工具方法：将需要导出的list数据转化为对应excel的二进制数据
 
         :param header_list: 表头数据列表
         :param selector_header_list: 需要设置为选择器格式的表头数据列表
         :param option_list: 选择器格式的表头预设的选项列表
+        :param formula_map: 需要预置公式的表头与公式模板映射，公式中用 {row} 表示占位行号
+        :param formula_rows: 预置公式的数据行数（从第 2 行开始）
         :return: 模板excel的二进制数据
         """
         # 创建Excel工作簿
@@ -69,9 +78,21 @@ class ExcelUtil:
             cell.value = header
             cell.fill = header_fill
             # 设置列宽度为16
-            ws.column_dimensions[chr(64 + col_num)].width = 12
+            ws.column_dimensions[get_column_letter(col_num)].width = 12
             # 设置水平居中对齐
             cell.alignment = Alignment(horizontal='center')
+
+        # 预置自动计算公式，并将计算列的数据区域标灰
+        if formula_map:
+            calculation_fill = PatternFill(start_color='f2f2f2', end_color='f2f2f2', fill_type='solid')
+            for header, formula_template in formula_map.items():
+                if header not in headers:
+                    continue
+                column = headers.index(header) + 1
+                for row_num in range(2, formula_rows + 2):
+                    target_cell = ws.cell(row=row_num, column=column)
+                    target_cell.value = '=' + formula_template.format(row=row_num)
+                    target_cell.fill = calculation_fill
 
         # 设置选择器的预设选项
         options = option_list
