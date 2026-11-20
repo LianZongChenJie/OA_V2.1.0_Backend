@@ -6,7 +6,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from common.vo import PageModel
 from module_admin.entity.do.customer_do import OaCustomer
+from module_admin.entity.do.dept_do import SysDept
+from module_admin.entity.do.user_do import SysUser
 from module_admin.entity.vo.customer_vo import CustomerModel, CustomerPageQueryModel
+from module_basicdata.entity.do.custom.customer_gradle_do import OaCustomerGrade
+from module_basicdata.entity.do.custom.custome_source_do import OaCustomerSource
+from module_basicdata.entity.do.custom.industry_do import OaIndustry
 from utils.page_util import PageUtil
 from utils.time_format_util import timestamp_to_datetime
 from utils.log_util import logger
@@ -344,11 +349,11 @@ class CustomerDao:
             rows = result.mappings().all()
             
             # 处理每一行数据，添加扩展字段
-            processed_rows = []
-            for row in rows:
-                row_dict = dict(row)
-                processed_row = await cls._process_customer_row_from_dict(db, row_dict)
-                processed_rows.append(processed_row)
+            relation_maps = await cls._build_relation_maps(db, rows)
+            processed_rows = [
+                cls._process_customer_row_from_dict(dict(row), relation_maps)
+                for row in rows
+            ]
             
             has_next = (query_object.page_num * query_object.page_size) < total
             
@@ -367,22 +372,110 @@ class CustomerDao:
             rows = result.mappings().all()
             
             # 处理每一行数据
-            processed_rows = []
-            for row in rows:
-                row_dict = dict(row)
-                processed_row = await cls._process_customer_row_from_dict(db, row_dict)
-                processed_rows.append(processed_row)
+            relation_maps = await cls._build_relation_maps(db, rows)
+            processed_rows = [
+                cls._process_customer_row_from_dict(dict(row), relation_maps)
+                for row in rows
+            ]
             
             # 转换为驼峰命名
             return CamelCaseUtil.transform_result(processed_rows)
 
+    @staticmethod
+    def _positive_int(value: Any) -> int:
+        """将字段值转换为正整数，无效值返回 0"""
+        try:
+            number = int(value) if value is not None else 0
+        except (TypeError, ValueError):
+            return 0
+        return number if number > 0 else 0
+
     @classmethod
-    async def _process_customer_row_from_dict(cls, db: AsyncSession, row: dict) -> dict:
+    async def _build_relation_maps(
+            cls, db: AsyncSession, rows: list[Any]
+    ) -> dict[str, dict[int, str]]:
+        """批量查询客户列表所需的关联名称，替代逐行 N+1 查询"""
+        user_ids: set[int] = set()
+        dept_ids: set[int] = set()
+        grade_ids: set[int] = set()
+        source_ids: set[int] = set()
+        industry_ids: set[int] = set()
+
+        for row in rows:
+            row_mapping = row if isinstance(row, dict) else dict(row)
+            user_id = cls._positive_int(row_mapping.get('belong_uid'))
+            dept_id = cls._positive_int(row_mapping.get('belong_did'))
+            grade_id = cls._positive_int(row_mapping.get('grade_id'))
+            source_id = cls._positive_int(row_mapping.get('source_id'))
+            industry_id = cls._positive_int(row_mapping.get('industry_id'))
+            if user_id:
+                user_ids.add(user_id)
+            if dept_id:
+                dept_ids.add(dept_id)
+            if grade_id:
+                grade_ids.add(grade_id)
+            if source_id:
+                source_ids.add(source_id)
+            if industry_id:
+                industry_ids.add(industry_id)
+
+        user_map: dict[int, str] = {}
+        dept_map: dict[int, str] = {}
+        grade_map: dict[int, str] = {}
+        source_map: dict[int, str] = {}
+        industry_map: dict[int, str] = {}
+
+        if user_ids:
+            user_rows = (
+                await db.execute(
+                    select(SysUser.user_id, SysUser.nick_name, SysUser.user_name)
+                    .where(SysUser.user_id.in_(user_ids), SysUser.status == '0', SysUser.del_flag == '0')
+                )
+            ).all()
+            user_map = {row.user_id: row.nick_name or row.user_name for row in user_rows}
+
+        if dept_ids:
+            dept_rows = (
+                await db.execute(
+                    select(SysDept.dept_id, SysDept.dept_name)
+                    .where(SysDept.dept_id.in_(dept_ids), SysDept.del_flag == '0')
+                )
+            ).all()
+            dept_map = {row.dept_id: row.dept_name for row in dept_rows}
+
+        for model, ids, target_map, label in (
+            (OaCustomerGrade, grade_ids, grade_map, '客户等级'),
+            (OaCustomerSource, source_ids, source_map, '客户来源'),
+            (OaIndustry, industry_ids, industry_map, '行业'),
+        ):
+            if not ids:
+                continue
+            try:
+                rows_result = (
+                    await db.execute(select(model.id, model.title).where(model.id.in_(ids)))
+                ).all()
+                for item in rows_result:
+                    target_map[item.id] = item.title
+            except Exception as e:
+                logger.error(f'批量查询{label}失败: {e}')
+
+        return {
+            'user': user_map,
+            'dept': dept_map,
+            'grade': grade_map,
+            'source': source_map,
+            'industry': industry_map,
+        }
+
+    @classmethod
+    def _process_customer_row_from_dict(
+            cls, row: dict, relation_maps: dict[str, dict[int, str]]
+    ) -> dict:
         """
         从字典格式的客户行数据处理，添加扩展字段
 
-        :param db: orm 对象
         :param row: 客户行数据字典
+        :param relation_maps: 批量查询得到的关联名称映射
         :return: 处理后的字典数据
         """
         result = row.copy()
@@ -401,56 +494,26 @@ class CustomerDao:
         result['belong_time_str'] = None
         result['distribute_time_str'] = None
         result['update_time_str'] = None
-        
-        # 查询所属人姓名
-        belong_uid = row.get('belong_uid')
-        if belong_uid and int(belong_uid) > 0:
-            from module_admin.dao.user_dao import UserDao
-            user_result = await UserDao.get_user_by_id(db, int(belong_uid))
-            if user_result and user_result.get('user_basic_info'):
-                user_info = user_result['user_basic_info']
-                result['belong_name'] = user_info.nick_name or user_info.user_name
-        
-        # 查询所属部门名称
-        belong_did = row.get('belong_did')
-        if belong_did and int(belong_did) > 0:
-            from module_admin.dao.dept_dao import DeptDao
-            dept_info = await DeptDao.get_dept_detail_by_id(db, int(belong_did))
-            if dept_info:
-                result['belong_department'] = dept_info.dept_name
-        
-        # 查询客户等级
-        grade_id = row.get('grade_id')
-        if grade_id and int(grade_id) > 0:
-            from module_basicdata.dao.custom.customer_gradle_dao import CustomerGradleDao
-            try:
-                grade_info = await CustomerGradleDao.get_info_by_id(db, int(grade_id))
-                if grade_info:
-                    result['grade'] = grade_info.title
-            except Exception as e:
-                logger.error(f'查询客户等级失败: {e}')
-        
-        # 查询来源渠道
-        source_id = row.get('source_id')
-        if source_id and int(source_id) > 0:
-            from module_basicdata.dao.custom.customer_source_dao import CustomerSourceDao
-            try:
-                source_info = await CustomerSourceDao.get_info_by_id(db, int(source_id))
-                if source_info:
-                    result['source'] = source_info.title
-            except Exception as e:
-                logger.error(f'查询客户来源失败: {e}')
-        
-        # 查询所属行业
-        industry_id = row.get('industry_id')
-        if industry_id and int(industry_id) > 0:
-            from module_basicdata.dao.custom.industry_dao import IndustryDao
-            try:
-                industry_info = await IndustryDao.get_industry_info(db, int(industry_id))
-                if industry_info:
-                    result['industry'] = industry_info.title
-            except Exception as e:
-                logger.error(f'查询行业失败: {e}')
+
+        belong_uid = cls._positive_int(row.get('belong_uid'))
+        if belong_uid:
+            result['belong_name'] = relation_maps['user'].get(belong_uid)
+
+        belong_did = cls._positive_int(row.get('belong_did'))
+        if belong_did:
+            result['belong_department'] = relation_maps['dept'].get(belong_did)
+
+        grade_id = cls._positive_int(row.get('grade_id'))
+        if grade_id:
+            result['grade'] = relation_maps['grade'].get(grade_id)
+
+        source_id = cls._positive_int(row.get('source_id'))
+        if source_id:
+            result['source'] = relation_maps['source'].get(source_id)
+
+        industry_id = cls._positive_int(row.get('industry_id'))
+        if industry_id:
+            result['industry'] = relation_maps['industry'].get(industry_id)
         
         # 格式化时间字段
         follow_time = row.get('follow_time')

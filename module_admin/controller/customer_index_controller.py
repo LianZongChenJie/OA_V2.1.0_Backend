@@ -14,8 +14,14 @@ from common.enums import BusinessType
 from common.router import APIRouterPro
 from common.vo import DataResponseModel, PageResponseModel
 from exceptions.exception import ServiceException
+from module_admin.entity.do.customer_contact_do import OaCustomerContact
 from module_admin.entity.do.customer_do import OaCustomer
+from module_admin.entity.do.dept_do import SysDept
+from module_admin.entity.do.user_do import SysUser
 from module_admin.entity.vo.customer_vo import CustomerModel
+from module_basicdata.entity.do.custom.customer_gradle_do import OaCustomerGrade
+from module_basicdata.entity.do.custom.custome_source_do import OaCustomerSource
+from module_basicdata.entity.do.custom.industry_do import OaIndustry
 from utils.log_util import logger
 from utils.response_util import ResponseUtil
 from module_admin.entity.vo.user_vo import CurrentUserModel
@@ -28,6 +34,104 @@ customer_index_controller = APIRouterPro(
     tags=['客户管理 - 抢客宝'],
     dependencies=[PreAuthDependency()]
 )
+
+
+def _positive_int(value: Any) -> int:
+    """将字段值转换为正整数，无效值返回 0"""
+    try:
+        number = int(value) if value is not None else 0
+    except (TypeError, ValueError):
+        return 0
+    return number if number > 0 else 0
+
+
+async def _build_sea_relation_maps(
+        query_db: AsyncSession, customer_list: list[OaCustomer]
+) -> dict[str, dict[int, Any]]:
+    """批量查询公海客户列表所需的关联数据，替代逐行查询"""
+    user_ids: set[int] = set()
+    dept_ids: set[int] = set()
+    grade_ids: set[int] = set()
+    source_ids: set[int] = set()
+    industry_ids: set[int] = set()
+    contact_ids: set[int] = set()
+
+    for customer in customer_list:
+        user_id = _positive_int(customer.belong_uid)
+        dept_id = _positive_int(customer.belong_did)
+        grade_id = _positive_int(customer.grade_id)
+        source_id = _positive_int(customer.source_id)
+        industry_id = _positive_int(customer.industry_id)
+        contact_id = _positive_int(customer.contact_first)
+        if user_id:
+            user_ids.add(user_id)
+        if dept_id:
+            dept_ids.add(dept_id)
+        if grade_id:
+            grade_ids.add(grade_id)
+        if source_id:
+            source_ids.add(source_id)
+        if industry_id:
+            industry_ids.add(industry_id)
+        if contact_id:
+            contact_ids.add(contact_id)
+
+    user_map: dict[int, str] = {}
+    dept_map: dict[int, str] = {}
+    grade_map: dict[int, str] = {}
+    source_map: dict[int, str] = {}
+    industry_map: dict[int, str] = {}
+    contact_map: dict[int, Any] = {}
+
+    if user_ids:
+        rows = (await query_db.execute(
+            select(SysUser.user_id, SysUser.nick_name, SysUser.user_name)
+            .where(SysUser.user_id.in_(user_ids))
+        )).all()
+        user_map = {row.user_id: row.nick_name or row.user_name for row in rows}
+
+    if dept_ids:
+        rows = (await query_db.execute(
+            select(SysDept.dept_id, SysDept.dept_name).where(SysDept.dept_id.in_(dept_ids))
+        )).all()
+        dept_map = {row.dept_id: row.dept_name for row in rows}
+
+    for model, ids, target_map, label in (
+        (OaCustomerGrade, grade_ids, grade_map, '客户等级'),
+        (OaCustomerSource, source_ids, source_map, '客户来源'),
+        (OaIndustry, industry_ids, industry_map, '行业'),
+    ):
+        if not ids:
+            continue
+        try:
+            rows = (await query_db.execute(select(model.id, model.title).where(model.id.in_(ids)))).all()
+            for row in rows:
+                target_map[row.id] = row.title
+        except Exception as e:
+            logger.error(f'公海客户列表批量查询{label}失败: {e}')
+
+    if contact_ids:
+        rows = (await query_db.execute(
+            select(
+                OaCustomerContact.id,
+                OaCustomerContact.name,
+                OaCustomerContact.mobile,
+                OaCustomerContact.email,
+            ).where(OaCustomerContact.id.in_(contact_ids), OaCustomerContact.delete_time == 0)
+        )).all()
+        contact_map = {
+            row.id: {'name': row.name, 'mobile': row.mobile, 'email': row.email}
+            for row in rows
+        }
+
+    return {
+        'user': user_map,
+        'dept': dept_map,
+        'grade': grade_map,
+        'source': source_map,
+        'industry': industry_map,
+        'contact': contact_map,
+    }
 
 
 @customer_index_controller.get(
@@ -170,10 +274,6 @@ async def sea_customer_list(
 ) -> Response:
     """公海客户列表"""
     try:
-        from module_basicdata.dao.custom.customer_gradle_dao import CustomerGradleDao
-        from module_basicdata.dao.custom.customer_source_dao import CustomerSourceDao
-        from module_basicdata.dao.custom.industry_dao import IndustryDao
-        from module_admin.entity.do.customer_contact_do import OaCustomerContact
         from utils.time_format_util import timestamp_to_datetime
         from utils.common_util import CamelCaseUtil
         
@@ -242,6 +342,9 @@ async def sea_customer_list(
         result = await query_db.execute(query)
         customer_list = result.scalars().all()
         
+        # 批量查询关联数据，避免逐行 N+1
+        relation_maps = await _build_sea_relation_maps(query_db, customer_list)
+
         # 转换结果，添加扩展信息
         customers = []
         for c in customer_list:
@@ -284,19 +387,19 @@ async def sea_customer_list(
             }
             
             # 获取行业名称
-            if c.industry_id and int(c.industry_id) > 0:
-                industry_info = await IndustryDao.get_industry_info(query_db, int(c.industry_id))
-                customer_dict['industry'] = industry_info.title if industry_info else None
+            industry_id = _positive_int(c.industry_id)
+            if industry_id:
+                customer_dict['industry'] = relation_maps['industry'].get(industry_id)
             
             # 获取等级名称
-            if c.grade_id and int(c.grade_id) > 0:
-                grade_info = await CustomerGradleDao.get_info_by_id(query_db, int(c.grade_id))
-                customer_dict['grade'] = grade_info.title if grade_info else None
+            grade_id = _positive_int(c.grade_id)
+            if grade_id:
+                customer_dict['grade'] = relation_maps['grade'].get(grade_id)
             
             # 获取来源名称
-            if c.source_id and int(c.source_id) > 0:
-                source_info = await CustomerSourceDao.get_info_by_id(query_db, int(c.source_id))
-                customer_dict['source'] = source_info.title if source_info else None
+            source_id = _positive_int(c.source_id)
+            if source_id:
+                customer_dict['source'] = relation_maps['source'].get(source_id)
             
             # 获取客户状态名称
             if c.customer_status is not None:
@@ -311,36 +414,24 @@ async def sea_customer_list(
                 customer_dict['intent_status_name'] = '未设置'
             
             # 获取第一联系人信息
-            if c.contact_first and int(c.contact_first) > 0:
-                contact_query = select(OaCustomerContact).where(
-                    OaCustomerContact.id == c.contact_first,
-                    OaCustomerContact.delete_time == 0
-                )
-                contact_result = await query_db.execute(contact_query)
-                contact_info = contact_result.scalars().first()
+            contact_id = _positive_int(c.contact_first)
+            if contact_id:
+                contact_info = relation_maps['contact'].get(contact_id)
                 if contact_info:
-                    customer_dict['contact_name'] = contact_info.name
-                    customer_dict['contact_mobile'] = contact_info.mobile
-                    customer_dict['contact_email'] = contact_info.email
+                    customer_dict['contact_name'] = contact_info['name']
+                    customer_dict['contact_mobile'] = contact_info['mobile']
+                    customer_dict['contact_email'] = contact_info['email']
             
             # 获取所属员工和所属部门（公海客户通常为空，显示'未分配'）
-            if c.belong_uid and int(c.belong_uid) > 0:
-                from module_admin.entity.do.user_do import SysUser
-                user_query = select(SysUser).where(SysUser.user_id == c.belong_uid)
-                user_result = await query_db.execute(user_query)
-                user_info = user_result.scalars().first()
-                if user_info:
-                    customer_dict['belong_name'] = user_info.nick_name
+            belong_uid = _positive_int(c.belong_uid)
+            if belong_uid:
+                customer_dict['belong_name'] = relation_maps['user'].get(belong_uid)
             else:
                 customer_dict['belong_name'] = '未分配'
             
-            if c.belong_did and int(c.belong_did) > 0:
-                from module_admin.entity.do.dept_do import SysDept
-                dept_query = select(SysDept).where(SysDept.dept_id == c.belong_did)
-                dept_result = await query_db.execute(dept_query)
-                dept_info = dept_result.scalars().first()
-                if dept_info:
-                    customer_dict['belong_department'] = dept_info.dept_name
+            belong_did = _positive_int(c.belong_did)
+            if belong_did:
+                customer_dict['belong_department'] = relation_maps['dept'].get(belong_did)
             else:
                 customer_dict['belong_department'] = '未分配'
             

@@ -22,6 +22,7 @@ from module_project_monthly.entity.vo.project_monthly_vo import (
 from utils.common_util import CamelCaseUtil
 from utils.excel_util import ExcelUtil
 from utils.log_util import logger
+from utils.time_format_util import timestamp_to_datetime
 
 IMPORT_HEADERS = [
     '序号',
@@ -37,6 +38,7 @@ IMPORT_HEADERS = [
     '实际开票金额',
     '实际收款金额',
     '是否结项',
+    '创建时间',
     '更新时间',
 ]
 
@@ -54,6 +56,7 @@ HEADER_FIELD_MAP = {
     '实际开票金额': 'invoiced_amount',
     '实际收款金额': 'received_amount',
     '是否结项': 'project_closed',
+    '创建时间': 'create_time_str',
     '更新时间': 'update_time_str',
 }
 
@@ -71,6 +74,7 @@ EXPORT_FIELD_MAP = {
     'invoicedAmount': '实际开票金额',
     'receivedAmount': '实际收款金额',
     'projectClosed': '是否结项',
+    'createTimeStr': '创建时间',
     'updateTimeStr': '更新时间',
 }
 
@@ -111,6 +115,10 @@ class ProjectMonthlyService:
         if not record:
             raise ServiceException(message='记录不存在')
         data = CamelCaseUtil.transform_result(record)
+        create_time = getattr(record, 'create_time', 0) or 0
+        update_time = getattr(record, 'update_time', 0) or 0
+        data['createTimeStr'] = timestamp_to_datetime(create_time, '%Y-%m-%d %H:%M:%S') if create_time else ''
+        data['updateTimeStr'] = timestamp_to_datetime(update_time, '%Y-%m-%d %H:%M:%S') if update_time else ''
         return ProjectMonthlyModel(**data)
 
     @staticmethod
@@ -209,6 +217,7 @@ class ProjectMonthlyService:
 
         data = page_object.model_dump(exclude={'id', 'admin_id', 'create_time', 'delete_time'}, exclude_unset=True)
         data.pop('seq', None)
+        data.pop('create_time_str', None)
         data.pop('update_time_str', None)
         data['stat_month'] = stat_month
         data['customer_name'] = customer_name

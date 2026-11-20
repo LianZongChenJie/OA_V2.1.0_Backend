@@ -441,3 +441,54 @@ CREATE TABLE IF NOT EXISTS `oa_project_monthly` (
 -- WHERE rm.menu_id = 2090;
 -- INSERT IGNORE INTO `sys_role_menu` (`role_id`, `menu_id`) VALUES (1, 3700), (1, 3701), (1, 3702), (1, 3703), (1, 3704), (1, 3705), (1, 3706);
 
+# 服务客户结算表
+CREATE TABLE IF NOT EXISTS `oa_service_customer_settlement` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `stat_year` smallint NOT NULL DEFAULT 0 COMMENT '年度，如 2026',
+  `stat_month` tinyint unsigned NOT NULL DEFAULT 0 COMMENT '月份，1-12',
+  `customer_name` varchar(255) NOT NULL DEFAULT '' COMMENT '客户名称',
+  `employee_name` varchar(255) NOT NULL DEFAULT '' COMMENT '姓名',
+  `position_name` varchar(100) NOT NULL DEFAULT '' COMMENT '职位',
+  `level_name` varchar(100) NOT NULL DEFAULT '' COMMENT '级别',
+  `unit_price` decimal(15,2) NOT NULL DEFAULT 0.00 COMMENT '单价（元）',
+  `actual_attendance_days` decimal(10,2) NOT NULL DEFAULT 0.00 COMMENT '实际出勤（天）',
+  `leave_days` decimal(10,2) NOT NULL DEFAULT 0.00 COMMENT '请假（天）',
+  `overtime_days` decimal(10,2) NOT NULL DEFAULT 0.00 COMMENT '加班（天）',
+  `comp_off_days` decimal(10,2) NOT NULL DEFAULT 0.00 COMMENT '调休（天）',
+  `payable_amount` decimal(15,2) NOT NULL DEFAULT 0.00 COMMENT '实际应结算费用（元）',
+  `settled_amount` decimal(15,2) NOT NULL DEFAULT 0.00 COMMENT '实际结算费用（元）',
+  `is_settled` tinyint NOT NULL DEFAULT 0 COMMENT '是否结算：0否 1是',
+  `remark` varchar(1000) NOT NULL DEFAULT '' COMMENT '备注',
+  `admin_id` int NOT NULL DEFAULT 0 COMMENT '创建人',
+  `create_time` bigint NOT NULL DEFAULT 0 COMMENT '创建时间（秒）',
+  `update_time` bigint NOT NULL DEFAULT 0 COMMENT '更新时间（秒）',
+  `delete_time` bigint NOT NULL DEFAULT 0 COMMENT '删除时间（秒），0为未删除',
+  `tenant_id` bigint NOT NULL DEFAULT 1 COMMENT '租户ID',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_year_month_customer_employee` (`stat_year`, `stat_month`, `customer_name`, `employee_name`, `delete_time`),
+  KEY `idx_year_month` (`stat_year`, `stat_month`),
+  KEY `idx_customer_name` (`customer_name`),
+  KEY `idx_employee_name` (`employee_name`),
+  KEY `idx_is_settled` (`is_settled`),
+  KEY `idx_update_time` (`update_time`),
+  KEY `idx_delete_time` (`delete_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='服务客户结算表';
+
+-- 服务客户结算菜单与权限（parent_id=2089「项目管理」，与项目列表 3700 同级；按项目列表角色复制授权；menu_id 需确认未占用后取消注释执行）
+-- INSERT INTO `sys_menu` (`menu_id`, `menu_name`, `parent_id`, `order_num`, `path`, `component`, `query`, `route_name`, `is_frame`, `is_cache`, `menu_type`, `visible`, `status`, `perms`, `icon`, `create_by`, `create_time`, `update_by`, `update_time`, `remark`)
+-- VALUES (3800, '服务客户结算', 2089, 5, 'customerSettlement', 'service/customerSettlement/index', NULL, '', 1, 0, 'C', '0', '0', 'service:customerSettlement:list', 'money', 'admin', NOW(), 'admin', NOW(), '服务客户结算');
+-- INSERT INTO `sys_menu` (`menu_id`, `menu_name`, `parent_id`, `order_num`, `path`, `component`, `query`, `route_name`, `is_frame`, `is_cache`, `menu_type`, `visible`, `status`, `perms`, `icon`, `create_by`, `create_time`, `update_by`, `update_time`, `remark`)
+-- VALUES
+-- (3801, '查询', 3800, 1, '', NULL, NULL, '', 1, 0, 'F', '0', '0', 'service:customerSettlement:query', '#', 'admin', NOW(), 'admin', NOW(), ''),
+-- (3802, '新增', 3800, 2, '', NULL, NULL, '', 1, 0, 'F', '0', '0', 'service:customerSettlement:add', '#', 'admin', NOW(), 'admin', NOW(), ''),
+-- (3803, '编辑', 3800, 3, '', NULL, NULL, '', 1, 0, 'F', '0', '0', 'service:customerSettlement:edit', '#', 'admin', NOW(), 'admin', NOW(), ''),
+-- (3804, '删除', 3800, 4, '', NULL, NULL, '', 1, 0, 'F', '0', '0', 'service:customerSettlement:remove', '#', 'admin', NOW(), 'admin', NOW(), ''),
+-- (3805, '导入', 3800, 5, '', NULL, NULL, '', 1, 0, 'F', '0', '0', 'service:customerSettlement:import', '#', 'admin', NOW(), 'admin', NOW(), ''),
+-- (3806, '导出', 3800, 6, '', NULL, NULL, '', 1, 0, 'F', '0', '0', 'service:customerSettlement:export', '#', 'admin', NOW(), 'admin', NOW(), '');
+-- INSERT IGNORE INTO `sys_role_menu` (`role_id`, `menu_id`)
+-- SELECT DISTINCT rm.role_id, m.menu_id
+-- FROM `sys_role_menu` rm
+-- CROSS JOIN (SELECT 3800 AS menu_id UNION ALL SELECT 3801 UNION ALL SELECT 3802 UNION ALL SELECT 3803 UNION ALL SELECT 3804 UNION ALL SELECT 3805 UNION ALL SELECT 3806) m
+-- WHERE rm.menu_id = 3700;
+-- INSERT IGNORE INTO `sys_role_menu` (`role_id`, `menu_id`) VALUES (1, 3800), (1, 3801), (1, 3802), (1, 3803), (1, 3804), (1, 3805), (1, 3806);
+

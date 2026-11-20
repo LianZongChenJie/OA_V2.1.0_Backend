@@ -37,7 +37,9 @@ class ProjectMonthlyDao:
     @classmethod
     def _to_dict(cls, row: OaProjectMonthly, seq: int | None = None) -> dict[str, Any]:
         result = CamelCaseUtil.transform_result(row)
+        create_time = getattr(row, 'create_time', 0) or 0
         update_time = getattr(row, 'update_time', 0) or 0
+        result['createTimeStr'] = timestamp_to_datetime(create_time, '%Y-%m-%d %H:%M:%S') if create_time else ''
         result['updateTimeStr'] = timestamp_to_datetime(update_time, '%Y-%m-%d %H:%M:%S') if update_time else ''
         if seq is not None:
             result['seq'] = seq

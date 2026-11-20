@@ -32,6 +32,7 @@ class ProjectMonthlyModel(BaseModel):
 
     # 列表返回扩展字段
     seq: int | None = Field(default=None, description='分页序号')
+    create_time_str: str | None = Field(default=None, description='创建时间字符串 YYYY-MM-DD HH:mm:ss')
     update_time_str: str | None = Field(default=None, description='更新时间字符串 YYYY-MM-DD HH:mm:ss')
 
 
